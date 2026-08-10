@@ -1,0 +1,53 @@
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Generated data (raw/ is tracked; these are rebuilt from it)
+data/processed/*
+data/final/*
+!data/processed/.gitkeep
+!data/final/.gitkeep
+
+# Model artefacts
+models/*
+!models/.gitkeep
+*.pkl
+*.joblib
+*.h5
+
+# Outputs
+outputs/*
+!outputs/.gitkeep
+
+# Environment / secrets
+.env
+.env.*
+*.key
+*.pem
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
