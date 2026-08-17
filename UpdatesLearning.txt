@@ -1,0 +1,228 @@
+
+Session 3 
+
+We're trying to predict a Premier League match using only information that would have been available immediately before that match.
+Found that data had 448 Rows and not 380 , postponed games were present 
+
+converted 2-0
+HomeGoals =2 
+AwayGoals =0
+Result =H
+
+Important thing that we have done 
+If i travelled back in time right before this match, what would i have known about these two teams
+
+so youll have 
+Liverpool 
+Points =0; 
+Goals For =0; 
+Goals Against =0; 
+Games =0; 
+
+Norwich 0-3 Liverpool 
+
+Points =3 
+Goals For =3 
+Goals Against =0
+Games =1 
+
+                    LIVERPOOL       CHELSEA
+
+Points so far          6              7
+Games played           2              2
+
+Last 5 points          6              7
+Last 5 wins            2              2
+
+Goals scored           6              5
+Goals conceded         1              2
+
+Home/away form         ???            ???
+
+                INFORMATION AVAILABLE BEFORE MATCH
+                                │
+             ┌──────────────────┴──────────────────┐
+             │                                     │
+        HOME TEAM                              AWAY TEAM
+             │                                     │
+       Points so far                         Points so far
+       Goals scored                          Goals scored
+       Goals conceded                        Goals conceded
+       Games played                          Games played
+       Last 5 points                         Last 5 points
+       Last 5 wins                           Last 5 wins
+       Last 5 goals                          Last 5 goals
+       Home form                             Away form
+             │                                     │
+             └──────────────────┬──────────────────┘
+                                │
+                                ▼
+                         MACHINE LEARNING
+                                │
+                                ▼
+                         MATCH PREDICTION
+                                │
+                    ┌───────────┼───────────┐
+                    ▼           ▼           ▼
+                   HOME        DRAW        AWAY
+
+
+                 GROUP 1 WE HAVE DONE 
+
+                 Home_Points_Before
+Away_Points_Before
+
+Home_GF_Before
+Away_GF_Before
+
+Home_GA_Before
+Away_GA_Before
+
+Home_Games_Before
+Away_Games_Before
+Points_Difference
+GF_Difference
+GA_Difference
+Games_Difference
+
+
+
+
+SECOND SESSION 
+Home_Points_Last5
+Away_Points_Last5
+
+Home_Wins_Last5
+Away_Wins_Last5
+
+Home_Draws_Last5
+Away_Draws_Last5
+
+Home_Losses_Last5
+Away_Losses_Last5
+
+Home_GF_Last5
+Away_GF_Last5
+
+Home_GA_Last5
+Away_GA_Last5
+Last5_Points_Difference
+Last5_Wins_Difference
+Last5_GF_Difference
+Last5_GA_Difference
+
+THIRD SESSION 
+
+HomeTeam_HomePoints_Last5
+AwayTeam_AwayPoints_Last5
+
+HomeTeam_HomeWins_Last5
+AwayTeam_AwayWins_Last5
+
+HomeTeam_HomeGF_Last5
+AwayTeam_AwayGF_Last5
+
+HomeTeam_HomeGA_Last5
+AwayTeam_AwayGA_Last5
+Venue_Points_Difference
+Venue_Wins_Difference
+Venue_GF_Difference
+Venue_GA_Difference
+
+
+So we try to buid a Naive Baseline gives us base line to beat with data 
+
+
+then model B Basic Team Strength 
+Answers does simply knowing how well teamns have perfoermed so far predict results 
+
+
+Model c add recent form 
+Does recent form provide information beyond season performance 
+
+Model D 
+Home teams home form 
+Away Teams home form 
+
+does location soecific performance add predictive power 
+
+Model E 
+Shooting 
+Standard 
+Goalkeeping 
+Playing Time 
+Miscellaneous 
+
+do these deeper perfomance statistics actually improve PREDICTION
+
+
+TimeOrder Evalution 
+
+
+                    PREMIER LEAGUE DATA
+                            │
+          ┌─────────────────┴─────────────────┐
+          │                                   │
+    SEASON FBREF                         FIXTURE DATA
+          │                                   │
+          │                            chronological
+          │                                   │
+          │                         pre-match features
+          │                                   │
+          └─────────────────┬─────────────────┘
+                            │
+                            ▼
+                    FEATURE CONSTRUCTION
+                            │
+       ┌────────────────────┼────────────────────┐
+       │                    │                    │
+       ▼                    ▼                    ▼
+ Historical             Current              Context
+ strength               form                 factors
+       │                    │                    │
+ Previous-season       PPG                  Rest days
+ FBref stats           Last5 PPG            Home/away
+ Previous goals        GF/90                Promoted
+ Elo                    GA/90
+                        xG later
+       │                    │                    │
+       └────────────────────┼────────────────────┘
+                            ▼
+                     MATCH PREDICTION
+                            │
+            ┌───────────────┼───────────────┐
+            ▼               ▼               ▼
+          Home             Draw            Away
+                            │
+                            ▼
+                       EVALUATION
+                            │
+              ┌─────────────┼─────────────┐
+              ▼             ▼             ▼
+           Log Loss        RPS          Brier
+                            │
+                            ▼
+                WALK-FORWARD TESTING
+                            │
+                            ▼
+                  PAIRED ABLATION
+                            │
+                            ▼
+               WHAT ACTUALLY MATTERS?
+
+
+               | Area            | Current approach          | New approach                                        |
+| --------------- | ------------------------- | --------------------------------------------------- |
+| Evaluation      | Mostly accuracy in mind   | **Log Loss + RPS + Brier**, accuracy secondary      |
+| Validation      | Not defined yet           | **Walk-forward by season**                          |
+| Team strength   | Raw points                | **PPG + GF/90 + GA/90**                             |
+| Season starts   | Everything resets to zero | **Carry previous-season information across August** |
+| Form            | Last-5 totals             | **Last-5 rates/PPG**, with partial windows allowed  |
+| Home/away       | Venue totals              | **Home-team home form + away-team away form**       |
+| Context         | None                      | **Rest days**                                       |
+| Baselines       | Weak/simple               | **League baseline + Elo + Poisson/Dixon-Coles**     |
+| FBref           | Add categories blindly    | **Prior-season stats first, then rolling stats**    |
+| xG              | Not available             | **Prioritize xG**, then rolling xG                  |
+| Feature testing | Add everything            | **Paired ablation experiments**                     |
+| Main question   | Can we predict?           | **Which information actually improves prediction?** |
+
