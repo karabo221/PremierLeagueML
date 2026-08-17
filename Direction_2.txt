@@ -1,0 +1,145 @@
+So here's our revised project
+Phase 1 — Fix what we already built
+
+First:
+
+1. Fix the season leakage/PPG issue.
+
+2. Separate:
+
+Current-season form
+
+from:
+
+Previous-season prior
+
+3. Add shrinkage to the prior.
+
+4. Add venue-specific form.
+
+5. Validate team identities.
+
+6. Check promoted-team treatment.
+
+Phase 2 — Build proper baselines
+
+We'll calculate:
+
+Base-rate probabilities
+
+and establish:
+
+Log Loss
+RPS
+Accuracy
+
+Then we have a genuine benchmark.
+
+Phase 3 — Build Elo
+
+We'll create:
+
+Elo before match
+Home Elo
+Away Elo
+Elo difference
+
+with:
+
+home advantage
+cross-season carryover
+possible time decay
+
+Then test:
+
+Does Elo outperform our hand-built features?
+
+Phase 4 — Bring in richer match data
+
+This is where Football-data.co.uk becomes valuable.
+
+We'll add rolling:
+
+Shots
+Shots on target
+Corners
+Cards
+Fouls
+Goals
+
+and potentially odds.
+
+Now our model has match-level information instead of relying mostly on season aggregates.
+
+Phase 5 — Statistical football models
+
+Build:
+
+Poisson
+Dixon-Coles
+
+and compare them against Elo and ML.
+
+Phase 6 — ML
+
+Then finally:
+
+Logistic Regression
+XGBoost
+
+and potentially:
+
+Elo + match statistics + form
+And this gives us a genuinely interesting final question
+
+At the end, we might discover something like:
+
+Model                    RPS
+
+
+Base rate                0.232
+Simple form model        0.218
+Elo                      0.211
+Poisson                  0.208
+Dixon-Coles               0.204
+XGBoost                   0.203
+Elo + XGBoost             0.201
+Market odds               0.195
+
+Those numbers are illustrative, not our results.
+
+But imagine we actually found that.
+
+The conclusion wouldn't simply be:
+
+"XGBoost is the best."
+
+It would be:
+
+"Most of the predictive information was already captured by team strength and goal-based statistical models; adding dozens of engineered features produced only a marginal improvement, while the market remained more accurate."
+
+That is a much more interesting ML project.
+
+My strongest recommendation
+
+Don't run another modelling script yet.
+
+The other AI has correctly identified that we need to fix the foundations first.
+
+Our immediate next task should be:
+
+Audit and rebuild the pre-match feature engine correctly.
+
+Specifically, we should verify:
+
+1. Is current-season PPG accidentally crossing seasons?
+2. Are exactly 50 GW1 matches lacking current-season form?
+3. Are carryover ratings separate from current-season form?
+4. Are promoted teams handled correctly?
+5. Are venue-specific features present?
+6. Are team names consistent?
+7. Is there any remaining future information leaking into a feature?
+
+Once those seven checks pass, then we move to the baseline → Elo → Poisson/Dixon-Coles → ML comparison.
+
+That's the route I'd take. The other AI was particularly right about the season leakage, opponent strength, walk-forward validation, probabilistic baseline, and Poisson/Dixon-Coles ideas. Those are the changes I'd take seriously.
