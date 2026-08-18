@@ -1,0 +1,31 @@
+13. This changes what "verified data" means
+
+Once we fix all of this, our dataset isn't just:
+
+1,900 football matches.
+
+It becomes something much more valuable:
+
+Every row represents the information available BEFORE the match.
+
+For example:
+
+Feature	Example
+Home team	Arsenal
+Away team	Chelsea
+Home current PPG	2.10
+Away current PPG	1.80
+Home GF/game	2.00
+Away GF/game	1.60
+Home GA/game	0.80
+Away GA/game	1.10
+Home last-5 PPG	2.40
+Away last-5 PPG	1.60
+Home Elo	1810
+Away Elo	1740
+Elo difference	+70
+Home venue PPG	2.30
+Away venue PPG	1.40
+Rest difference	+2
+Promoted flag	0
+Actual result	H
