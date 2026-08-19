@@ -1,0 +1,306 @@
+
+
+===========================================================================
+PHASE 0 — FIXTURE INTEGRITY VALIDATION
+===========================================================================
+Fixtures directory:
+C:\Users\karab\PremierLeagueML\data\raw\Fixtures
+
+Fixture files found: 5
+
+===========================================================================
+VALIDATING: 2021-2022 PL Season.xls
+===========================================================================
+Season: 2021-2022
+Rows read: 448
+
+Detected columns:
+  Date:  Date
+  Score: Score
+  Home:  Home
+  Away:  Away
+
+1. ROW CLASSIFICATION
+Rows read:       448
+Blank rows:      68
+Actual fixtures: 380
+Expected:        380
+✓ MATCH COUNT PASS
+
+2. DATE VALIDATION
+Invalid/missing dates: 0
+✓ PASS
+
+3. CHRONOLOGICAL ORDER
+Chronological: True
+✓ PASS
+
+4. TEAM COMPLETENESS
+Missing home teams: 0
+Missing away teams: 0
+
+Unique teams: 20
+Expected teams: 20
+✓ PASS
+
+5. DUPLICATE FIXTURES
+Duplicate fixture rows: 0
+✓ PASS
+
+6. HOME/AWAY BALANCE
+Teams with incorrect total matches: 0
+Teams with incorrect home matches: 0
+Teams with incorrect away matches: 0
+✓ PASS
+
+7. SCORE VALIDATION
+Invalid/missing scores: 0
+✓ PASS
+
+8. GOAL SANITY
+Negative goal values: 0
+✓ PASS
+
+SEASON STATUS: PASS
+
+===========================================================================
+VALIDATING: 2022-2023 PL Season.xls
+===========================================================================
+Season: 2022-2023
+Rows read: 430
+
+Detected columns:
+  Date:  Date
+  Score: Score
+  Home:  Home
+  Away:  Away
+
+1. ROW CLASSIFICATION
+Rows read:       430
+Blank rows:      50
+Actual fixtures: 380
+Expected:        380
+✓ MATCH COUNT PASS
+
+2. DATE VALIDATION
+Invalid/missing dates: 0
+✓ PASS
+
+3. CHRONOLOGICAL ORDER
+Chronological: True
+✓ PASS
+
+4. TEAM COMPLETENESS
+Missing home teams: 0
+Missing away teams: 0
+
+Unique teams: 20
+Expected teams: 20
+✓ PASS
+
+5. DUPLICATE FIXTURES
+Duplicate fixture rows: 0
+✓ PASS
+
+6. HOME/AWAY BALANCE
+Teams with incorrect total matches: 0
+Teams with incorrect home matches: 0
+Teams with incorrect away matches: 0
+✓ PASS
+
+7. SCORE VALIDATION
+Invalid/missing scores: 0
+✓ PASS
+
+8. GOAL SANITY
+Negative goal values: 0
+✓ PASS
+
+SEASON STATUS: PASS
+
+===========================================================================
+VALIDATING: 2023-2024 PL Season.xls
+===========================================================================
+Season: 2023-2024
+Rows read: 423
+
+Detected columns:
+  Date:  Date
+  Score: Score
+  Home:  Home
+  Away:  Away
+
+1. ROW CLASSIFICATION
+Rows read:       423
+Blank rows:      43
+Actual fixtures: 380
+Expected:        380
+✓ MATCH COUNT PASS
+
+2. DATE VALIDATION
+Invalid/missing dates: 0
+✓ PASS
+
+3. CHRONOLOGICAL ORDER
+Chronological: True
+✓ PASS
+
+4. TEAM COMPLETENESS
+Missing home teams: 0
+Missing away teams: 0
+
+Unique teams: 20
+Expected teams: 20
+✓ PASS
+
+5. DUPLICATE FIXTURES
+Duplicate fixture rows: 0
+✓ PASS
+
+6. HOME/AWAY BALANCE
+Teams with incorrect total matches: 0
+Teams with incorrect home matches: 0
+Teams with incorrect away matches: 0
+✓ PASS
+
+7. SCORE VALIDATION
+Invalid/missing scores: 0
+✓ PASS
+
+8. GOAL SANITY
+Negative goal values: 0
+✓ PASS
+
+SEASON STATUS: PASS
+
+===========================================================================
+VALIDATING: 2024-2025 PL Season.xls
+===========================================================================
+Season: 2024-2025
+Rows read: 420
+
+Detected columns:
+  Date:  Date
+  Score: Score
+  Home:  Home
+  Away:  Away
+
+1. ROW CLASSIFICATION
+Rows read:       420
+Blank rows:      40
+Actual fixtures: 380
+Expected:        380
+✓ MATCH COUNT PASS
+
+2. DATE VALIDATION
+Invalid/missing dates: 0
+✓ PASS
+
+3. CHRONOLOGICAL ORDER
+Chronological: True
+✓ PASS
+
+4. TEAM COMPLETENESS
+Missing home teams: 0
+Missing away teams: 0
+
+Unique teams: 20
+Expected teams: 20
+✓ PASS
+
+5. DUPLICATE FIXTURES
+Duplicate fixture rows: 0
+✓ PASS
+
+6. HOME/AWAY BALANCE
+Teams with incorrect total matches: 0
+Teams with incorrect home matches: 0
+Teams with incorrect away matches: 0
+✓ PASS
+
+7. SCORE VALIDATION
+Invalid/missing scores: 0
+✓ PASS
+
+8. GOAL SANITY
+Negative goal values: 0
+✓ PASS
+
+SEASON STATUS: PASS
+
+===========================================================================
+VALIDATING: 2025-2026 PL Season.xls
+===========================================================================
+Season: 2025-2026
+Rows read: 419
+
+Detected columns:
+  Date:  Date
+  Score: Score
+  Home:  Home
+  Away:  Away
+
+1. ROW CLASSIFICATION
+Rows read:       419
+Blank rows:      39
+Actual fixtures: 380
+Expected:        380
+✓ MATCH COUNT PASS
+
+2. DATE VALIDATION
+Invalid/missing dates: 0
+✓ PASS
+
+3. CHRONOLOGICAL ORDER
+Chronological: True
+✓ PASS
+
+4. TEAM COMPLETENESS
+Missing home teams: 0
+Missing away teams: 0
+
+Unique teams: 20
+Expected teams: 20
+✓ PASS
+
+5. DUPLICATE FIXTURES
+Duplicate fixture rows: 0
+✓ PASS
+
+6. HOME/AWAY BALANCE
+Teams with incorrect total matches: 0
+Teams with incorrect home matches: 0
+Teams with incorrect away matches: 0
+✓ PASS
+
+7. SCORE VALIDATION
+Invalid/missing scores: 0
+✓ PASS
+
+8. GOAL SANITY
+Negative goal values: 0
+✓ PASS
+
+SEASON STATUS: PASS
+
+===========================================================================
+FINAL FIXTURE VALIDATION SUMMARY
+===========================================================================
+   season  rows  blank_rows  fixtures  teams  invalid_dates  duplicate_rows  invalid_scores status
+2021-2022   448          68       380     20              0               0               0   PASS
+2022-2023   430          50       380     20              0               0               0   PASS
+2023-2024   423          43       380     20              0               0               0   PASS
+2024-2025   420          40       380     20              0               0               0   PASS
+2025-2026   419          39       380     20              0               0               0   PASS
+
+===========================================================================
+PHASE 0 — INSTRUMENT 2 STATUS
+===========================================================================
+✓ ALL FIVE FIXTURE DATASETS PASSED
+
+No source data was modified.
+No files were renamed.
+No files were deleted.
+
+Next instrument:
+→ Cross-source reconciliation

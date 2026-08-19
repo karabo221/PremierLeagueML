@@ -226,3 +226,220 @@ TimeOrder Evalution
 | Feature testing | Add everything            | **Paired ablation experiments**                     |
 | Main question   | Can we predict?           | **Which information actually improves prediction?** |
 
+======================================================
+
+
+
+=================================================================
+S C:\Users\karab\PremierLeagueML> python scripts/phase0_data_audit.py
+
+======================================================================
+PHASE 0 — PREMIER LEAGUE ML DATA AUDIT
+======================================================================
+Project root: C:\Users\karab\PremierLeagueML
+
+======================================================================
+1. DIRECTORY STRUCTURE
+======================================================================
+✓ Found: C:\Users\karab\PremierLeagueML\data
+✓ Found: C:\Users\karab\PremierLeagueML\data\raw
+✗ MISSING: C:\Users\karab\PremierLeagueML\data\Fixtures
+
+======================================================================
+2. RAW SEASON FOLDERS
+======================================================================
+
+Season folder: 2022 PL Season
+  Files found: 12
+    - PL 2022 HomeAway.xls
+    - PL 2022 Overall.xls
+    - Squad Goalkeeping Opponent.xls
+    - Squad Goalkeeping Squad.xls
+    - Squad Miscellaneous Stats O.xls
+    - Squad Miscellaneous Stats S.xls
+    - Squad Playing Time Opponent.xls
+    - Squad Playing Time S.xls
+    - Squad Shooting Opponent.xls
+    - Squad Shooting S.xls
+    - Squad Standard Stats Opponent.xls
+    - Squad Standard Stats Squad .xls
+
+Season folder: 2023 PL Season
+  Files found: 12
+    - Premier League 2023 HomeAway.xls
+    - Premier League 2023 Overall.xls
+    - Squad Goalkeeping Opponent Stats.xls
+    - Squad Goalkeeping Squad Stats.xls
+    - Squad Miscellaneous Stats Opponent Stats.xls
+    - Squad Miscellaneous Stats Squad Stats.xls
+    - Squad Playing Time Opponent Stats.xls
+    - Squad Playing Time Squad Stats.xls
+    - Squad Shooting Opponent stats.xls
+    - Squad Standard Stats 2023.xls
+    - Squad Standard Stats Opponent Stats.xls
+    - Squad Sthooting Squad Stats.xls
+
+Season folder: 2024 PL Season
+  Files found: 12
+    - 2024 PL Season Home Away.xls
+    - 2024 PL Season overall.xls
+    - Squad Goalkeeping 2023-2024 Premier League Opponent Stats.xls
+    - Squad Goalkeeping 2023-2024 Premier League Opponents.xls
+    - Squad Goalkeeping 2023-2024 Premier League.xls
+    - Squad Miscellaneous Stats 2023-2024 Premier League Opponents.xls
+    - Squad Miscellaneous Stats 2023-2024 Premier League.xls
+    - Squad Playing Time 2023-2024 Premier Leagu Opponents.xls
+    - Squad Playing Time 2023-2024 Premier League.xls
+    - Squad Shooting 2023-2024 Premier League.xls
+    - Squad Standard Stats 2023-2024 Premier League Opponet Stats.xls
+    - Squad Standard Stats 2023-2024 Premier League.xls
+
+Season folder: 2025 PL Season
+  Files found: 12
+    - Premier League home and away .xls
+    - Premier League Overall.xls
+    - Squad Goalkeeping 2024-2025 Premier League.xls
+    - Squad Goalkeeping Opponent.xls
+    - Squad Miscellaneous Stats 2024-2025 Premier League.xls
+    - Squad Miscellaneous Stats Opponent.xls
+    - Squad Playing Time 2024-2025 Premier League.xls
+    - Squad Playing Time Opponent.xls
+    - Squad Shooting 2024-2025 Premier League .xls
+    - Squad Shooting Opponent .xls
+    - Squad Standard Stats 2024-2025 Premier League opponent stats.xls
+    - Squad Standard Stats 2024-2025 Premier League.xls
+
+Season folder: 2026 PL Season
+  Files found: 12
+    - Premier League 2026 Overall.xls
+    - Premier League Home,away.xls
+    - Squad goalkeeping 2026 PL.xls
+    - Squad Goalkeeping Opponent.xls
+    - Squad Miscellaneous Stats 2025-2026 Premier Leag.xls
+    - Squad Miscellaneous Stats Opponent.xls
+    - Squad Playing Time 2025-2026 Premier League.xls
+    - Squad Playing Time Opponent.xls
+    - Squad Shooting 2025-2026 Premier League.xls
+    - Squad Shooting Opponent .xls
+    - Squad Standard Stats 2025-2026 Premier League.xls
+    - Squad Standard Stats Opponent.xls
+
+Season folder: Fixtures
+  Files found: 5
+    - 2021-2022 PL Season.xls
+    - 2022-2023 PL Season.xls
+    - 2023-2024 PL Season.xls
+    - 2024-2025 PL Season.xls
+    - 2025-2026 PL Season.xls
+
+======================================================================
+3. RAW SEASON COVERAGE
+======================================================================
+Expected raw seasons:
+  - 2023
+  - 2024
+  - 2025
+  - 2026
+
+Actually found:
+  - 2022
+  - 2023
+  - 2024
+  - 2025
+  - 2026
+  - Fixtures
+
+Coverage check:
+⚠ Unexpected raw seasons:
+    - 2022
+    - Fixtures
+
+======================================================================
+4. FIXTURE FILES
+======================================================================
+
+Total files directly inside Fixtures: 0
+
+======================================================================
+5. FIXTURE SEASON COVERAGE
+======================================================================
+Expected fixture seasons:
+  - 2021-2022
+  - 2022-2023
+  - 2023-2024
+  - 2024-2025
+  - 2025-2026
+
+Actually found:
+
+Coverage check:
+✗ Missing fixture seasons:
+    - 2021-2022
+    - 2022-2023
+    - 2023-2024
+    - 2024-2025
+    - 2025-2026
+
+======================================================================
+6. DUPLICATE FILE CHECK
+======================================================================
+
+⚠ Duplicate filename: 2021-2022 PL Season.xls
+    data\raw\2021-2022 PL Season.xls
+    data\raw\Fixtures\2021-2022 PL Season.xls
+
+⚠ Duplicate filename: 2022-2023 PL Season.xls
+    data\raw\2022-2023 PL Season.xls
+    data\raw\Fixtures\2022-2023 PL Season.xls
+
+⚠ Duplicate filename: 2023-2024 PL Season.xls
+    data\raw\2023-2024 PL Season.xls
+    data\raw\Fixtures\2023-2024 PL Season.xls
+
+⚠ Duplicate filename: 2024-2025 PL Season.xls
+    data\raw\2024-2025 PL Season.xls
+    data\raw\Fixtures\2024-2025 PL Season.xls
+
+⚠ Duplicate filename: Squad Goalkeeping Opponent.xls
+    data\raw\2022 PL Season\Squad Goalkeeping Opponent.xls
+    data\raw\2025 PL Season\Squad Goalkeeping Opponent.xls
+    data\raw\2026 PL Season\Squad Goalkeeping Opponent.xls
+
+⚠ Duplicate filename: Squad Playing Time Opponent.xls
+    data\raw\2022 PL Season\Squad Playing Time Opponent.xls
+    data\raw\2025 PL Season\Squad Playing Time Opponent.xls
+    data\raw\2026 PL Season\Squad Playing Time Opponent.xls
+
+⚠ Duplicate filename: Squad Standard Stats Opponent.xls
+    data\raw\2022 PL Season\Squad Standard Stats Opponent.xls
+    data\raw\2026 PL Season\Squad Standard Stats Opponent.xls
+
+⚠ Duplicate filename: Squad Miscellaneous Stats Opponent.xls
+    data\raw\2025 PL Season\Squad Miscellaneous Stats Opponent.xls
+    data\raw\2026 PL Season\Squad Miscellaneous Stats Opponent.xls
+
+⚠ Duplicate filename: Squad Shooting Opponent .xls
+    data\raw\2025 PL Season\Squad Shooting Opponent .xls
+    data\raw\2026 PL Season\Squad Shooting Opponent .xls
+
+======================================================================
+7. FIXTURE FILE SIZE CHECK
+======================================================================
+
+======================================================================
+8. PHASE 0 INITIAL AUDIT SUMMARY
+======================================================================
+Raw season folders found:       6
+Fixture seasons found:          0
+Fixture files found:            0
+Duplicate filenames detected:  YES
+
+IMPORTANT:
+This script only audits the project.
+It does NOT clean, rename, merge, delete, or modify anything.
+
+Next Phase 0 instrument:
+→ Validate the actual fixture contents.
+→ Check 380 matches per completed Premier League season.
+→ Check dates, teams, scores, duplicates and chronological order.
+PS C:\Users\karab\PremierLeagueML> 
