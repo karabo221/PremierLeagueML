@@ -1,0 +1,308 @@
+===============================================================================
+PREMIER LEAGUE ML - PHASE 0 FINDINGS
+Data validation complete. Written 2026-08-20.
+===============================================================================
+
+Phase 0 asked one question: can this data be trusted to build a leakage-free
+match prediction model? The answer is yes, with three findings that must be
+carried into Phase 1 and one decision that is yours to make.
+
+Six instruments were built. All of them are strictly read-only over data/raw/.
+No raw file was renamed, moved, deleted or modified at any point.
+
+
+===============================================================================
+1. INSTRUMENT STATUS
+===============================================================================
+
+  Instrument 1  Data structure audit            PASS
+  Instrument 2  Fixture integrity               PASS
+  Instrument 3  Statistical source integrity    PASS w/ documented gap
+  Instrument 4  Cross-source reconciliation     0 unexplained mismatches
+  Instrument 5  Leakage audit                   9/9 tests pass, 1 open decision
+  Instrument 6  Evaluation harness              PASS
+
+Scripts, in run order:
+
+  scripts/phase0_data_audit.py                     (instrument 1)
+  scripts/phase0_fixture_validator.py              (instrument 2)
+  scripts/phase0_statistical_source_inventory.py   (schema discovery)
+  scripts/phase0_statistical_integrity.py          (instrument 3)
+  scripts/phase0_cross_source_reconciliation.py    (instrument 4)
+  scripts/phase0_leakage_audit.py                  (instrument 5)
+  scripts/phase0_evaluation_harness.py             (instrument 6)
+
+
+===============================================================================
+2. WHAT THE DATA IS
+===============================================================================
+
+FIXTURES - data/raw/Fixtures/ - 5 files, one per season
+  1,900 matches, 380 per season, all five seasons validate cleanly:
+  correct match count, 20 teams, no duplicates, no bad scores, chronological.
+  Columns: Wk, Day, Date, Time, Home, Score, Away, Attendance, Venue,
+  Referee, Match Report, Notes.
+
+  TRAP: scores use an EN DASH (2-0 is actually 2<U+2013>0), not a hyphen.
+  Splitting on "-" alone will silently fail.
+
+STATISTICS - data/raw/<year> PL Season/ - 5 folders x 12 files = 60 files
+  Every one is a 20-row season aggregate (one row per team). There is NO
+  match-level data anywhere in these 60 files. Confirms Direction_2.txt:
+  Football-data.co.uk is needed for Phase 4 match-level statistics.
+
+  All 60 parse cleanly. Exactly 1 table, 20 rows, 20 unique squads each.
+  Only 7 distinct schemas across all 60 files - schemas are stable across
+  all five seasons despite chaotic filenames.
+
+  The .xls files are FBref HTML-table exports, not real Excel. Read with
+  pandas.read_html(), not read_excel().
+
+
+===============================================================================
+3. THE THREE FINDINGS THAT MATTER
+===============================================================================
+
+FINDING 1 - FILENAMES CANNOT BE TRUSTED
+  Two files are named after the wrong statistic:
+
+    2026/Squad Shooting Opponent .xls
+        -> actually contains GOALKEEPING opponent data, and is a
+           byte-identical duplicate of Squad Goalkeeping Opponent.xls
+           (both md5 15f683a87aa9)
+
+    2024/Squad Goalkeeping ... Opponents.xls
+        -> actually contains SHOOTING opponent data. Mislabelled only;
+           2024's coverage is complete.
+
+  Classify tables by COLUMN HIERARCHY, never by filename.
+  Determine Squad vs Opponent from the ROW VALUES: FBref prefixes every
+  opponent row with "vs " ("vs Arsenal"). All 50 typed tables resolved
+  cleanly this way.
+
+FINDING 2 - 2025-26 SHOOTING OPPONENT DATA DOES NOT EXIST
+  Because of the duplicate above, the 2026 folder holds 12 files but only
+  11 distinct tables. Shooting-against for 2025-26 is genuinely absent.
+  Nothing was renamed or deduplicated. Re-download that table from FBref
+  when Phase 4 needs rolling shot features.
+  Coverage: 59 of 60 season x table-type slots filled.
+
+FINDING 3 - POINTS DEDUCTIONS BREAK Pts, AND FBref IS INTERNALLY INCONSISTENT
+  Rebuilding all five league tables from fixture results reproduces FBref
+  exactly - 2,398 of 2,400 values. The two exceptions are both 2023-24:
+
+    Everton      fixtures 48 pts, FBref 40   (Notes: "8-point deduction")
+    Nottingham   fixtures 36 pts, FBref 32   (Notes: "4-point deduction")
+
+  Every other metric (MP, W, D, L, GF, GA, GD) agrees for both teams.
+  These are real PSR sanctions, not data errors.
+
+  THE IMPORTANT PART: FBref applies the deduction to the OVERALL table
+  only, NOT to the Home/Away table. So for these two teams:
+
+    Everton      Home_Pts 28 + Away_Pts 20 = 48, but Overall says 40
+    Nottingham   Home_Pts 20 + Away_Pts 16 = 36, but Overall says 32
+
+  A venue-split points feature and a season points feature read from those
+  two different tables will silently disagree. Derive points from results
+  and model sanctions explicitly.
+
+
+===============================================================================
+4. THE TEMPORAL BOUNDARY (Instrument 5)
+===============================================================================
+
+RULE: for a match at date T, predictors may use only matches with date < T.
+      Strict inequality. Same-day matches are NOT available.
+
+MEASURED ON REAL DATES, not asserted:
+
+  1,900 matches audited, 0 with unparseable dates
+  70,300 historical entries returned, 0 dated on/after their match
+  1,706 of 1,900 matches share a date with another match
+      -> the strict rule is expensive but correct. Kickoff times exist in
+         the fixture files but are NOT trusted to order within a day.
+  EXACTLY 50 matches have zero prior-season history (10 per season, all of
+      GW1, since each team plays once). This answers the open question in
+      Direction_2.txt: yes, exactly 50.
+  An unfiltered "all matches this season" join would import 356,430
+      (match, later-match) pairs against 70,300 legitimate ones.
+
+THE DECISIVE TEST (T9 - perturbation):
+  100 matches were rewritten to 9-0 and their own predictors recomputed.
+  200 team-side feature sets recomputed. ZERO changed.
+  A match's own result, goals and points are unreachable from its own
+  feature row. This is demonstrated, not claimed.
+
+ALL 60 SEASON-AGGREGATE FILES ARE END-OF-SEASON INFORMATION.
+  Their availability date is the season's final match date, which is after
+  all 380 of that season's matches. This condemns: final season points,
+  final league position, full-season goals, shooting, goalkeeping, playing
+  time and miscellaneous statistics. None may feed a predictor.
+
+REGISTRY: outputs/phase0_feature_availability_registry.csv
+  40 features. 19 allowed, 19 refused, 4 of those are targets, 1 undetermined.
+
+SAFE (each backed by tests T2, T8 and T9 - not accepted on name alone):
+  Home/Away_MP_Before, _Pts_Before, _GF_Before, _GA_Before,
+  _Last5_Pts_Before, _Venue_Pts_Before, _Prev_Match_Pts
+
+UNSAFE (refused):
+  Final_Season_Pts, Final_League_Position, Season_GF_Total,
+  Season_Shooting_Stats, Season_Goalkeeping_Stats,
+  Season_PlayingTime_Stats, Season_Miscellaneous_Stats,
+  Score, Attendance, Match Report, Notes, and all current-match statistics
+
+
+===============================================================================
+5. THE OPEN DECISION - YOURS TO MAKE
+===============================================================================
+
+  Referee is marked UNDETERMINED and is currently EXCLUDED.
+
+  Referee appointments are published before kickoff in the real world, but
+  this dataset carries no timestamp for when the value became known. Marking
+  it safe would be a real-world claim the data cannot verify.
+
+  Two ways to close this:
+    (a) accept the external claim -> flip to available_before_match=YES,
+        record the justification in the registry notes column, and
+        Instrument 5 goes to PASS.
+    (b) leave it refused -> then add an "accepted external claim" status so
+        the FAIL signal is not permanently diluted.
+
+  Until then Instrument 5 reports FAIL / INVESTIGATE on this single item.
+  Nothing was shifted, lagged or renamed to make it pass.
+
+
+===============================================================================
+6. THE EVALUATION FRAMEWORK (Instrument 6)
+===============================================================================
+
+TIME-AWARE, SEASON-BASED, EXPANDING WINDOW. NO RANDOM SPLIT ANYWHERE.
+
+  Fold 1  train 2021-2022                                 test 2022-2023
+  Fold 2  train 2021-2022 + 2022-2023                     test 2023-2024
+  Fold 3  train 2021-2022 + 2022-2023 + 2023-2024         test 2024-2025
+  Fold 4  train 2021-2022 + ... + 2024-2025               test 2025-2026
+
+  train 380 / 760 / 1140 / 1520     test 380 each     1,520 test matches
+  Season gaps between train and test: 75, 75, 89, 82 days.
+
+  Verified: every training date earlier than every test date; no test match
+  in training; each match tested at most once; test sets are WHOLE seasons
+  (not random subsets); rebuilding the folds reproduces them exactly.
+  2021-2022 is never a test season - it can only ever be training.
+
+TARGET: Result - H (home win), D (draw), A (away win)
+  Probability arrays are ALWAYS indexed [P(H), P(D), P(A)]. Never reorder.
+
+OBSERVED CLASS DISTRIBUTION (1,900 matches):
+  H  839  44.16%     D  454  23.89%     A  607  31.95%
+
+REQUIRED METRICS - every model must report all five:
+  Accuracy            higher better   never reported alone
+  Balanced Accuracy   higher better   mean per-class recall
+  Macro F1            higher better   every class counts equally
+  Log Loss            lower better    primary probabilistic score
+  Brier Score         lower better    0 perfect, 2 worst
+  RPS                 lower better    NOT YET required; add when ordered
+                                      outcomes are modelled (Direction_2)
+
+WHY ACCURACY ALONE IS INSUFFICIENT:
+  A rule that always says "home win" scores 44.16% accuracy but 33.33%
+  balanced accuracy - 100% recall on H, 0% on D and A. Draws are the
+  hardest and least frequent outcome and a model that never predicts one
+  can still look accurate. Log loss and Brier judge the PROBABILITIES
+  rather than the argmax, which is what a forecast is actually for.
+
+MODEL INTERFACE (defined, deliberately not implemented):
+  predict_proba(test_matches) -> ndarray shape (n, 3), columns [H, D, A]
+  scored by evaluate(y_true_labels, proba)
+  constraints: every value in [0,1]; rows sum to 1 within 1e-6; exactly one
+  row per test match; no NaN or inf. Violations RAISE - the harness never
+  renormalises a broken model, because that hides the break.
+
+  The base-rate baseline is NOT yet built. When it is, it enters through
+  this same interface and is scored by this same function on these same
+  folds, so its numbers are directly comparable to any model.
+
+The harness tests itself on every run: metric implementations are checked
+against closed-form answers (uniform predictions must give log loss ln(3)
+= 1.098612 and Brier 2/3), and the probability validator is fed nine
+deliberately malformed inputs and must reject all eight bad ones.
+
+
+===============================================================================
+7. RUNNING THIS FROM ANOTHER MACHINE
+===============================================================================
+
+The .venv/ directory in this repo is DEAD - it was built on a different
+machine against C:\Python313 and has no Scripts/ directory. Do not try to
+revive it. Build a fresh one:
+
+    python -m venv venv
+    venv\Scripts\python.exe -m pip install -r requirements.txt
+
+Then run the instruments (each is independent and read-only):
+
+    venv\Scripts\python.exe scripts\phase0_statistical_source_inventory.py
+    venv\Scripts\python.exe scripts\phase0_statistical_integrity.py
+    venv\Scripts\python.exe scripts\phase0_cross_source_reconciliation.py
+    venv\Scripts\python.exe scripts\phase0_leakage_audit.py
+    venv\Scripts\python.exe scripts\phase0_evaluation_harness.py
+
+Exit codes: 0 = PASS, 2 = FAIL/INVESTIGATE, 1 = fatal.
+Instruments 4 and 5 currently exit 2 by design - see findings 3 and 5 above.
+
+NOTE: outputs/ is gitignored, so the CSV reports are NOT in this repo.
+Re-run the scripts to regenerate them; it takes under a minute. Everything
+those reports contain is summarised in this file.
+
+Reports produced:
+    outputs/phase0_statistical_source_inventory.csv
+    outputs/phase0_statistical_integrity.csv
+    outputs/phase0_statistical_coverage.csv
+    outputs/phase0_overall_reconciliation.csv
+    outputs/phase0_homeaway_reconciliation.csv
+    outputs/phase0_reconciliation_summary.csv
+    outputs/phase0_feature_availability_registry.csv
+    outputs/phase0_leakage_audit.csv
+    outputs/phase0_evaluation_folds.csv
+    outputs/phase0_evaluation_spec.csv
+    outputs/phase0_evaluation_spec.json
+
+
+===============================================================================
+8. WHAT PHASE 1 MUST DO
+===============================================================================
+
+Per Direction_2.txt, Phase 1 is foundation repair - no modelling yet.
+Phase 0 has now established the constraints it must respect:
+
+  1. Fix season leakage in PPG. Use the strict date < T boundary; the
+     harness in phase0_leakage_audit.py shows exactly how the history
+     slice is taken (bisect_left on a per-team sorted date list).
+
+  2. Separate current-season form from previous-season prior, and shrink
+     the prior. The 50 GW1 matches with zero history are where this bites.
+
+  3. Add venue-specific form - but remember finding 3: do not mix a
+     Home/Away-derived points feature with an Overall-derived one.
+
+  4. Validate team identities. Names already match exactly between fixtures
+     and the FBref tables, 20/20 in all five seasons - no fuzzy matching
+     needed, and any failure to match is a genuine error.
+
+  5. Check promoted-team treatment. Promoted sides have no previous-season
+     Premier League prior at all.
+
+  6. Handle the two points deductions explicitly.
+
+  7. Then baselines -> Elo -> Poisson/Dixon-Coles -> ML, all evaluated
+     through the four folds and five metrics defined above.
+
+Do not run another modelling script until Phase 1 is done. That instruction
+came from Direction_2.txt and Phase 0 has not found a reason to soften it.
+
+===============================================================================
