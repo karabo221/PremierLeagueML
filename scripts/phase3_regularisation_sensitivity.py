@@ -146,6 +146,26 @@ class LeakageError(RuntimeError):
     """Raised by the R4 tripwire the instant a test row reaches the selector."""
 
 
+# ---- THE LAMBDA KEY.  A float is not safe to key on across a CSV. ----
+#
+# Read back without float_precision="round_trip", 0.03 and 0.3 come back one
+# ULP out, so `frame["lambda"] == 0.03` matches nothing and the NaN surfaces
+# downstream in whatever mean() is taken over the empty selection. Nothing
+# raises. Every lambda column therefore ships a string label beside it.
+#
+# The "lam=" prefix is load-bearing: a column of bare numeric-looking text is
+# type-inferred back to float on read, which would look fixed while being
+# exactly the float key it replaced.
+
+LAMBDA_LABEL_PREFIX = "lam="
+
+
+def lambda_label(value):
+    """0.03 -> 'lam=0.03'. The canonical string key for a penalty value."""
+
+    return LAMBDA_LABEL_PREFIX + "{:g}".format(float(value))
+
+
 # ============================================================
 # FROZEN-STATE HASHING
 # ============================================================
@@ -155,22 +175,36 @@ def hash_file(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def frozen_state():
+# What an instrument must NOT freeze: its own outputs, which it is about to
+# write. Instrument 5 reuses this whole module and writes a different set, so
+# the exclusion is a parameter rather than a hardcoded prefix. Without that,
+# Instrument 5's R8a flags Instrument 5's own artefact as tampering.
+DEFAULT_EXCLUDE_PREFIXES = ("phase3_reg_",)
+
+
+def frozen_state(exclude_prefixes=DEFAULT_EXCLUDE_PREFIXES, exclude_names=()):
     """
     SHA-256 of everything this instrument must not disturb.
 
     Wider than Instrument 3's own: Phase 3's artefacts are frozen here too,
     because the lambda = 1 ladder is this experiment's reference and a run
     that overwrote it would destroy the thing it is measured against.
+
+    `exclude_prefixes` / `exclude_names` name the caller's OWN outputs. They
+    default to this instrument's, so Instrument 4 behaves exactly as before.
     """
 
     L3._HASHING = True
     state = {}
 
+    def is_own_output(name):
+        return (any(name.startswith(p) for p in exclude_prefixes)
+                or name in exclude_names)
+
     try:
         for pattern in ("phase[012]_*", "phase3_*"):
             for path in sorted(OUTPUTS_DIR.glob(pattern)):
-                if path.is_file() and not path.name.startswith("phase3_reg_"):
+                if path.is_file() and not is_own_output(path.name):
                     state[str(path)] = hash_file(path)
 
         for path in sorted(SCRIPTS_DIR.glob("phase*.py")):
@@ -510,6 +544,7 @@ class Run:
                     "fold": fold,
                     "inner_fold": split["inner_fold"],
                     "lambda": penalty,
+                    "lambda_label": lambda_label(penalty),
                     "inner_train_matches": int(len(split["train_rows"])),
                     "inner_valid_matches": int(len(split["valid_rows"])),
                     "inner_train_max_date": split["train_max_date"].strftime("%Y-%m-%d"),
@@ -573,6 +608,7 @@ class Run:
                     "fold": fold,
                     "test_season": test_season,
                     "lambda": penalty,
+                    "lambda_label": lambda_label(penalty),
                     "is_selected": bool(penalty == chosen),
                     "is_frozen_lambda": bool(penalty == FROZEN_LAMBDA),
                     "design_columns": fitted["n_columns"],
@@ -592,6 +628,7 @@ class Run:
                 for block, values in per_block.items():
                     self.block_norms.append({
                         "rung": rung, "fold": fold, "lambda": penalty,
+                        "lambda_label": lambda_label(penalty),
                         "is_selected": bool(penalty == chosen),
                         "block": block,
                         "design_columns": values["columns"],
@@ -622,6 +659,7 @@ class Run:
                         "fold": fold,
                         "test_season": test_season,
                         "selected_lambda": chosen,
+                        "selected_lambda_label": lambda_label(chosen),
                         "at_grid_floor": bool(chosen == self.grid[0]),
                         "at_grid_ceiling": bool(chosen == self.grid[-1]),
                         "inner_best_log_loss": curve[chosen],
@@ -855,13 +893,14 @@ def declared_grid(predeclaration=None):
 
 def test_everything(run, features, matches, labels, spec, ladder, blocks,
                     selected, table, before_state, audit,
-                    grid=None, predeclaration=None):
+                    grid=None, predeclaration=None, frozen_exclude=None):
 
     # Instrument 5 re-runs this whole battery against its own grid and its own
     # pre-declaration. Omitted, both default to Instrument 4's, so the call
     # made by this module's main() is unchanged.
     grid = tuple(grid) if grid is not None else LAMBDA_GRID
     predeclaration = predeclaration or PREDECLARATION
+    frozen_exclude = frozen_exclude or {}
 
     # ---- R6  the grid is the declared grid -------------------------------
     declared = declared_grid(predeclaration)
@@ -1011,7 +1050,7 @@ def test_everything(run, features, matches, labels, spec, ladder, blocks,
 
         return _finish_battery(run, features, matches, labels, spec, ladder,
                                blocks, selected, surface, before_state, audit,
-                               grid)
+                               grid, frozen_exclude)
 
     frozen = pd.read_csv(FROZEN_FOLD_SUMMARY, float_precision=FLOAT_PRECISION)
 
@@ -1049,11 +1088,13 @@ def test_everything(run, features, matches, labels, spec, ladder, blocks,
         "< 1e-9", "{:.3e}".format(train_difference), train_difference < 1e-9)
 
     return _finish_battery(run, features, matches, labels, spec, ladder,
-                           blocks, selected, surface, before_state, audit, grid)
+                           blocks, selected, surface, before_state, audit,
+                           grid, frozen_exclude)
 
 
 def _finish_battery(run, features, matches, labels, spec, ladder, blocks,
-                    selected, surface, before_state, audit, grid):
+                    selected, surface, before_state, audit, grid,
+                    frozen_exclude=None):
     """Everything in the battery that does not depend on lambda = 1."""
 
     # ---- R10  B0 is invariant across the grid ---------------------------
@@ -1273,7 +1314,7 @@ def _finish_battery(run, features, matches, labels, spec, ladder, blocks,
         "grid offers, which would itself be the finding")
 
     # ---- R8  isolation ---------------------------------------------------
-    after_state = frozen_state()
+    after_state = frozen_state(**(frozen_exclude or {}))
 
     changed = [path for path in before_state
                if before_state[path] != after_state.get(path)]

@@ -1,0 +1,54 @@
+===============================================================================
+FROZEN MANIFEST
+SHA-256 of every artefact the instruments anchor against.
+===============================================================================
+
+These files are EVIDENCE, not regenerable output. Later instruments assert
+equivalence against them:
+
+    Instrument 4  R7  reproduces phase3_ablation_fold_summary.csv at lambda=1
+    Instrument 5  C1  reproduces phase3_reg_surface.csv at lambda=100
+
+and the pre-declarations were written against exactly these bytes.
+
+Verify with:  python scripts/frozen_manifest.py --verify
+
+A hash that has moved is not automatically wrong - an instrument may have been
+legitimately re-run. It means the artefact is no longer the one the
+pre-declaration was written against, and that has to be reconciled explicitly
+rather than noticed later.
+
+generated 2026-09-01T06:39:06Z
+28 files
+
+c0ea0bce045af978c64aa3e209ea8b9f5fb1dde52f95c83c65e3e5e316c367f0  PHASE3_CEILING_PREDECLARATION.txt
+1de3af06af72634d91d1f0f07b50256785a5a1c16fda41de85138cf975524da4  PHASE3_REGULARISATION_PREDECLARATION.txt
+4c38a173b26fb97d46f69da7146c3c7fc1c109fde35f2fe6096b056b5216c7f7  PHASE4_TIER2_WINDOW_PREDECLARATION.txt
+7feebd66c7effcab517070a2669e576e655b2e3283d82547e793a40c5cba82cd  outputs/phase0_evaluation_folds.csv
+907ddffa9afbe8db64566798d56c93428887dbc357fd41dad65e2c015156e0c8  outputs/phase0_evaluation_spec.csv
+871b5850a790895a9c76c4f2466d01d04cf8a6d4c216bb3e770750ea903abbbb  outputs/phase0_evaluation_spec.json
+5623a07f3302ec26d5bdba8d7319f91d41e5f49e7ec7491cb33dd12b7e203d41  outputs/phase2_base_rate_fold_summary.csv
+99c8edfdd7264af59185d137182c4e03eaec05a49a818322b94768d111dd77fc  outputs/phase2_elo_fold_summary.csv
+964d0d5b4437a601410b938c7b7979f594e2cbc83d6e53633ae1350bfd6824e8  outputs/phase2_poisson_dc_fold_summary.csv
+ad30aa024af1361768357e6e9b77480103a70cff5aaf7c8735d0a7d90344aa81  outputs/phase3_ablation_fold_summary.csv
+f80a15c33c3d556ac880fb2a035c08debdc2f407de3e3a96e76339a9be52c5bf  outputs/phase3_ablation_ladder.csv
+a3ad251955d00059d4ba261239d3e931da9c3564e622fe2a42d1bbee0b4a2ba6  outputs/phase3_ceiling_audit.csv
+5e368c7915c052047325e45593b58484d9d75e0ee916c7b94cb9cef51bdd92d9  outputs/phase3_ceiling_block_norms.csv
+6351cf866ebeaf74ed59535791eb17a1b3be6e817dc89717d360013b0e0db97f  outputs/phase3_ceiling_combined_surface.csv
+faf56a9920120de90a52bbd90b07830f02f477420b6d206d363afa19d9a70a43  outputs/phase3_ceiling_ladder.csv
+bf78521567129ffab14639db5cb4e561eac79ae39c97a0ee486df64ec7052b81  outputs/phase3_ceiling_lambda_curves.csv
+8cfc1207a9d7db59d6c16ace5c9d959138e8c059b0f86513be9b833630abd371  outputs/phase3_ceiling_selected.csv
+6ad0d2a1511a3b14fd92eb7b23b6b15edc5e71a30b9534dc1175b4b36920aaae  outputs/phase3_ceiling_surface.csv
+4812964a022416d6fca7f5e8620a136ce11db2be4e0bb47719030700340faf3e  outputs/phase3_ceiling_verdict.csv
+7d67f7ed0e8bc267f3fa2cf47f0a2ca023ff19a287592ffb42e860044b3f38b6  outputs/phase3_frozen_regularisation.json
+37af9b6edbd8e7e470b96b118ce5b3e1c733320f98eed2e94e87b45cadb43454  outputs/phase3_reg_audit.csv
+2059af156661263b3205926dce08197960accbc648d2d2b648e75cf4c6ac0f15  outputs/phase3_reg_block_norms.csv
+2a4bc91cc018f98d689949ef4c450414d9143a408e79e1ce302bbcc51954cc06  outputs/phase3_reg_ladder.csv
+6f4598f042e6c0b79f9acd4b8614eeda43493933596a000488d0ecdfd066c4ca  outputs/phase3_reg_lambda_curves.csv
+7c867c0b039a2bd3733e1719a4bb2c3b950e183d63a3d0ef163d488568749e49  outputs/phase3_reg_selected.csv
+12ecbbc8d4ebd62036f3527816ae46f2ef713309db86cf61a65511c81e1ad1f4  outputs/phase3_reg_surface.csv
+0d19e467900b80c3e3d1f5f0608948187f23b8dbb9c3e7bde41e0b37507d434d  outputs/phase3_reg_verdict.csv
+7a8880f9ebc654234da20059310c4d4a1858e07493ab06a84680fecbe2d1c904  outputs/phase4_dynamic_state_predeclaration.txt
+
+===============================================================================
+END OF MANIFEST

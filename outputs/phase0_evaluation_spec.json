@@ -1,0 +1,137 @@
+{
+  "instrument": "phase0_evaluation_harness",
+  "evaluation_type": "out-of-time, season-based, expanding window",
+  "random_split_used": false,
+  "classes": [
+    "H",
+    "D",
+    "A"
+  ],
+  "probability_column_order": [
+    "P(H)",
+    "P(D)",
+    "P(A)"
+  ],
+  "probability_tolerance": 1e-06,
+  "seasons": [
+    "2021-2022",
+    "2022-2023",
+    "2023-2024",
+    "2024-2025",
+    "2025-2026"
+  ],
+  "folds": [
+    {
+      "fold": 1,
+      "train_seasons": [
+        "2021-2022"
+      ],
+      "test_season": "2022-2023",
+      "train_matches": 380,
+      "test_matches": 380,
+      "max_train_date": "2022-05-22",
+      "min_test_date": "2022-08-05"
+    },
+    {
+      "fold": 2,
+      "train_seasons": [
+        "2021-2022",
+        "2022-2023"
+      ],
+      "test_season": "2023-2024",
+      "train_matches": 760,
+      "test_matches": 380,
+      "max_train_date": "2023-05-28",
+      "min_test_date": "2023-08-11"
+    },
+    {
+      "fold": 3,
+      "train_seasons": [
+        "2021-2022",
+        "2022-2023",
+        "2023-2024"
+      ],
+      "test_season": "2024-2025",
+      "train_matches": 1140,
+      "test_matches": 380,
+      "max_train_date": "2024-05-19",
+      "min_test_date": "2024-08-16"
+    },
+    {
+      "fold": 4,
+      "train_seasons": [
+        "2021-2022",
+        "2022-2023",
+        "2023-2024",
+        "2024-2025"
+      ],
+      "test_season": "2025-2026",
+      "train_matches": 1520,
+      "test_matches": 380,
+      "max_train_date": "2025-05-25",
+      "min_test_date": "2025-08-15"
+    }
+  ],
+  "metrics": [
+    {
+      "metric": "Accuracy",
+      "type": "classification (argmax)",
+      "direction": "higher is better",
+      "purpose": "share of matches whose predicted class is correct",
+      "required_for_model": "YES - but never reported alone"
+    },
+    {
+      "metric": "Balanced Accuracy",
+      "type": "classification (argmax)",
+      "direction": "higher is better",
+      "purpose": "mean per-class recall; exposes a model that ignores draws",
+      "required_for_model": "YES"
+    },
+    {
+      "metric": "Macro F1",
+      "type": "classification (argmax)",
+      "direction": "higher is better",
+      "purpose": "unweighted mean F1 over H, D, A; every class counts equally",
+      "required_for_model": "YES"
+    },
+    {
+      "metric": "Log Loss",
+      "type": "probabilistic",
+      "direction": "lower is better",
+      "purpose": "penalises confident wrong probabilities; the primary probabilistic score",
+      "required_for_model": "YES"
+    },
+    {
+      "metric": "Brier Score",
+      "type": "probabilistic",
+      "direction": "lower is better",
+      "purpose": "multiclass squared error against the one-hot outcome; 0 perfect, 2 worst",
+      "required_for_model": "YES"
+    },
+    {
+      "metric": "RPS",
+      "type": "probabilistic (ordered)",
+      "direction": "lower is better",
+      "purpose": "ranked probability score; respects H > D > A ordering and is the standard in football forecasting",
+      "required_for_model": "YES - the condition it was held back for is met: base rate, Elo and Dixon-Coles all produce ordered H/D/A probabilities"
+    }
+  ],
+  "model_interface": {
+    "contract": "predict_proba(test_matches) -> ndarray of shape (n, 3)",
+    "column_order": [
+      "P(H)",
+      "P(D)",
+      "P(A)"
+    ],
+    "constraints": [
+      "every value >= 0",
+      "every value <= 1",
+      "each row sums to 1 within 1e-06",
+      "exactly one row per test match, in test-fold order",
+      "no finite-value violations (NaN, inf)"
+    ],
+    "scored_by": "evaluate(y_true_labels, proba)",
+    "folds": "the four expanding-window folds in phase0_evaluation_folds.csv",
+    "note": "The base-rate baseline is NOT implemented here. When it is built it enters through this same interface and is scored by this same function on these same folds, so its numbers are directly comparable to any model. Defining it now and fitting it later is deliberate."
+  }
+}

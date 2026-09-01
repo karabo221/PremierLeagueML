@@ -1,0 +1,327 @@
+{
+  "instrument": "phase3_instrument_5_ceiling_resolution",
+  "status": "VALID",
+  "frozen_procedure": "Penalty is chosen per (rung, outer fold) by the nested expanding-window inner CV of Instrument 4, over the combined grid, fitted on training rows only. This is the primary freeze and takes precedence over the scalar.",
+  "frozen_lambda_scalar": 1000.0,
+  "scalar_caveat": null,
+  "combined_grid": [
+    0.01,
+    0.03,
+    0.1,
+    0.3,
+    1.0,
+    3.0,
+    10.0,
+    30.0,
+    100.0,
+    300.0,
+    1000.0,
+    3000.0,
+    10000.0
+  ],
+  "instrument_5_grid": [
+    100.0,
+    300.0,
+    1000.0,
+    3000.0,
+    10000.0
+  ],
+  "instrument_4_grid": [
+    0.01,
+    0.03,
+    0.1,
+    0.3,
+    1.0,
+    3.0,
+    10.0,
+    30.0,
+    100.0
+  ],
+  "amendment_2": {
+    "rule": "The freeze rule operates only over rungs with at least one PENALISED design column. A rung with none has a constant lambda-curve (test R10), so its selection is the declared tie-break's output on a flat function and carries no information about the optimum.",
+    "excluded_rungs": [
+      "B0"
+    ],
+    "excluded_selections": [
+      {
+        "rung": "B0",
+        "fold": 1,
+        "selected_lambda": 10000.0
+      },
+      {
+        "rung": "B0",
+        "fold": 2,
+        "selected_lambda": 10000.0
+      },
+      {
+        "rung": "B0",
+        "fold": 3,
+        "selected_lambda": 10000.0
+      },
+      {
+        "rung": "B0",
+        "fold": 4,
+        "selected_lambda": 10000.0
+      }
+    ],
+    "disclosure": "Amendment 2 was written AFTER the result was known and it changes the outcome from BLOCKED to VALID. It was put to the project owner alongside the literal BLOCKED outcome and the owner chose it. See PHASE3_CEILING_PREDECLARATION.txt Amendment 2 for the full disclosure and the argument.",
+    "status_under_literal_rule": "BLOCKED",
+    "scalar_under_literal_rule": null
+  },
+  "known_failures": {
+    "C3a": "coefficient norm ratio 10000/100 was 0.1212 against a pinned threshold of 0.10 - left failing, not relaxed",
+    "C3b": "B6 sits marginally further from B0 at lambda = 10000 than at lambda = 100 - left failing, not relaxed",
+    "reading": "C3 tested that the grid reaches the DEGENERATE end. Resolving the ceiling only requires that it BRACKETS an interior optimum, which it does for all six featured rungs with the curve rising either side of lambda = 1000."
+  },
+  "selection_summary": {
+    "n_in_scope": 24,
+    "n_all": 28,
+    "n": 24,
+    "median_raw": 1000.0,
+    "min": 300.0,
+    "max": 3000.0,
+    "spread_decades": 1.0,
+    "on_grid_ceiling": 0,
+    "on_grid_floor": 0
+  },
+  "per_rung_fold": [
+    {
+      "rung": "B0",
+      "fold": 1,
+      "selected_lambda": 10000.0,
+      "test_log_loss": 1.0546504846060354
+    },
+    {
+      "rung": "B0",
+      "fold": 2,
+      "selected_lambda": 10000.0,
+      "test_log_loss": 1.0537563827171668
+    },
+    {
+      "rung": "B0",
+      "fold": 3,
+      "selected_lambda": 10000.0,
+      "test_log_loss": 1.0826402716069496
+    },
+    {
+      "rung": "B0",
+      "fold": 4,
+      "selected_lambda": 10000.0,
+      "test_log_loss": 1.0845028766852298
+    },
+    {
+      "rung": "B1",
+      "fold": 1,
+      "selected_lambda": 1000.0,
+      "test_log_loss": 0.9970233140755451
+    },
+    {
+      "rung": "B1",
+      "fold": 2,
+      "selected_lambda": 300.0,
+      "test_log_loss": 0.960417416363665
+    },
+    {
+      "rung": "B1",
+      "fold": 3,
+      "selected_lambda": 300.0,
+      "test_log_loss": 1.0039641852174856
+    },
+    {
+      "rung": "B1",
+      "fold": 4,
+      "selected_lambda": 300.0,
+      "test_log_loss": 1.0448348462687427
+    },
+    {
+      "rung": "B2",
+      "fold": 1,
+      "selected_lambda": 3000.0,
+      "test_log_loss": 1.013298528374986
+    },
+    {
+      "rung": "B2",
+      "fold": 2,
+      "selected_lambda": 1000.0,
+      "test_log_loss": 0.9635272279483448
+    },
+    {
+      "rung": "B2",
+      "fold": 3,
+      "selected_lambda": 1000.0,
+      "test_log_loss": 1.002695184665017
+    },
+    {
+      "rung": "B2",
+      "fold": 4,
+      "selected_lambda": 1000.0,
+      "test_log_loss": 1.0461090547083203
+    },
+    {
+      "rung": "B3",
+      "fold": 1,
+      "selected_lambda": 3000.0,
+      "test_log_loss": 1.013298528374986
+    },
+    {
+      "rung": "B3",
+      "fold": 2,
+      "selected_lambda": 1000.0,
+      "test_log_loss": 0.9625107440539132
+    },
+    {
+      "rung": "B3",
+      "fold": 3,
+      "selected_lambda": 1000.0,
+      "test_log_loss": 1.0012938203786799
+    },
+    {
+      "rung": "B3",
+      "fold": 4,
+      "selected_lambda": 1000.0,
+      "test_log_loss": 1.0452506146083391
+    },
+    {
+      "rung": "B4",
+      "fold": 1,
+      "selected_lambda": 3000.0,
+      "test_log_loss": 1.013298528374986
+    },
+    {
+      "rung": "B4",
+      "fold": 2,
+      "selected_lambda": 1000.0,
+      "test_log_loss": 0.9628508344190535
+    },
+    {
+      "rung": "B4",
+      "fold": 3,
+      "selected_lambda": 1000.0,
+      "test_log_loss": 1.002099396073547
+    },
+    {
+      "rung": "B4",
+      "fold": 4,
+      "selected_lambda": 1000.0,
+      "test_log_loss": 1.044525909966257
+    },
+    {
+      "rung": "B5",
+      "fold": 1,
+      "selected_lambda": 3000.0,
+      "test_log_loss": 1.013298528374986
+    },
+    {
+      "rung": "B5",
+      "fold": 2,
+      "selected_lambda": 1000.0,
+      "test_log_loss": 0.9632175335000653
+    },
+    {
+      "rung": "B5",
+      "fold": 3,
+      "selected_lambda": 1000.0,
+      "test_log_loss": 1.0020073533703342
+    },
+    {
+      "rung": "B5",
+      "fold": 4,
+      "selected_lambda": 1000.0,
+      "test_log_loss": 1.045826411937271
+    },
+    {
+      "rung": "B6",
+      "fold": 1,
+      "selected_lambda": 3000.0,
+      "test_log_loss": 1.013298528374986
+    },
+    {
+      "rung": "B6",
+      "fold": 2,
+      "selected_lambda": 1000.0,
+      "test_log_loss": 0.9631508216271453
+    },
+    {
+      "rung": "B6",
+      "fold": 3,
+      "selected_lambda": 1000.0,
+      "test_log_loss": 1.004267229311642
+    },
+    {
+      "rung": "B6",
+      "fold": 4,
+      "selected_lambda": 1000.0,
+      "test_log_loss": 1.0452428921335761
+    }
+  ],
+  "oracle_turning_points": [
+    {
+      "rung": "B0",
+      "oracle_best_lambda": 10000.0,
+      "oracle_best_log_loss": 1.0688875039038455,
+      "log_loss_at_grid_floor": 1.0688875039038455,
+      "log_loss_at_grid_ceiling": 1.0688875039038455,
+      "interior": false
+    },
+    {
+      "rung": "B1",
+      "oracle_best_lambda": 1000.0,
+      "oracle_best_log_loss": 1.0004453427472313,
+      "log_loss_at_grid_floor": 1.1018627554301224,
+      "log_loss_at_grid_ceiling": 1.029299423809692,
+      "interior": true
+    },
+    {
+      "rung": "B2",
+      "oracle_best_lambda": 1000.0,
+      "oracle_best_log_loss": 1.0030676094983328,
+      "log_loss_at_grid_floor": 1.1491983885138097,
+      "log_loss_at_grid_ceiling": 1.0295675554298593,
+      "interior": true
+    },
+    {
+      "rung": "B3",
+      "oracle_best_lambda": 1000.0,
+      "oracle_best_log_loss": 1.0022485374281453,
+      "log_loss_at_grid_floor": 1.1771324905081617,
+      "log_loss_at_grid_ceiling": 1.028108985595563,
+      "interior": true
+    },
+    {
+      "rung": "B4",
+      "oracle_best_lambda": 1000.0,
+      "oracle_best_log_loss": 1.0023537777826268,
+      "log_loss_at_grid_floor": 1.1850750784883841,
+      "log_loss_at_grid_ceiling": 1.0281469076626149,
+      "interior": true
+    },
+    {
+      "rung": "B5",
+      "oracle_best_lambda": 1000.0,
+      "oracle_best_log_loss": 1.00274756736983,
+      "log_loss_at_grid_floor": 1.2599651618942027,
+      "log_loss_at_grid_ceiling": 1.027797912330446,
+      "interior": true
+    },
+    {
+      "rung": "B6",
+      "oracle_best_lambda": 1000.0,
+      "oracle_best_log_loss": 1.0031499784360032,
+      "log_loss_at_grid_floor": 1.3578010527060478,
+      "log_loss_at_grid_ceiling": 1.0278236922391266,
+      "interior": true
+    }
+  ],
+  "rung_verdict": {
+    "verdict": "UPHELD",
+    "winner": "B1",
+    "reframed": true
+  },
+  "provenance": {
+    "ceiling_predeclaration_sha256": "c0ea0bce045af978c64aa3e209ea8b9f5fb1dde52f95c83c65e3e5e316c367f0",
+    "regularisation_predeclaration_sha256": "1de3af06af72634d91d1f0f07b50256785a5a1c16fda41de85138cf975524da4",
+    "instrument_4_surface_sha256": "12ecbbc8d4ebd62036f3527816ae46f2ef713309db86cf61a65511c81e1ad1f4",
+    "instrument_4_selected_sha256": "7c867c0b039a2bd3733e1719a4bb2c3b950e183d63a3d0ef163d488568749e49",
+    "ablation_ladder_sha256": "f80a15c33c3d556ac880fb2a035c08debdc2f407de3e3a96e76339a9be52c5bf"
+  }
+}

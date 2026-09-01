@@ -1,0 +1,269 @@
+===============================================================================
+PHASE 4 - TIER 2 RESOLUTION
+DOES "DYNAMIC STATE" MEAN FRESHER DATA, OR MORE DATA?
+
+PRE-DECLARATION.  Written before anything was fitted.
+===============================================================================
+
+THE QUESTION
+
+    Phase 2 measured, on the four frozen folds:
+
+        Dixon-Coles walk-forward   0.9904
+        Dixon-Coles static         1.0263      difference 0.0359
+        Elo                        0.9994
+        base rate                  1.0689
+
+    The 0.036 gap between static and walk-forward is four times the 0.009 gap
+    between the best dynamic model and the best results-only one. That looks
+    like an argument that within-season updating is where the signal is, and
+    it would settle what D2 should be.
+
+    It is not yet an argument, because 0.036 is confounded. A static fit is
+    degraded against a walk-forward fit by TWO mechanisms at once:
+
+        RECENCY   team strength genuinely drifts within a season - form,
+                  injuries, tactical change, a new manager - and a fit frozen
+                  at the end of last season cannot track it.
+
+        SAMPLE    a walk-forward fit has strictly more matches to estimate the
+                  same parameters from, growing from N to N + 379 across the
+                  test season.
+
+    Only RECENCY is an argument for within-season updating. SAMPLE is just
+    more data, which the ratings-as-features route gets as well. If most of
+    the 0.036 is SAMPLE, the gap says nothing about tier 2.
+
+-------------------------------------------------------------------------------
+1.  A FEASIBILITY PROBLEM WITH THE TEST AS BRIEFED, AND THE RESOLUTION
+-------------------------------------------------------------------------------
+
+    The brief specifies: "refit the static Poisson using a fixed-size window
+    rather than a fixed endpoint: the same number of matches as the equivalent
+    walk-forward fit, but ending strictly before the test season."
+
+    Those two conditions cannot both hold. The walk-forward fit at test match
+    k uses N_train + k matches. Holding that count while ending strictly
+    before the test season requires N_train + k matches to exist before the
+    test season, and they do not - N_train is every match there is. At fold 4,
+    k reaches 379 and the design would need 1,899 pre-test matches against
+    1,520 available. At fold 1 it would need up to 759 against 380.
+
+    The resolution keeps the brief's intent exactly and inverts which quantity
+    is held fixed. Rather than growing the control to match walk-forward's
+    sample, hold the SAMPLE constant at the static fit's size and move the
+    ENDPOINT forward. That is a rolling fixed-size window, and it isolates
+    recency at constant N - which is precisely the mechanism the brief wants
+    separated.
+
+    It also buys something the briefed design could not give: an exact,
+    additive decomposition of the 0.036 rather than a single collapse-or-hold
+    verdict. See section 3.
+
+-------------------------------------------------------------------------------
+2.  THE FOUR ARMS
+-------------------------------------------------------------------------------
+
+    Every arm is the SAME Dixon-Coles model with the same constants. The only
+    thing that varies is which matches the fit sees.
+
+    A  STATIC                    existing, recomputed not copied
+       Fit once on the fold's training seasons. Applied unchanged to every
+       test match.
+           sample   N_train          endpoint  end of training seasons
+
+    B  WALK-FORWARD              existing, recomputed not copied
+       Refit before each test match on every match strictly prior to it.
+           sample   N_train + k      endpoint  the test match (freshest)
+
+    C  ROLLING FIXED-SIZE        NEW - the discriminator
+       Refit before each test match on the MOST RECENT N_train matches
+       strictly prior to it. Same sample size as A, same freshness as B.
+           sample   N_train          endpoint  the test match (freshest)
+
+    D  STATIC HALF-WINDOW        NEW - corroborating control, no decision weight
+       Fit once on the most recent floor(N_train / 2) matches ending before
+       the test season. Same staleness as A, half the sample.
+           sample   floor(N_train/2) endpoint  end of training seasons
+
+    C is the arm that answers the question. D exists because the whole
+    decomposition rests on sample size mattering in a measurable way at all;
+    if D is indistinguishable from A, then sample size in this regime does
+    almost nothing, which independently corroborates whatever C says.
+
+    NOTE ON TIME DECAY, DECLARED IN ADVANCE SO IT CANNOT BE AN EXCUSE LATER
+        The model already weights matches by exp(-ln2 * age / 107 days). The
+        oldest matches in any window therefore carry little weight already, so
+        the SAMPLE mechanism is partly damped before this experiment starts.
+        This is a property of the frozen model, not a flaw in the design, and
+        it means a small Delta_sample is an expected outcome rather than a
+        surprising one. It is stated here so that a small Delta_sample cannot
+        later be presented as a discovery.
+
+-------------------------------------------------------------------------------
+3.  THE DECOMPOSITION
+-------------------------------------------------------------------------------
+
+    All quantities are pooled log loss over the 1,520 outer test matches.
+
+        Delta_total    = LL(A) - LL(B)      the confounded 0.036
+        Delta_recency  = LL(A) - LL(C)      staleness, at constant sample
+        Delta_sample   = LL(C) - LL(B)      sample, at constant freshness
+
+        Delta_total = Delta_recency + Delta_sample     exactly, by construction
+
+    share_recency = Delta_recency / Delta_total
+
+-------------------------------------------------------------------------------
+4.  THE WINDOW-SIZE RULE - FIXED HERE, BEFORE ANY FIT
+-------------------------------------------------------------------------------
+
+    Arm C window size  W_C = N_train for that fold, exactly.
+                             fold 1: 380   fold 2: 760
+                             fold 3: 1140  fold 4: 1520
+
+    Arm D window size  W_D = floor(N_train / 2).
+                             fold 1: 190   fold 2: 380
+                             fold 3: 570   fold 4: 760
+
+    "Most recent W matches" is by the match ordering already frozen in
+    phase1_matches.csv: season, then date, then home_team, then away_team.
+    Ties in date are broken by that existing order and not re-sorted, because
+    re-sorting would be a second change riding along with the first.
+
+    No other window size is evaluated. If W_C proves to be a poor choice the
+    finding is reported as such; the size is not searched.
+
+-------------------------------------------------------------------------------
+5.  WHAT IS INHERITED AND MUST NOT MOVE
+-------------------------------------------------------------------------------
+
+    Imported from phase2_poisson_dixon_coles.py, not reimplemented:
+
+        MAX_GOALS                  25
+        TIME_DECAY_HALF_LIFE_DAYS  107.0
+        NEUTRAL_STRENGTH           1.0
+        RHO_LOWER / RHO_UPPER      -0.5 / 0.5
+        RHO_GRID_POINTS            60
+        RHO_GOLDEN_ITERATIONS      60
+        SCALING_MAX_ITERATIONS     200
+        SCALING_TOLERANCE          1e-10
+
+    and the fitting, scaling and score-matrix functions themselves. rho,
+    attack, defence and the home multiplier are refitted per window, as they
+    are per fold today. No second Poisson is written.
+
+    The four frozen outer folds are used unchanged. The evaluation harness is
+    imported and not modified. data/raw is not opened.
+
+    Frozen and hashed before and after: every outputs/phase[0-3]_* artefact,
+    every script, both Phase 3 pre-declarations, the Phase 4 pre-declaration,
+    and data/raw. This instrument writes only outputs/phase4_tier2_*.
+
+-------------------------------------------------------------------------------
+6.  METRICS AND UNCERTAINTY
+-------------------------------------------------------------------------------
+
+    Full Phase 0 metric set reported. Log loss PRIMARY for the decision rule,
+    because it is what Phases 2 and 3 decided on. RPS reported beside it and
+    required to agree in SIGN on every gap; a sign disagreement between log
+    loss and RPS is a declared flag and forces INCONCLUSIVE.
+
+    Reported per fold AND pooled over all 1,520 outer test matches.
+
+    PAIRED PER-MATCH BOOTSTRAP, on every gap, no exceptions.
+        resample     the 1,520 pooled test matches with replacement
+        paired       the same resampled indices score both arms
+        draws        10,000
+        seed         20260901, declared here
+        interval     95% percentile
+        reported     for Delta_total, Delta_recency, Delta_sample, and for
+                     LL(D) - LL(A)
+
+    A bare delta is not a result at these effect sizes and none is reported
+    without its interval.
+
+-------------------------------------------------------------------------------
+7.  THE DECISION RULE - DECLARED BEFORE THE RESULT
+-------------------------------------------------------------------------------
+
+    GATE, checked first. If the 95% CI for Delta_total includes 0, the 0.036
+    has not replicated and the question is void. Report and stop; no tier-2
+    conclusion is drawn from an effect that is not there.
+
+    Given the gate passes:
+
+    WITHIN-SEASON UPDATING     the 95% CI for Delta_recency excludes 0
+                               AND share_recency >= 0.6
+                               -> D2 is genuine within-season state
+
+    RATINGS-AS-FEATURES        the 95% CI for Delta_recency includes 0
+                               OR share_recency <= 0.4
+                               -> D2 is ratings-as-features; the 0.036 was
+                                  mostly sample size
+
+    INCONCLUSIVE               anything else, including any log-loss/RPS sign
+                               disagreement
+                               -> the four folds cannot separate the
+                                  mechanisms and the Phase 4 design must be
+                                  settled some other way
+
+    The 0.6 / 0.4 boundaries are set here, before the result, and are not
+    moved afterwards. They are deliberately wide apart so that a genuinely
+    ambiguous split returns INCONCLUSIVE rather than being rounded into a
+    decision.
+
+-------------------------------------------------------------------------------
+8.  THE TESTS
+-------------------------------------------------------------------------------
+
+    W1  ANCHOR. Arms A and B, recomputed here through the imported code,
+        reproduce the stored phase2_poisson_dc_fold_summary.csv numbers to
+        < 1e-9 on all six metrics for all four folds. This chains the
+        reproduction the way C1 and R7 do in Instruments 4 and 5, and it is
+        what makes "reuse, do not rewrite" checkable rather than asserted.
+
+    W2  Arm C's window contains exactly W_C matches at every test match, and
+        arm D's exactly W_D.
+
+    W3  STRICT PRIORITY. For every test match, every match in every arm's
+        fitting window has a date strictly earlier than that test match's
+        date. No same-day match enters its own prediction's fit. This is the
+        Phase 0 rule and it is re-proved here, not assumed.
+
+    W4  Arm D's window ends strictly before the test season starts.
+
+    W5  The decomposition identity holds numerically:
+        |Delta_total - (Delta_recency + Delta_sample)| < 1e-12.
+
+    W6  Arms A and C use identical sample sizes per fold, and differ ONLY in
+        which matches. Asserted on the window contents, not on a count alone.
+
+    W7  Every constant in section 5 is read from phase2_poisson_dixon_coles
+        at runtime and equals the value recorded there.
+
+    W8  Determinism: a second full run reproduces every metric and every
+        bootstrap interval bit-identically.
+
+    W9  Isolation: no frozen artefact, script, pre-declaration or raw file
+        changed hash across the run; data/raw was opened only to hash it.
+
+    W10 Probability contract on every arm: rows sum to 1, none negative, all
+        pass the harness's own validate_probabilities().
+
+-------------------------------------------------------------------------------
+9.  WHAT THIS EXPERIMENT CANNOT DO
+-------------------------------------------------------------------------------
+
+    It cannot tell us whether a BETTER dynamic-state representation exists. It
+    compares four fitting regimes of one frozen model.
+
+    It cannot license reopening Phase 3's feature conclusions. That is what
+    Phase 4's D3 and D4 rungs are for.
+
+    It settles exactly one thing: whether the 0.036 is recency or sample, and
+    therefore what D2 should be built from.
+
+===============================================================================
+END OF PRE-DECLARATION
+===============================================================================

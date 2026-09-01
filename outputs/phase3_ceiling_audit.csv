@@ -1,0 +1,40 @@
+test_id,test,expected,observed,status,detail
+R6a,the pre-declaration file exists and is readable,present,present,PASS,D:\PremierLeagueML\PHASE3_CEILING_PREDECLARATION.txt
+R6b,the grid used is the grid declared before the run,"[100.0, 300.0, 1000.0, 3000.0, 10000.0]","[100.0, 300.0, 1000.0, 3000.0, 10000.0]",PASS,"a grid chosen after seeing results would make this a search, not a test"
+R6c,SHA-256 of the pre-declaration,,c0ea0bce045af978...,INFO,recorded so a later edit cannot retroactively license this result
+R1,"no inner-CV row is an outer-test row, any fold",0,0,PASS,8548 inner row-uses checked across 4 folds
+R4a,tripwire guard invocations during the real run,,868,INFO,every row set entering the selector was checked against the outer test rows before use
+R4b,CONTROL: the tripwire raises when handed a forbidden row,raises,raised,PASS,"without this, R4a would pass for a guard that could never fail"
+R5a,every inner split has max(train date) < min(validation date),0,0,PASS,"12 inner splits checked; strict, not >="
+R5b,no calendar date straddles an inner boundary,0,0,PASS,the date is the atomic unit; two matches played the same afternoon may never sit on opposite sides of a split
+R5c,"(season, matchweek) blocks divided by an inner boundary",,"36 across 12 splits, 96 matches",INFO,"measured, not forbidden: a matchweek is divided here only because postponement put its halves months apart, so they were never contemporaneous - which is what the boundary is protecting"
+R7,reproduce Instrument 3 at lambda = 1,,not applicable,INFO,lambda = 1 is not in this grid (100 .. 10000); the anchoring test for this run is declared separately
+R10,B0's fit is identical at every lambda,0.0,0.000e+00,PASS,"no features, unpenalised intercept - the penalty has nothing to act on"
+R2a,corrupting 2025-26 features moves no selected lambda anywhere,0,0,PASS,"2025-26 is test-only; it is in no fold's training set, so no selector may have seen it"
+R2b,and leaves every fold-1-to-3 prediction bit-identical,0.0,0.000e+00,PASS,7980 predictions compared
+R2c,CONTROL: fold 4's own predictions DO move when its features do,> 0,9.059e-01,PASS,"without this, R2a and R2b would pass for a pipeline ignoring features"
+R2d,per fold: corrupting THAT fold's test features moves no lambda,0,0,PASS,"28 (rung, fold) selections re-run, one corrupted season each; this covers folds 1-3, whose test seasons R2a cannot touch"
+R3,per fold: shuffling THAT fold's test LABELS moves no lambda,0,0,PASS,28 selections re-run; the outer test outcome cannot reach the selector even through the label column
+R9a,a second independent run selects the identical lambdas,0,0,PASS,"28 (rung, fold) selections"
+R9b,and produces bit-identical probabilities,0.0,0.000e+00,PASS,"10640 predictions; no seed, no shuffle, no randomness in the fit or the split"
+R9c,every prediction row sums to 1 and none is negative,< 1e-9,2.220e-16,PASS,
+R11a,every fit converged to the declared gradient tolerance,< 1e-09,9.757e-10,PASS,Newton on a strictly convex objective at every lambda in the grid
+R11b,selections landing on the grid FLOOR (lambda = 100),,0 of 28,INFO,the grid is not extended; a floor hit means the inner CV wanted even less penalty than the grid offers
+R11c,selections landing on the grid CEILING (lambda = 10000),,4 of 28,INFO,"a ceiling hit means the inner CV wanted even MORE penalty than the grid offers, which would itself be the finding"
+R8a,"no frozen artefact, script, pre-declaration or raw file moved",0,0,PASS,[]
+R8b,files SHA-256'd before and after the run,,143,INFO,includes the lambda = 1 reference this experiment is measured against
+R8c,nothing but the integrity hasher opened data/raw,0,0,PASS,"matches and features come from Phase 1 and Phase 3 outputs, never from raw"
+R8d,no open under data/raw asked for write access,0,0,PASS,[]
+C1a,at lambda = 100 this reproduces Instrument 4's stored numbers,< 1e-9,0.000e+00 (),PASS,"28 rung x fold pairs, all six metrics; this is the anchor shared by the two grids, and it also proves the optional-grid refactor of Instrument 4 changed nothing"
+C1b,every Instrument 4 rung x fold pair at lambda = 100 matched,28,28,PASS,
+C1c,and the fitted coefficient norms are identical too,< 1e-9,0.000e+00,PASS,
+C2a,the freeze status follows the declared conditions,VALID,VALID,PASS,"24 in-scope selections, 0 on the ceiling, spread 1.00 decades"
+C2d,only rungs with zero penalised columns were excluded,0,0,PASS,"excluded ['B0']: 4 selections; R10 (passed above) is the evidence that their lambda-curve is constant and their selection is the tie-break's output, not a boundary hit"
+C2e,selections in scope after Amendment 2,,24 of 28,INFO,"the excluded selections are reported in every table and in the frozen artefact; they are removed from the RULE, not from the record"
+C2b,"the frozen scalar is the declared median, snapped to grid",median 1000 -> a grid point,1000.0,PASS,"declared rule: median of the per-(rung, fold) selections, snapped to the nearest grid point, ties to the larger"
+C2c,the frozen artefact was written,present,present,PASS,D:\PremierLeagueML\outputs\phase3_frozen_regularisation.json
+C3a,coefficient norm at the top of the grid is a small fraction,< 0.1,0.1212,FAIL,norm 0.0582 at lambda = 10000 against 0.4802 at lambda = 100
+C3b,every rung is closer to B0 at the top of the grid than at 100,0,1,FAIL,B0 = 1.068888; rungs still further away: ['B6']
+C4a,"Instrument 4's results were read, never rewritten",0,0,PASS,[]
+C4b,nothing at all in the stricter frozen set moved,0,0,PASS,[]
+C4c,files in the stricter frozen set,,151,INFO,"Instrument 4's outputs are inputs here, so they are frozen too - Instrument 4 could not freeze them because it was writing them"

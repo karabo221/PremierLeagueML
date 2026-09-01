@@ -1,0 +1,7 @@
+metric,type,direction,purpose,required_for_model
+Accuracy,classification (argmax),higher is better,share of matches whose predicted class is correct,YES - but never reported alone
+Balanced Accuracy,classification (argmax),higher is better,mean per-class recall; exposes a model that ignores draws,YES
+Macro F1,classification (argmax),higher is better,"unweighted mean F1 over H, D, A; every class counts equally",YES
+Log Loss,probabilistic,lower is better,penalises confident wrong probabilities; the primary probabilistic score,YES
+Brier Score,probabilistic,lower is better,"multiclass squared error against the one-hot outcome; 0 perfect, 2 worst",YES
+RPS,probabilistic (ordered),lower is better,ranked probability score; respects H > D > A ordering and is the standard in football forecasting,"YES - the condition it was held back for is met: base rate, Elo and Dixon-Coles all produce ordered H/D/A probabilities"

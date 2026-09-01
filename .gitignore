@@ -37,6 +37,43 @@ models/*
 outputs/*
 !outputs/.gitkeep
 
+# ---------------------------------------------------------------------------
+# EXCEPTIONS: these are NOT regenerable outputs, they are EVIDENCE.
+#
+# The rule above is right for anything rebuilt from data/raw. It is wrong for
+# the artefacts later instruments ANCHOR against, because "frozen" was being
+# enforced by nothing but a file timestamp and good intentions. Instrument 5's
+# C1 equivalence check reads phase3_reg_surface.csv; Instrument 4's R7 reads
+# phase3_ablation_fold_summary.csv. Either could have been silently
+# regenerated with no diff to detect it.
+#
+# A pre-declaration in particular exists to be unamendable after the fact, and
+# an unversioned pre-declaration cannot do that job at all.
+#
+# FROZEN_MANIFEST.txt records the SHA-256 of every file listed here, so
+# tampering is detectable independently of git.
+# ---------------------------------------------------------------------------
+
+# pre-declarations - the whole point is that they cannot move
+!outputs/phase4_dynamic_state_predeclaration.txt
+
+# the frozen evaluation contract
+!outputs/phase0_evaluation_folds.csv
+!outputs/phase0_evaluation_spec.csv
+!outputs/phase0_evaluation_spec.json
+
+# Phase 2 reference values carried forward into Phase 4
+!outputs/phase2_base_rate_fold_summary.csv
+!outputs/phase2_elo_fold_summary.csv
+!outputs/phase2_poisson_dc_fold_summary.csv
+
+# Phase 3: the lambda = 1 reference (R7), Instruments 4 and 5, and the freeze
+!outputs/phase3_ablation_fold_summary.csv
+!outputs/phase3_ablation_ladder.csv
+!outputs/phase3_reg_*.csv
+!outputs/phase3_ceiling_*.csv
+!outputs/phase3_frozen_regularisation.json
+
 # Environment / secrets
 .env
 .env.*

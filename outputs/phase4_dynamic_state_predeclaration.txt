@@ -1,0 +1,576 @@
+===============================================================================
+PHASE 4 - DYNAMIC TEAM-STRENGTH STATE
+PRE-DECLARATION  (frozen before any outer evaluation)
+===============================================================================
+
+Written           : 2026-08-31
+Repository        : d:\PremierLeagueML
+Status at writing : NO outer evaluation has been run. No Phase 4 result exists.
+
+This document freezes the protocol. Once the first result-bearing run occurs,
+nothing below may be altered except through a numbered Amendment carrying the
+disclosure required in section 14.
+
+NOTE ON PATH: the task brief specified E:\PremierLeagueML. No E: drive exists
+on this machine. The project is at d:\PremierLeagueML and that is what is used.
+
+
+===============================================================================
+0. THE QUESTION
+===============================================================================
+
+Primary:
+    Does a continuously updated team-strength state add predictive information
+    beyond the existing results-only representation?
+
+Conditional follow-ons:
+    Does current-match context add information beyond dynamic team strength?
+    Does prior-season FBref add information beyond dynamic strength + context?
+
+The project hypothesis is that continuously updated team strength will prove
+more useful than static prior-season descriptors. It is recorded here as a
+HYPOTHESIS. It is not assumed, and no rung's expected outcome is written into
+this protocol.
+
+
+===============================================================================
+1. OUTER FOLDS - UNCHANGED
+===============================================================================
+
+    Fold 1   train 2021-22                         test 2022-23    380
+    Fold 2   train 2021-22 .. 2022-23              test 2023-24    380
+    Fold 3   train 2021-22 .. 2023-24              test 2024-25    380
+    Fold 4   train 2021-22 .. 2024-25              test 2025-26    380
+                                                   TOTAL         1,520
+
+Read from outputs/phase0_evaluation_spec.json. Not redefined here. The Phase 0
+evaluation harness is not modified; metrics are imported from it.
+
+INTERPRETATION LABEL - BINDING
+    All 1,520 outer-test matches have been used for project development in
+    Phases 2 and 3. Every figure this experiment produces is a
+    WALK-FORWARD DEVELOPMENT ESTIMATE.
+    It is NOT an untouched final holdout and must never be described as one.
+    A future unseen season should serve as the deployment-era evaluation.
+
+
+===============================================================================
+2. PHASE 2 PARAMETER TREATMENT  (from the Step 0 audit)
+===============================================================================
+
+Classification key:
+    A = fixed a priori constant
+    B = estimated using historical/training data
+    C = tuned/selected using validation data
+    D = tuned/selected using the complete dataset
+
+ELO  (scripts/phase2_elo_baseline.py)
+    INITIAL_RATING        1500.0      A    inherit unchanged
+    K_FACTOR              20.0        A    inherit unchanged
+    HOME_ADVANTAGE        60.0        A    inherit unchanged
+    SEASON_REGRESSION     0.75        A    inherit unchanged
+    ELO_SCALE             400.0       A    inherit unchanged
+    NU search bounds      1e-4..10    A    inherit unchanged
+    nu (Davidson draw)    per fold    B    refit per fold, training rows only
+    Promoted/returning    1500 flat   A    inherit (Phase 1 Instrument 4 rule)
+    Continuing init       regress .75 A    inherit
+
+DIXON-COLES  (scripts/phase2_poisson_dixon_coles.py)
+    MAX_GOALS             25          A    inherit
+    HALF_LIFE_DAYS        107.0       A    inherit (Dixon & Coles 1997 xi)
+    RHO search bounds     -0.5..0.5   A    inherit
+    SCALING iter/tol      200 / 1e-10 A    inherit
+    NEUTRAL_STRENGTH      1.0         A    inherit (validated Phase 2 rule)
+    rho                   per window  B    refit per window inside fold
+    attack A_i            per window  B    refit per window inside fold
+    defence D_i           per window  B    refit per window inside fold
+    home multiplier H     per window  B    refit per window inside fold
+
+AUDIT VERDICT
+    No Phase 2 parameter is class C or class D. Nothing was selected using the
+    complete dataset. No Option-1 / Option-2 remediation is required.
+
+EXPLICITLY NOT INHERITED
+    outputs/phase3_frozen_regularisation.json
+        frozen_lambda_scalar = 1000.0        -> NOT used in Phase 4
+        oracle_turning_points.*              -> class D by construction; these
+                                                were selected on outer-test
+                                                log loss. Never inherited.
+    Phase 4 selects lambda independently per rung per outer fold (section 8).
+
+GLOBAL ELO WALK - NUMERICALLY VERIFIED, NOT ASSUMED
+    Phase 2 computes one Elo walk over all 1,900 matches and slices it. This
+    is safe only if no learned parameter enters the update. Verified by
+    re-walking each fold on that fold's permitted history alone and comparing
+    pre-match ratings element-wise:
+
+        fold 1   760 matches   max |diff| = 0.000e+00
+        fold 2  1140 matches   max |diff| = 0.000e+00
+        fold 3  1520 matches   max |diff| = 0.000e+00
+        fold 4  1900 matches   max |diff| = 0.000e+00
+
+    Structural corroboration: run_elo_walk(matches, transition_lookup) takes
+    no nu argument, and the walk is constructed before any fold's nu is
+    calibrated. nu cannot enter the update path.
+    This check is re-run as DS15 in the test suite.
+
+
+===============================================================================
+3. BURN-IN RULE  (frozen)
+===============================================================================
+
+DATA AVAILABILITY - REPORTED FINDING
+    No pre-2021-22 Premier League data exists in this repository.
+        data/raw/Fixtures/   2021-2022 .. 2025-2026 only
+        earliest match date  2021-08-13
+    The brief's preferred burn-in solution cannot be executed from repository
+    data. This was reported before proceeding, as the brief requires.
+
+FROZEN RULE: Option (c) with a features-only dispersion trigger.
+
+    TRIGGER DEFINITION (declared, then evaluated - no outcomes used)
+        Statistic : standard deviation of rel_elo_diff over each outer fold's
+                    TEST rows. Uses features only. No match outcome, no loss,
+                    and no model performance enters this decision.
+        Rule      : if  SD(fold 1) / SD(fold 4)  <  0.80
+                    then burn-in is REQUIRED and Phase 4 halts pending
+                    acquisition of pre-2021-22 results-only fixtures.
+                    Otherwise Phase 4 proceeds with NO burn-in.
+
+    TRIGGER EVALUATION
+        fold 1  2022-23   SD = 101.66    ratio vs fold 4 = 1.051
+        fold 2  2023-24   SD = 110.10    ratio vs fold 4 = 1.138
+        fold 3  2024-25   SD = 110.98    ratio vs fold 4 = 1.147
+        fold 4  2025-26   SD =  96.72    ratio vs fold 4 = 1.000
+
+        Fold 1 / Fold 4 = 1.051  >=  0.80
+
+    VERDICT: TRIGGER DOES NOT FIRE. Phase 4 proceeds with NO burn-in.
+
+    BURN-IN USED      : none
+    SEASONS USED      : none
+    VARIABLES AFFECTED: none
+    LEARNED PARAMS    : none
+
+    Consequently the burn-in data-integrity audit of the brief's
+    "BURN-IN DATA INTEGRITY" section is not applicable and is recorded as
+    NOT APPLICABLE rather than passed.
+
+    RECORDED CAVEAT ON THE TRIGGER
+        The denominator is confounded. Fold 4's test season (2025-26) has the
+        lowest between-team dispersion of the five seasons on independent
+        measures computed earlier in the project (final-table points SD 15.83
+        and goal-difference SD 20.55, both five-season lows). Its low Elo
+        dispersion therefore reflects a real compression of the league, not
+        only rating convergence. A ratio against a compressed denominator can
+        mask under-dispersion in the numerator.
+
+        Season-opening rating dispersion (SD of the 20 opening ratings):
+            2021-22   6.75      cold start, all teams at 1500
+            2022-23  50.96
+            2023-24  54.71
+            2024-25  63.20
+            2025-26  53.35
+        The sequence rises 2021-24, consistent with convergence under
+        K=20 and SEASON_REGRESSION=0.75, then falls in 2025-26. Fold 1's
+        opening dispersion is 81% of the observed maximum; folds 2-4 span
+        84-100%. The evidence that fold 1 is specially handicapped is
+        therefore weak, though the evidence that Elo is under-converged
+        league-wide across the whole experiment is not addressed by this
+        trigger and remains an open limitation.
+
+        This caveat is recorded BEFORE any Phase 4 result exists. It does not
+        alter the frozen rule. The trigger stands as declared and its verdict
+        stands as evaluated.
+
+    IF A FUTURE AMENDMENT INTRODUCES BURN-IN
+        Source must be results-only fixtures: date, home, away, score, and
+        nothing else. It must route through the existing Phase 0.2 canonical
+        name mapping, Phase 0.3 cross-source reconciliation, and byte-integrity
+        registration exactly as any other source. The acquisition is not a
+        shortcut around the integrity path; the risk being managed is
+        introducing a data defect into a pipeline that currently passes its
+        full leakage suite.
+
+
+===============================================================================
+4. DYNAMIC STATE DEFINITION  (frozen)
+===============================================================================
+
+STATE SOURCE
+    Elo state      : Phase 2 Elo walk, date-batched, class-A constants only.
+    DC state       : Phase 2 fit_window(), refitted before every distinct test
+                     date on all matches with date STRICTLY < that date
+                     (the existing dc_walkforward regime).
+
+D2 DESIGN-MATRIX FEATURES  (5, differences and scalars only)
+
+    rel_elo_diff          = home_elo_before + HOME_ADVANTAGE - away_elo_before
+                            NOTE: verified numerically that Phase 2's
+                            elo_diff column ALREADY includes the +60 home
+                            advantage. It is used as-is, not re-added.
+
+    rel_attack_diff       = log(A_home) - log(A_away)
+    rel_defence_diff      = log(D_away) - log(D_home)
+                            signed so that positive favours the home side
+
+    expected_total_goals  = lambda_home + lambda_away
+    log_lambda_ratio      = log(lambda_home) - log(lambda_away)
+
+NO LEVELS-PLUS-DIFFERENCE REDUNDANCY
+    home_elo_before and away_elo_before are NOT in the design matrix.
+    lambda_home and lambda_away are NOT both in the design matrix.
+    Only differences and the two scalars above enter D2.
+
+JUSTIFICATION OF THIS EXACT REPRESENTATION (required to be fixed in advance)
+    lambda_home = A_home * D_away * H
+    lambda_away = A_away * D_home
+    Therefore
+        log_lambda_ratio = rel_attack_diff + rel_defence_diff + log H
+    and (expected_total_goals, log_lambda_ratio) jointly determine
+    (lambda_home, lambda_away) exactly.
+
+    expected_total_goals is included because attack and defence differences
+    alone cannot represent the scoring ENVIRONMENT. Total expected goals
+    drives draw probability independently of the mismatch: two fixtures with
+    identical strength difference but different total goals have materially
+    different draw mass. Omitting it would make D2 underperform direct DC for
+    a reason unrelated to dynamic state, confounding the very comparison this
+    experiment exists to make.
+
+    log_lambda_ratio is retained alongside the attack/defence decomposition
+    despite partial overlap. The explicit reason: H is refitted per window and
+    therefore varies, so the identity above is not a fixed linear relation and
+    the ratio is not recoverable from the two differences alone. The
+    decomposition says WHERE the ratio comes from; the ratio says what it is.
+
+RETAINED INTERNALLY FOR DIAGNOSTICS ONLY (never in the D2 design matrix)
+    lambda_home, lambda_away, A_home, A_away, D_home, D_away, rho, H,
+    home_elo_before, away_elo_before
+    Written to outputs/phase4_dynamic_state_state_history.csv.
+
+UPDATE ORDER  (binding, per the brief)
+    for each date T in chronological order:
+        1. obtain state strictly before T
+        2. construct features for every match on T from that state
+        3. standardise using training-fitted scaler only
+        4. predict
+        5. record prediction
+        6. observe results of all matches on T
+        7. update state with the whole date's results
+    Never update before predicting. Never let a match influence itself.
+    Never let a same-day match influence another same-day match.
+
+PROMOTED / RETURNING TEAMS
+    Elo : 1500 flat for new_to_dataset, returning_after_absence and the
+          2021-22 baseline cohort. Continuing teams regress to
+          1500 + (r - 1500) * 0.75.
+    DC  : NEUTRAL_STRENGTH = 1.0 for any team absent from the fitting window.
+    Both are the existing validated Phase 2 rules and are NOT re-derived.
+    The treatments DIFFER between Elo and DC and this is reported, not hidden.
+    Affected-row counts are reported per fold.
+    No Championship priors are introduced.
+
+
+===============================================================================
+5. THE LADDER  (frozen)
+===============================================================================
+
+Downstream model for every rung D1-D4: multinomial logistic regression,
+identical family throughout. Only the feature information changes.
+
+    D0      Base-rate reference. Training-fold H/D/A frequencies.
+            No model fitted. Reference only.
+
+    D1      Phase 1 results-only information.
+            = phase1_backbone block (86 columns)
+              MINUS home_prev_season_source, away_prev_season_source
+            = 84 features.
+            These two are the provenance fields Phase 3 held out as metadata
+            ("season identifier, not a fact about a team"). They are NOT
+            reintroduced.
+
+    D2      D1 + the 5 dynamic-state features of section 4.
+
+    D3      D2 + frozen Phase 3 C_context block (12 columns), used exactly as
+            built. Not reconstructed, not modified.
+
+    D4      D3 + frozen Phase 3 X_prior_composite block (24 columns) and
+            X_availability block (3 columns), used exactly as built.
+            X_metadata (4 columns) is NOT added.
+            No new FBref features. No xG. No odds.
+
+DIAGNOSTIC RUNG (not part of the main ladder)
+
+    D2-DC   Logistic regression on lambda_home and lambda_away ALONE.
+            No Phase 1 features. Same inner-CV protocol, same standardisation.
+            Purpose: measure how much of DC's information survives being
+            forced through a logistic link.
+            If D2-DC approaches direct DC, the link preserves the information
+            and any D2 shortfall is feature loss.
+            If D2-DC is materially worse, DC's advantage partly resides in its
+            nonlinear score-distribution-to-outcome mapping, and every
+            D2-vs-DC comparison is confounded. This distinction is reported.
+
+REFERENCE VALUES CARRIED IN (Phase 2, walk-forward, 4 folds pooled)
+    base rate                 1.0689
+    Elo v1                    0.9994
+    Poisson walk-forward      0.9904
+    Dixon-Coles walk-forward  0.9904
+
+REPORTING RULE ON PHASE 3 - BINDING
+    outputs/phase3_frozen_regularisation.json self-discloses that its
+    Amendment 2 "was written AFTER the result was known and it changes the
+    outcome from BLOCKED to VALID", with status_under_literal_rule = BLOCKED.
+    Its oracle_turning_points block confirms outer-test values entered the
+    lambda analysis.
+
+    Therefore Phase 3's headline figures are NOT treated as clean:
+      - D1 REPLACES B1 as the results-only reference. The figure 1.0016 is
+        not cited as a clean result anywhere in the Phase 4 report.
+      - D3 and D4 are clean re-tests of Block C and Block X. If they
+        contradict Phase 3's "adds nothing" conclusion, PHASE 4 WINS and
+        Phase 3's conclusion is amended, not defended.
+      - The brief's instruction not to reopen the static thread is read as
+        "run no further feature searches", NOT as "treat Phase 3's numbers as
+        established".
+
+
+===============================================================================
+6. STANDARDISATION  (frozen)
+===============================================================================
+
+Every continuous feature is standardised (zero mean, unit variance) using
+TRAINING ROWS ONLY for the fit in question:
+    - outer-fold model fit  -> scaler fitted on that outer fold's training rows
+    - inner-CV fit          -> scaler fitted on that inner fold's training rows
+The fitted scaler is then applied unchanged to validation / test rows.
+
+This matters because the feature scales differ by orders of magnitude
+(Elo ~1500, DC strengths ~1.0, goal counts ~0-100). Standardising first also
+makes the L2 penalty comparable across rungs, which is required for the
+per-rung lambda selection to be fair.
+
+Boolean and indicator columns are passed through unstandardised.
+Categorical columns are one-hot encoded with categories fitted on training
+rows only; categories unseen in training map to all-zero.
+Missing values are imputed with the TRAINING-fold median, fitted per fold.
+
+Proven by DS13 and DS6.
+
+
+===============================================================================
+7. INNER VALIDATION  (frozen)
+===============================================================================
+
+PROTOCOL: expanding-window, blocked by gameweek. No random K-fold anywhere.
+
+    Inner folds        : 4
+    Block definition   : contiguous (season, matchweek) blocks of the outer
+                         training rows, in chronological order.
+    Construction       : the training rows are split into 5 contiguous
+                         chronological blocks of approximately equal match
+                         count. Inner fold i (i = 1..4) trains on blocks
+                         1..i and validates on block i+1.
+    Constraint         : every validation date must be STRICTLY later than
+                         every training date in that inner fold. Asserted
+                         programmatically (DS12), not assumed.
+
+WHY BLOCKED RATHER THAN A SINGLE CHRONOLOGICAL HOLDOUT
+    Fold 1 trains on 380 matches. A single 80/20 chronological holdout leaves
+    ~76 matches to select lambda from, which is noisy enough to select a badly
+    wrong value. Four expanding blocks pool roughly 300 validation matches
+    across the inner folds while preserving strict temporal ordering.
+
+Selection statistic: mean validation log loss pooled across the 4 inner folds.
+Tie-break: smallest lambda among ties (declared in advance).
+
+
+===============================================================================
+8. REGULARISATION  (frozen)
+===============================================================================
+
+Selected INDEPENDENTLY for each (rung, outer fold) pair. Never globally.
+Never using outer-test performance.
+
+CANDIDATE GRID - fixed, not extendable
+    0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30, 100, 300, 1000, 3000, 10000
+
+The grid is NOT extended after seeing results. If a selected lambda lands on
+a grid boundary, that is REPORTED CLEARLY as a boundary selection and the
+experiment stops rather than extending the grid mid-experiment.
+
+lambda = 1000 from Phase 3 is NOT inherited. The number of features differs
+per rung, so the penalty must be selected per rung to be fair.
+
+Solver: deterministic. lbfgs, multinomial, fixed max_iter and tol
+(section 12). No stochastic component.
+
+
+===============================================================================
+9. STATISTICAL COMPARISON  (frozen)
+===============================================================================
+
+PRIMARY DECISION METRIC : log loss
+SECONDARY               : RPS
+DIAGNOSTIC              : Brier
+DESCRIPTIVE ONLY        : accuracy, balanced accuracy, macro F1
+    Descriptive metrics may NOT decide any gate.
+
+PAIRED BOOTSTRAP - required on D2-D1, D3-D2, D4-D3
+    Both members of each comparison score the IDENTICAL 1,520 outer-test
+    matches, so the comparison is paired and the per-match loss difference is
+    the unit of analysis.
+
+    Resamples   : 10,000
+    Seed        : 20260831
+    Resampling  : block resampling by (test_season, matchweek) - 152 blocks.
+                  Matches within a fixture round share opponents and calendar
+                  conditions and are not independent draws.
+    Interval    : 95% percentile
+    Reported for: log loss, RPS, Brier
+
+    The procedure is NOT altered after seeing results.
+
+DECISION RULE - a block demonstrates incremental value only when ALL hold:
+    1. the point estimate improves log loss in the expected direction, AND
+    2. the 95% paired bootstrap CI on log loss excludes zero, AND
+    3. RPS is directionally consistent with log loss.
+
+    If any condition fails, the verdict is
+        "DID NOT DEMONSTRATE INCREMENTAL VALUE"
+    NOT "useless". The distinction is binding on the report's language.
+
+DECLARED POWER NOTE
+    Measured on this project's existing outputs, the block-bootstrap standard
+    error of a paired per-match log-loss difference is approximately 0.0014 at
+    n = 1,140. At n = 1,520 the corresponding minimum detectable effect is
+    approximately 0.0034 log loss at alpha 0.05 with 80% power.
+    Effects smaller than that cannot be resolved by this design. A null
+    verdict is therefore evidence of "not resolvable at this sample size", not
+    evidence of absence. This is declared in advance so that null results are
+    interpretable rather than disappointing.
+
+
+===============================================================================
+10. LEAKAGE AND INTEGRITY TESTS  (frozen)
+===============================================================================
+
+    DS1   current-match result perturbation: prediction for T unchanged;
+          earlier predictions unchanged; later predictions MAY change
+    DS2   future-result perturbation: prediction for T unchanged
+    DS3   same-day perturbation: prediction for T unchanged
+    DS4   chronological state assertion: state timestamp strictly < match date
+    DS5   fold isolation: corrupt outer-test results; training state and
+          selected parameters unchanged
+    DS6   training/test separation: outer-test rows never enter fitting or
+          preprocessing
+    DS7   reproducibility: two complete runs identical within tolerance
+    DS8   state-update positive control: a valid historical result DOES alter
+          an appropriate later state
+    DS9   static-vs-dynamic: state genuinely changes through a season
+    DS10  raw data integrity: no writes under data/raw/
+    DS11  Phase 2 equivalence (see section 11)
+    DS12  inner-validation leakage: every lambda selection uses training-only
+          rows and every validation date is strictly after its training dates
+    DS13  scaler leakage: corrupt outer-test feature magnitudes; selected
+          model/scaler parameters for earlier folds unchanged
+    DS14  hyperparameter perturbation: corrupt outer-test results/features;
+          selected lambda for that outer fold unchanged
+    DS15  Elo global-walk equivalence: per-fold re-walk reproduces the global
+          walk element-wise (section 2)
+
+EVERY test carries BOTH a positive control and a null control.
+    Null control     : rebuild with zero perturbation, assert zero differences.
+    Positive control : perturb data that SHOULD move the quantity, assert it
+                       moves.
+    Rationale: a builder that ignored its input entirely would pass every
+    negative test trivially. Phase 1 Instrument 5 hit exactly this failure -
+    12,822 spurious "changes" from comparing a CSV-loaded baseline against an
+    in-memory rebuild, caught only by the null control.
+
+
+===============================================================================
+11. DS11 - PHASE 2 EQUIVALENCE  (frozen)
+===============================================================================
+
+The DC implementation is REUSED, not reimplemented. Refactoring is permitted
+only to expose point-in-time state, separating:
+
+    historical matches -> dynamic state -> (lambda_home, lambda_away, ...)
+        -> Phase 2 probability function -> P(H), P(D), P(A)
+
+TEST: take state extracted by the refactored dynamic layer, pass it through
+Phase 2's own validated probability function, and compare the resulting
+probability ARRAYS directly against the existing dc_walkforward output.
+
+    Comparison  : element-wise on the (1520, 3) probability array
+    Tolerance   : max |delta p| <= 1e-12
+    Aggregate   : reproduced mean log loss within 1e-9 of 0.9904
+
+"Similar" is not accepted. This test exists specifically to catch a
+refactoring error and is a hard gate: if it fails, no ladder result is
+reported.
+
+
+===============================================================================
+12. SEEDS AND NUMERICAL TOLERANCES  (frozen)
+===============================================================================
+
+    bootstrap seed                 20260831
+    bootstrap resamples            10000
+    logistic solver                lbfgs, multinomial
+    logistic max_iter              5000
+    logistic tol                   1e-8
+    DS11 probability tolerance     1e-12
+    DS11 log-loss tolerance        1e-9
+    DS15 Elo tolerance             0.0  (exact)
+    DS7 reproducibility tolerance  1e-12
+    CSV float format               %.17g
+    CSV read precision             round_trip
+
+No stochastic model fitting is used. The only seeded procedure is the
+bootstrap.
+
+
+===============================================================================
+13. OUTPUTS
+===============================================================================
+
+    outputs/phase4_dynamic_state_predeclaration.txt   (this file)
+    outputs/phase4_dynamic_state_ladder.csv
+    outputs/phase4_dynamic_state_fold_summary.csv
+    outputs/phase4_dynamic_state_results.csv
+    outputs/phase4_dynamic_state_coefficients.csv
+    outputs/phase4_dynamic_state_bootstrap.csv
+    outputs/phase4_dynamic_state_state_history.csv
+    outputs/phase4_dynamic_state_audit.csv
+
+    scripts/phase4_dynamic_state_ablation.py
+    scripts/phase4_dynamic_state_tests.py
+
+No Phase 0, Phase 1, Phase 2 or Phase 3 output is overwritten. All are
+SHA-256 hashed before and after the run and required to be identical.
+No file under data/raw/ is opened for writing.
+
+
+===============================================================================
+14. AMENDMENT PROCEDURE
+===============================================================================
+
+If a protocol above proves genuinely infeasible, create "Amendment N"
+recording:
+    - what was originally declared
+    - why it was infeasible
+    - what was changed
+    - when the change was made
+    - proof that no outer-test result motivated the change
+    - the rerun requirement
+
+If a result-bearing run has already occurred before the problem is found, the
+correct action is to DISCLOSE and RERUN THE FULL EXPERIMENT, not to patch
+artefacts.
+
+===============================================================================
+END OF PRE-DECLARATION
+===============================================================================

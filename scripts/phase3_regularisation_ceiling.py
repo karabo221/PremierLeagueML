@@ -119,6 +119,14 @@ C3_NORM_RATIO_CEILING = 0.10
 # C4: Instrument 4's results are inputs here and must survive untouched.
 I4_ARTEFACT_GLOB = "phase3_reg_*"
 
+# This instrument's OWN outputs, which Instrument 4's isolation check must not
+# read as tampering. C4 applies the stricter frozen set that DOES cover
+# Instrument 4's results.
+I4_FROZEN_EXCLUDE = {
+    "exclude_prefixes": ("phase3_reg_", "phase3_ceiling_"),
+    "exclude_names": ("phase3_frozen_regularisation.json",),
+}
+
 
 # ============================================================
 # FROZEN STATE  (stricter than Instrument 4's: its outputs are now inputs)
@@ -708,7 +716,14 @@ def main():
     print()
 
     before_strict = strict_frozen_state()
-    before_i4 = I4.frozen_state()
+
+    # Instrument 4's battery must not count THIS instrument's own artefacts as
+    # tampering. phase3_frozen_regularisation.json is written in section 9,
+    # before the audit runs, and its provenance block records the SHA-256 of
+    # Instrument 4's surface - so it legitimately changes whenever that file
+    # legitimately changes. R8a flagged exactly that until the exclusion below
+    # was made a parameter.
+    before_i4 = I4.frozen_state(**I4_FROZEN_EXCLUDE)
 
     matches = L3.load_matches()
     features = L3.load_features(matches)
@@ -788,7 +803,8 @@ def main():
 
     I4.test_everything(run, features, matches, labels, spec, ladder, blocks,
                        selected, table, before_i4, audit,
-                       grid=LAMBDA_GRID, predeclaration=PREDECLARATION)
+                       grid=LAMBDA_GRID, predeclaration=PREDECLARATION,
+                       frozen_exclude=I4_FROZEN_EXCLUDE)
 
     print()
     print("  Instrument 5's own:")

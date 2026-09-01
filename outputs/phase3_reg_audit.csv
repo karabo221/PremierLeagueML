@@ -1,0 +1,29 @@
+test_id,test,expected,observed,status,detail
+R6a,the pre-declaration file exists and is readable,present,present,PASS,D:\PremierLeagueML\PHASE3_REGULARISATION_PREDECLARATION.txt
+R6b,the grid used is the grid declared before the run,"[0.01, 0.03, 0.1, 0.3, 1.0, 3.0, 10.0, 30.0, 100.0]","[0.01, 0.03, 0.1, 0.3, 1.0, 3.0, 10.0, 30.0, 100.0]",PASS,"a grid chosen after seeing results would make this a search, not a test"
+R6c,SHA-256 of the pre-declaration,,1de3af06af72634d...,INFO,recorded so a later edit cannot retroactively license this result
+R1,"no inner-CV row is an outer-test row, any fold",0,0,PASS,8548 inner row-uses checked across 4 folds
+R4a,tripwire guard invocations during the real run,,1540,INFO,every row set entering the selector was checked against the outer test rows before use
+R4b,CONTROL: the tripwire raises when handed a forbidden row,raises,raised,PASS,"without this, R4a would pass for a guard that could never fail"
+R5a,every inner split has max(train date) < min(validation date),0,0,PASS,"12 inner splits checked; strict, not >="
+R5b,no calendar date straddles an inner boundary,0,0,PASS,the date is the atomic unit; two matches played the same afternoon may never sit on opposite sides of a split
+R5c,"(season, matchweek) blocks divided by an inner boundary",,"36 across 12 splits, 96 matches",INFO,"measured, not forbidden: a matchweek is divided here only because postponement put its halves months apart, so they were never contemporaneous - which is what the boundary is protecting"
+R7a,at lambda = 1 this reproduces Instrument 3's frozen numbers,< 1e-9,6.661e-16 (log_loss),PASS,"28 rung x fold pairs, all six metrics; if this drifts, the re-indexed pipeline is not the pipeline it claims to be"
+R7b,every frozen rung x fold pair was matched and compared,28,28,PASS,
+R7c,training-set log loss also reproduces at lambda = 1,< 1e-9,2.220e-16,PASS,
+R10,B0's fit is identical at every lambda,0.0,0.000e+00,PASS,"no features, unpenalised intercept - the penalty has nothing to act on"
+R2a,corrupting 2025-26 features moves no selected lambda anywhere,0,0,PASS,"2025-26 is test-only; it is in no fold's training set, so no selector may have seen it"
+R2b,and leaves every fold-1-to-3 prediction bit-identical,0.0,0.000e+00,PASS,7980 predictions compared
+R2c,CONTROL: fold 4's own predictions DO move when its features do,> 0,9.348e-01,PASS,"without this, R2a and R2b would pass for a pipeline ignoring features"
+R2d,per fold: corrupting THAT fold's test features moves no lambda,0,0,PASS,"28 (rung, fold) selections re-run, one corrupted season each; this covers folds 1-3, whose test seasons R2a cannot touch"
+R3,per fold: shuffling THAT fold's test LABELS moves no lambda,0,0,PASS,28 selections re-run; the outer test outcome cannot reach the selector even through the label column
+R9a,a second independent run selects the identical lambdas,0,0,PASS,"28 (rung, fold) selections"
+R9b,and produces bit-identical probabilities,0.0,0.000e+00,PASS,"10640 predictions; no seed, no shuffle, no randomness in the fit or the split"
+R9c,every prediction row sums to 1 and none is negative,< 1e-9,2.220e-16,PASS,
+R11a,every fit converged to the declared gradient tolerance,< 1e-09,8.315e-10,PASS,Newton on a strictly convex objective at every lambda in the grid
+R11b,selections landing on the grid FLOOR (lambda = 0.01),,0 of 28,INFO,the grid is not extended; a floor hit means the inner CV wanted even less penalty than the grid offers
+R11c,selections landing on the grid CEILING (lambda = 100),,28 of 28,INFO,"a ceiling hit means the inner CV wanted even MORE penalty than the grid offers, which would itself be the finding"
+R8a,"no frozen artefact, script, pre-declaration or raw file moved",0,0,PASS,[]
+R8b,files SHA-256'd before and after the run,,141,INFO,includes the lambda = 1 reference this experiment is measured against
+R8c,nothing but the integrity hasher opened data/raw,0,0,PASS,"matches and features come from Phase 1 and Phase 3 outputs, never from raw"
+R8d,no open under data/raw asked for write access,0,0,PASS,[]
