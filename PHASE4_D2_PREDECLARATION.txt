@@ -1,0 +1,275 @@
+===============================================================================
+PHASE 4 - D2: DYNAMIC STATE
+PRE-DECLARATION.  Written before D2 was fitted.
+===============================================================================
+
+STATUS: BLOCKED ON ONE DECISION (section 9). Nothing is fitted against this
+document until that decision is made and recorded here as an amendment.
+
+-------------------------------------------------------------------------------
+0.  WHAT THIS RUNG IS FOR
+-------------------------------------------------------------------------------
+
+    The tier-2 experiment returned WITHIN-SEASON UPDATING:
+
+        Delta_total    +0.0359  [+0.0186, +0.0535]
+        Delta_recency  +0.0356  [+0.0177, +0.0533]
+        Delta_sample   +0.0003  [-0.0007, +0.0014]
+        share_recency  99.1%    (RPS 99.6%, signs agree)
+
+    Recency is essentially the whole effect. So D2's state must genuinely
+    update WITHIN the test season. A rung that refits only at season
+    boundaries forfeits the measured effect and would be a different
+    experiment wearing D2's name.
+
+-------------------------------------------------------------------------------
+1.  REFIT CADENCE - INHERITED, NOT INVENTED  (load-bearing)
+-------------------------------------------------------------------------------
+
+    Read out of phase2_poisson_dixon_coles.run_fold():
+
+        ONE REFIT PER DISTINCT MATCH DATE.
+        The fitting window is every match with date STRICTLY < that date.
+
+    Not per gameweek, not weekly, not per match. Per distinct calendar date,
+    strictly prior. 583 distinct dates across the 1,900 matches; 582 refits
+    (the first date has no prior window).
+
+    This is stated at this length because recency is 99% of the effect, so
+    cadence is not an implementation detail. It is held FIXED across every
+    rung D2-D4 and across the D2-DC diagnostic.
+
+    Already implemented and verified in scripts/phase4_dc_passthrough.py:
+    G1 asserts the generated state reproduces Phase 2's stored test-row
+    lambda_home / lambda_away to 0.000e+00 on all 1,520 test rows.
+
+-------------------------------------------------------------------------------
+2.  FEATURES - DIFFERENCES ONLY, FOUR COLUMNS
+-------------------------------------------------------------------------------
+
+    rel_elo_diff           home Elo before match  -  away Elo before match
+    rel_attack_diff        DC attack, refit per window, home - away
+    rel_defence_diff       DC defence, refit per window, home - away
+    expected_total_goals   lambda_home + lambda_away
+
+    expected_total_goals is load-bearing and is NOT dropped for parsimony.
+    Without it D2 cannot represent scoring ENVIRONMENT - the quantity that
+    moves draw probability independently of the mismatch between the sides -
+    and would trail DC for a reason unrelated to dynamic state.
+
+    NOT INCLUDED, deliberately:
+        home_elo_before / away_elo_before alongside rel_elo_diff. Levels plus
+        their own difference is the redundancy this project removed earlier.
+        The difference alone is kept.
+
+    Dixon-Coles is the PRIMARY state source and Elo secondary: DC's advantage
+    is recency-driven and the 107-day half-life is doing that work, whereas
+    Elo's K = 20 is a coarser recency mechanism over the same information.
+
+-------------------------------------------------------------------------------
+3.  THE LADDER AND ITS EXACT WIDTHS
+-------------------------------------------------------------------------------
+
+    D0   base rate. No fit. Training-fold H/D/A frequencies.        0 features
+
+    D1   phase1_backbone MINUS home_prev_season_source and
+         away_prev_season_source                                   84 features
+
+    D2   D1 + the 4 features of section 2                          88 features
+
+    D3   D2 + frozen Phase 3 C_context, used exactly as built      100 features
+
+    D4   D3 + frozen X_prior_composite (24) and X_availability (3)
+         X_metadata (4) is NOT added                               127 features
+
+    FEATURE count is not DESIGN-MATRIX width. Four columns are categorical
+    (kickoff_hour_bucket, day_of_week, home_prev_season_status,
+    away_prev_season_status) and expand to declared indicator levels. The
+    design width per rung is therefore ASSERTED AT RUNTIME by DS3 rather than
+    written here as a number that could be wrong. DS3 also asserts strict
+    nesting D1 < D2 < D3 < D4.
+
+-------------------------------------------------------------------------------
+4.  INNER VALIDATION - AND A CONFLICT IN THE PHASE 4 PRE-DECLARATION
+-------------------------------------------------------------------------------
+
+    Section 7 of outputs/phase4_dynamic_state_predeclaration.txt requires BOTH
+
+        (a) blocks defined as contiguous (season, matchweek) blocks, and
+        (b) every validation date STRICTLY later than every training date,
+            asserted programmatically as DS12
+
+    THESE ARE INCOMPATIBLE IN THIS DATASET and DS12 would fail. This is not a
+    new discovery; it is Instrument 4's Amendment 1, re-measured here on the
+    Phase 4 training rows:
+
+        (season, matchweek) training blocks spanning over 7 days:  91
+        worst case: 2022-23 matchweek 8 spans 2022-09-16 to 2023-04-04
+
+    Postponed fixtures keep their ORIGINAL matchweek number, so a matchweek is
+    not an interval of time and blocks built from it overlap in date.
+
+    RESOLUTION, following Amendment 1: the atomic unit is the CALENDAR DATE.
+    Everything else in section 7 is kept exactly:
+
+        blocks         5 contiguous chronological segments of the outer
+                       training rows, approximately equal match count
+        inner folds    4, expanding: fold i trains on blocks 1..i and
+                       validates on block i+1
+        constraint     max(train date) < min(validation date), strictly,
+                       asserted as DS12
+        statistic      mean validation log loss pooled across the 4 folds
+        tie-break      SMALLEST lambda among ties
+                       (note: Phase 3 used LARGEST. Phase 4's rule governs.)
+
+    FOLD 1'S 380 TRAINING MATCHES: the same construction applies unchanged -
+    5 segments of roughly 76 matches, 4 expanding inner folds validating on
+    roughly 76 matches each, pooling ~304 validation matches. No special case,
+    because a scheme that changed shape at fold 1 would confound "lambda
+    differs by fold" with "the selector differs by fold".
+
+-------------------------------------------------------------------------------
+5.  REGULARISATION
+-------------------------------------------------------------------------------
+
+    Grid, fixed and not extendable, 13 points:
+
+        0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30, 100, 300, 1000, 3000, 10000
+
+    Selected INDEPENDENTLY per (rung, outer fold). Never globally, never using
+    outer-test performance.
+
+    lambda = 1000 from Phase 3 is NOT inherited. The rungs differ in width, so
+    the penalty must be selected per rung to be fair.
+
+    A selection landing on a grid boundary is REPORTED CLEARLY and the
+    experiment STOPS rather than extending the grid.
+
+    SOLVER DEVIATION, DECLARED: section 12 of the Phase 4 pre-declaration
+    names lbfgs. This environment has no scipy. The solver used is the
+    project's existing Newton method on the same penalised multinomial
+    objective (phase3_ablation_ladder.fit_multinomial), which is strictly
+    convex for lambda > 0 and therefore reaches the SAME unique optimum, to a
+    declared gradient tolerance of 1e-9, deterministically. This is a
+    different route to the same point, not a different model - but it is a
+    deviation from the written text and is recorded as one.
+
+-------------------------------------------------------------------------------
+6.  STANDARDISATION AND INITIALISATION
+-------------------------------------------------------------------------------
+
+    Continuous features standardised to zero mean and unit variance using
+    statistics fitted on TRAINING ROWS ONLY - and, inside the inner CV, on
+    that inner fold's training rows only. Boolean and indicator columns pass
+    through unstandardised.
+
+    Inherited from Phase 2, unchanged:
+        Elo   INITIAL_RATING 1500 flat for promoted and new teams;
+              continuing teams regress to 1500 + (r - 1500) * 0.75
+        DC    NEUTRAL_STRENGTH 1.0 for any team absent from the fitting window
+        DC    MAX_GOALS 25, TIME_DECAY_HALF_LIFE_DAYS 107.0,
+              RHO bounds -0.5 / 0.5, SCALING_TOLERANCE 1e-10
+
+    PROMOTED-TEAM EXPOSURE, measured and reported per fold rather than
+    assumed: the count of test matches in which either side takes a
+    neutral/initial value because it is absent from the fitting window. These
+    rows are NOT dropped; they are the rows where dynamic state has least to
+    say and their count is the honest caveat on any D2 gain.
+
+-------------------------------------------------------------------------------
+7.  METRICS AND UNCERTAINTY
+-------------------------------------------------------------------------------
+
+    Full Phase 0 six-metric set. Log loss and RPS primary. Reported per fold
+    and pooled over all 1,520 outer test matches.
+
+    Paired per-match bootstrap on EVERY delta - D2-D1, D3-D2, D4-D3, and each
+    rung against DC walk-forward. 10,000 draws, seed 20260901, 95% percentile.
+    A bare delta is not a result.
+
+    RPS must agree in SIGN with log loss on every comparison. A disagreement
+    makes that comparison INCONCLUSIVE and it is reported as such.
+
+-------------------------------------------------------------------------------
+8.  THE TESTS
+-------------------------------------------------------------------------------
+
+    DS1   every feature value for a match derives only from matches with date
+          STRICTLY earlier than that match's date
+    DS2   no outer-test row enters any fit or any scaler, at any rung
+    DS3   design widths and strict nesting D1 < D2 < D3 < D4
+    DS4   corrupting an outer test season's FEATURES moves no selected lambda
+          and no other fold's predictions (with the control that its own do)
+    DS5   corrupting an outer test season's LABELS moves no selected lambda
+    DS6   D0 reproduces Phase 2's frozen base rate to < 1e-9
+    DS7   Block C and Block X columns are read from the frozen Phase 3
+          artefacts and are byte-identical to them
+    DS8   determinism: a second full run is bit-identical
+    DS9   probability contract on every rung via the harness's own validator
+    DS10  no frozen artefact moved hash; FROZEN_MANIFEST.txt verifies
+    DS11  ANCHOR. The extracted DC state, fed through Phase 2's OWN
+          outcome_probabilities(), reproduces dc_walkforward's 0.9904 pooled
+          log loss to < 1e-9. This proves the state extraction is lossless
+          BEFORE any logistic touches it, so a D2 shortfall cannot be blamed
+          on extraction.
+    DS12  every inner split satisfies max(train date) < min(validation date),
+          strictly
+
+-------------------------------------------------------------------------------
+9.  THE OPEN DECISION - WHY THIS DOCUMENT IS BLOCKED
+-------------------------------------------------------------------------------
+
+    The DC-passthrough diagnostic ran and returned INVALID on a regime gate,
+    not on the link. The finding:
+
+        Phase 2's walk-forward only ever fits windows of at least one full
+        training season, and only ever PREDICTS test-season matches. Applying
+        the same rule to TRAINING rows enters a regime Phase 2 never did.
+
+        lambda_home reaches 47.26 on a 19-match window (West Ham, 2021-08-23)
+        and 21.94 on a 20-match window, against a maximum of 4.64 across all
+        1,520 test rows. Dixon-Coles strengths are not identified on a
+        fortnight of football.
+
+        Those outliers sit in the TRAINING rows, so they distort the
+        standardiser the test rows are then mapped through. That is what
+        produced fold 2's passthrough log loss of 27.09 - not the logistic
+        link. Reading that number as a link measurement would have been a
+        false finding that reshaped the whole Phase 4 design.
+
+        Exactly 380 training rows - the whole of 2021-22 - are fitted on
+        windows smaller than the smallest window any test row was scored on.
+
+    THE DECISION REQUIRED, and it must be made before any fit:
+
+        A. BURN-IN BY SEASON. D2's training rows begin at 2022-23; 2021-22
+           supplies state but is never a training row. Costs fold 1 its entire
+           training set, so fold 1 would have to be dropped or redefined -
+           which changes the frozen fold structure and is therefore a serious
+           step.
+
+        B. MINIMUM-WINDOW THRESHOLD. Training rows require a fitting window of
+           at least N matches. N must be declared before fitting, not chosen
+           from the failure. A principled, untuned choice is N = 380, one full
+           season, which is also the smallest window any test row has - it
+           makes training and test regimes identical by construction.
+
+        C. WINSORISE / CLIP the state features at bounds fitted on training
+           rows only. Keeps every row but changes the feature definition, and
+           the bound is a new free parameter.
+
+        D. Something else.
+
+    RECOMMENDATION: B with N = 380. It is the only option whose threshold is
+    fixed by the experiment's own structure rather than by the observed
+    failure - it equalises the training and test regimes by definition - and
+    it keeps all four frozen folds intact, which A does not.
+
+    NOT CHOSEN HERE. Choosing a burn-in threshold having already seen which
+    value broke fold 2 is precisely what this project's pre-declarations exist
+    to prevent. The decision is recorded as an amendment before anything is
+    fitted.
+
+===============================================================================
+END OF PRE-DECLARATION
+===============================================================================

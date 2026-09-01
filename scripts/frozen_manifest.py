@@ -47,6 +47,12 @@ FROZEN_PATTERNS = [
     "outputs/phase0_evaluation_spec.json",
     "outputs/phase2_base_rate_fold_summary.csv",
     "outputs/phase2_elo_fold_summary.csv",
+    # Elo v1's five published metrics. The sixth, RPS, is derived from its own
+    # per-match probabilities in phase2_elo_metrics_full.csv, because Elo ran
+    # three days before the harness had the metric and its summary row names
+    # five columns explicitly - so re-running it reproduces byte-identical
+    # five-metric output rather than gaining the sixth.
+    "outputs/phase2_elo_metrics_full.csv",
     "outputs/phase2_poisson_dc_fold_summary.csv",
     "outputs/phase3_ablation_fold_summary.csv",
     "outputs/phase3_ablation_ladder.csv",

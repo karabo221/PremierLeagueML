@@ -18,8 +18,8 @@ legitimately re-run. It means the artefact is no longer the one the
 pre-declaration was written against, and that has to be reconciled explicitly
 rather than noticed later.
 
-generated 2026-09-01T06:55:08Z
-33 files
+generated 2026-09-01T10:10:37Z
+34 files
 
 c0ea0bce045af978c64aa3e209ea8b9f5fb1dde52f95c83c65e3e5e316c367f0  PHASE3_CEILING_PREDECLARATION.txt
 1de3af06af72634d91d1f0f07b50256785a5a1c16fda41de85138cf975524da4  PHASE3_REGULARISATION_PREDECLARATION.txt
@@ -29,6 +29,7 @@ c0ea0bce045af978c64aa3e209ea8b9f5fb1dde52f95c83c65e3e5e316c367f0  PHASE3_CEILING
 871b5850a790895a9c76c4f2466d01d04cf8a6d4c216bb3e770750ea903abbbb  outputs/phase0_evaluation_spec.json
 5623a07f3302ec26d5bdba8d7319f91d41e5f49e7ec7491cb33dd12b7e203d41  outputs/phase2_base_rate_fold_summary.csv
 99c8edfdd7264af59185d137182c4e03eaec05a49a818322b94768d111dd77fc  outputs/phase2_elo_fold_summary.csv
+6cf726f88fedfbd028ce7b0c2aa4226e0453ad19772692a25b50c5bbd355085c  outputs/phase2_elo_metrics_full.csv
 964d0d5b4437a601410b938c7b7979f594e2cbc83d6e53633ae1350bfd6824e8  outputs/phase2_poisson_dc_fold_summary.csv
 ad30aa024af1361768357e6e9b77480103a70cff5aaf7c8735d0a7d90344aa81  outputs/phase3_ablation_fold_summary.csv
 f80a15c33c3d556ac880fb2a035c08debdc2f407de3e3a96e76339a9be52c5bf  outputs/phase3_ablation_ladder.csv
