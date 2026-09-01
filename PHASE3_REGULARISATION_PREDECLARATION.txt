@@ -1,0 +1,353 @@
+===============================================================================
+PHASE 3 - INSTRUMENT 4
+REGULARISATION SENSITIVITY OF THE B0-B6 LADDER
+
+PRE-DECLARATION.  Written and committed BEFORE the experiment was run.
+===============================================================================
+
+WHY THIS DOCUMENT EXISTS
+
+    Instrument 3 fixed lambda = 1.0 and said so honestly: "This measures THIS
+    model at THIS declared configuration. It is not a measurement of how much
+    information the features contain."
+
+    That sentence is the whole reason for this instrument. The ladder's
+    finding - B1 best, B2-B6 monotonically worse, generalisation gap widening
+    from 0.007 at B0 to 0.300 at B6 - is exactly the shape an under-regularised
+    fit produces when columns are added to a small sample. 133 design columns
+    against 380 training rows in fold 1 is not a regime in which lambda = 1 on
+    standardised features can be assumed adequate. So the finding is currently
+    confounded: "these features carry nothing" and "lambda = 1 could not hold
+    onto what they carry" predict the same table.
+
+    This instrument separates the two. It is a SENSITIVITY EXPERIMENT, not a
+    new model. Nothing about the feature set, the folds, the metrics or the
+    model class changes. Only lambda moves, and it moves over a grid fixed
+    here, in advance, in a committed file.
+
+THE ONE FAILURE MODE THIS DOCUMENT PREVENTS
+
+    If the grid, the selection rule or the success criterion were chosen after
+    seeing the outer-test surface, this experiment would be a search dressed
+    as a test, and its result would mean nothing. Every choice that could be
+    tuned is therefore written down below, before the first fit.
+
+    The SHA-256 of this file is recorded in the run's audit output, and the
+    run asserts that the grid it used is byte-identical to the grid declared
+    here. A later edit to this file cannot retroactively license a result.
+
+-------------------------------------------------------------------------------
+1.  WHAT IS FROZEN AND MUST NOT MOVE
+-------------------------------------------------------------------------------
+
+    scripts/phase3_feature_builder.py          the feature builder
+    scripts/phase0_evaluation_harness.py       the evaluation harness
+    scripts/phase3_ablation_ladder.py          Instrument 3 itself
+    data/raw/**                                the raw data
+    outputs/phase3_ablation_*.csv              the lambda = 1 frozen reference
+    outputs/phase[012]_*                       everything Phase 0/1/2 produced
+
+    This instrument READS all of the above and WRITES none of it. It writes
+    only outputs/phase3_reg_*.csv. Every file listed is SHA-256'd before the
+    run and again after it, and a single changed hash is a FAIL.
+
+-------------------------------------------------------------------------------
+2.  THE MODEL - UNCHANGED FROM INSTRUMENT 3
+-------------------------------------------------------------------------------
+
+    multinomial logistic regression, full softmax over [H, D, A]
+    L2 penalty on the summed negative log-likelihood
+    intercept unpenalised
+    Newton's method, gradient tolerance 1e-9, Hessian jitter 1e-10
+
+    fit_multinomial() and predict_multinomial() are IMPORTED from
+    phase3_ablation_ladder.py, not reimplemented. So are build_matrix(),
+    design_columns(), the ladder definition, the categorical vocabularies and
+    the held-out metadata columns. The only argument that varies is `penalty`,
+    which that function already accepts.
+
+    The per-fold pipeline is likewise unchanged in kind: impute with column
+    means, then standardise, both fitted on training rows alone. It is
+    re-implemented here only so that it can be fitted on an INNER training set
+    rather than the outer one; the arithmetic is identical, and test R7 below
+    proves it by reproducing Instrument 3's numbers exactly at lambda = 1.
+
+-------------------------------------------------------------------------------
+3.  THE LAMBDA GRID - DECLARED, EXHAUSTIVE, NOT EXTENSIBLE
+-------------------------------------------------------------------------------
+
+    LAMBDA_GRID = 0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30, 100
+
+    Nine values, half-decade spacing, four decades of range, centred on the
+    frozen lambda = 1 so that the reference configuration is a grid point and
+    not an interpolation.
+
+    This grid is complete. If the selected lambda lands on an endpoint the run
+    REPORTS that fact as a boundary warning; it does not extend the grid. An
+    extended grid would be a second experiment and would need its own
+    pre-declaration.
+
+-------------------------------------------------------------------------------
+4.  HOW LAMBDA IS SELECTED - TRAINING DATA ONLY
+-------------------------------------------------------------------------------
+
+    Lambda is selected independently for each (rung, outer fold) pair, using
+    an inner cross-validation that sees ONLY that outer fold's training rows.
+    The outer test season is not read, not scored, and not available to the
+    selector at any point.
+
+    4.1  THE ATOMIC UNIT IS (season, matchweek)
+
+        190 blocks of exactly 10 matches each. Splitting on match rows could
+        put two halves of one matchweek on opposite sides of an inner
+        boundary; splitting on blocks cannot. Blocks are ordered by their
+        minimum date, then season, then matchweek.
+
+    4.2  THE INNER SPLIT IS EXPANDING-WINDOW, MIRRORING THE OUTER FOLDS
+
+        The outer fold's training blocks, in chronological order, are cut into
+        four contiguous, near-equal-by-row-count segments Q1 Q2 Q3 Q4. Three
+        inner folds follow:
+
+            inner 1   train Q1           validate Q2
+            inner 2   train Q1+Q2        validate Q3
+            inner 3   train Q1+Q2+Q3     validate Q4
+
+        Expanding rather than rolling, because that is the shape of the outer
+        evaluation and an inner procedure of a different shape would select
+        lambda for a regime the model is not used in.
+
+        This scheme is used identically for all four outer folds. That matters:
+        outer fold 1 trains on a SINGLE season, so any leave-one-season-out
+        inner scheme would be undefined there, and a procedure that changed
+        shape between folds would confound "lambda differs by fold" with
+        "the selector differs by fold".
+
+    4.3  THE PIPELINE IS REFITTED INSIDE EVERY INNER FOLD
+
+        Imputation means and standardisation statistics are recomputed on each
+        INNER TRAINING set. Reusing the outer training statistics would leak
+        the inner validation block into its own scoring - a smaller leak than
+        the one this experiment is chiefly guarding against, and still a leak.
+
+    4.4  THE SELECTION RULE
+
+        Selected lambda = argmin over the grid of the MEAN log loss across the
+        three inner validation blocks, pooled as an unweighted mean of the
+        three per-block log losses.
+
+        Log loss because it is Instrument 3's PRIMARY_METRIC. No other metric
+        participates in selection; the rest are reported.
+
+        TIE-BREAK: exact ties go to the LARGER lambda. In a regime with more
+        columns than the sample can support, the parsimonious choice is the
+        more heavily penalised one, and a tie-break that had to be invented
+        after seeing a tie would be a free parameter.
+
+    4.5  AFTER SELECTION
+
+        The model is refitted on the FULL outer training set at the selected
+        lambda, with the pipeline fitted on those full outer training rows,
+        and scores the outer test season once. That single score is the
+        headline number for that (rung, fold).
+
+    4.6  B0 CARRIES NO FEATURES
+
+        With zero columns the penalty applies to nothing - the intercept is
+        unpenalised - so every lambda gives an identical fit. B0 is run
+        through the identical machinery anyway, and its invariance across the
+        grid is an assertion (R10), not an assumption.
+
+-------------------------------------------------------------------------------
+5.  THE OUTER-TEST SENSITIVITY SURFACE IS A DIAGNOSTIC, NOT A SELECTOR
+-------------------------------------------------------------------------------
+
+    The run also fits every (rung, fold, lambda) on the full outer training
+    set and scores the outer test season, producing a 7 x 4 x 9 surface. This
+    is REPORTED because the question "does any lambda rescue B2-B6" deserves a
+    direct answer rather than an inference.
+
+    It is never read by the selector. The code path that computes it cannot
+    reach the code path that chooses lambda; R2, R3 and R4 below exist to
+    prove that, and R4 is a runtime tripwire rather than an after-the-fact
+    audit.
+
+    Any statement made from this surface is labelled ORACLE in the output.
+    An oracle number is a bound on what selection could have achieved, never
+    a result. The headline table uses selected lambda only.
+
+-------------------------------------------------------------------------------
+6.  WHAT WOULD CHANGE THE ORIGINAL CONCLUSION - DECLARED IN ADVANCE
+-------------------------------------------------------------------------------
+
+    The conclusion under test, from Instrument 3:
+
+        "B1 is the best rung. B2-B6 do not help."
+
+    Let D(rung) = mean over the four outer folds of
+                  [log loss(rung) - log loss(B1)], both at selected lambda,
+                  paired fold by fold.
+
+    Let SE(rung) = sd(D across the four folds, ddof=1) / sqrt(4).
+
+    DECLARED OUTCOMES:
+
+    OVERTURNED   argmin over rungs of mean outer-test log loss lies in
+                 {B2..B6}, AND for that rung  D + SE < 0.
+                 That is: the improvement over B1 survives a one-standard-
+                 error haircut on only four folds.
+
+    WEAKENED     argmin lies in {B2..B6} but D + SE >= 0.
+                 A better point estimate that four folds cannot support.
+
+    UPHELD       argmin is B1 or B0.
+
+    A fourth outcome is possible and is declared here so that it cannot be
+    presented later as a discovery:
+
+    REFRAMED     UPHELD, but the selected lambda is systematically far from 1
+                 and the B1-vs-B6 gap collapses relative to the frozen run.
+                 That would mean the frozen ladder over-stated the harm of the
+                 FBref blocks without changing which rung wins.
+
+    The one-standard-error haircut over four folds is deliberately weak
+    evidence and is described as such. Four folds cannot establish a small
+    effect. This experiment can only remove a confound; it cannot promote
+    B2-B6 on its own.
+
+-------------------------------------------------------------------------------
+7.  ALSO REPORTED, SELECTED IN ADVANCE
+-------------------------------------------------------------------------------
+
+    - selected lambda for every (rung, fold), plus the inner-CV curve behind it
+    - full outer-test surface, every rung x fold x lambda, all six metrics
+    - L2 norm of the fitted coefficient vector per rung x fold x lambda
+    - the same norm broken down by feature BLOCK, using block_of() from the
+      feature builder: phase1_backbone, C_context, X_prior_composite,
+      X_availability. Coefficients are on standardised columns, so these norms
+      are comparable across blocks.
+    - train / test log loss and the generalisation gap at every lambda, which
+      is the quantity that diagnoses whether lambda = 1 was the problem
+    - the frozen lambda = 1 column, read from outputs/phase3_ablation_ladder.csv
+      and never recomputed into it
+
+-------------------------------------------------------------------------------
+8.  THE TESTS
+-------------------------------------------------------------------------------
+
+    R1   no inner-CV row index is an outer-test row index, any rung, any fold
+    R2   corrupting the outer test season's FEATURES changes no selected
+         lambda and no fold-1-to-3 prediction  (with a control that fold 4's
+         own predictions do move)
+    R3   corrupting the outer test season's LABELS changes no selected lambda
+         and no fold-1-to-3 prediction
+    R4   runtime tripwire: the selector raises if handed a test-season row
+    R5   every inner split is time-respecting - max train date < min
+         validation date, and no (season, matchweek) block straddles a split
+    R6   the grid used is byte-identical to the grid declared in this file
+    R7   at lambda = 1 this instrument reproduces Instrument 3's frozen
+         ladder numbers to < 1e-9, all six metrics, all rungs, all folds
+    R8   nothing frozen in section 1 changed hash across the run
+    R9   two full runs are bit-identical: same lambdas, same probabilities
+    R10  B0's fit is invariant across the entire grid
+    R11  boundary report: how often the selected lambda sits at a grid end
+
+===============================================================================
+END OF PRE-DECLARATION
+===============================================================================
+
+
+===============================================================================
+AMENDMENT 1 - 2026-08-31
+THE INNER SPLIT'S ATOMIC UNIT: (season, matchweek) -> calendar date
+===============================================================================
+
+WHAT WAS FOUND
+
+    Section 4.1 above declared the atomic unit of the inner split to be the
+    (season, matchweek) block, "190 blocks of exactly 10 matches each",
+    ordered by minimum date. Section 8 then declared test R5, which requires
+    every inner split to satisfy max(train date) < min(validation date).
+
+    Those two declarations are incompatible in this dataset, and the run of
+    the split machinery showed it immediately: a Premier League matchweek is
+    not a contiguous stretch of time. Postponed fixtures are replayed months
+    later under their ORIGINAL matchweek number.
+
+        matchweeks spanning more than 7 days   31 of 190
+        2022-2023 matchweek 8                  2022-09-16 to 2023-04-04, 200 days
+        2021-2022 matchweek 18                 2021-12-18 to 2022-05-19, 152 days
+        2021-2022 matchweek 21                 2022-01-01 to 2022-05-11, 130 days
+
+    So ordering blocks by min_date and cutting between them produces inner
+    folds whose training side reaches later in time than their validation
+    side. Outer fold 1, inner split 2, came out as train to 2022-05-19,
+    validate from 2021-12-28. That is training on the future to predict the
+    past - the exact defect the inner procedure exists to avoid.
+
+    R5 was going to fail, correctly. The declared unit is not merely awkward,
+    it is unable to deliver the property it was declared for.
+
+THE AMENDMENT
+
+    4.1 is replaced by:
+
+        The atomic unit of the inner split is the CALENDAR DATE. All matches
+        played on one date fall on one side of every inner boundary. Dates
+        are ordered chronologically.
+
+    R5 is replaced by:
+
+        R5a  every inner split satisfies max(train date) < min(validation
+             date), strictly. Unchanged in intent, now achievable.
+
+        R5b  no calendar date straddles an inner boundary.
+
+        R5c  MEASUREMENT, not a pass/fail: how many (season, matchweek)
+             blocks are divided by an inner boundary, and how many matches
+             that involves.
+
+    Nothing else changes. Not the grid, not the expanding-window shape, not
+    the four-segment cut, not the selection criterion, not the tie-break, not
+    the primary metric, and not one word of section 6 - the criterion for
+    whether the original conclusion changed.
+
+WHY A DIVIDED MATCHWEEK IS ACCEPTABLE AND A DIVIDED DATE IS NOT
+
+    The matchweek block was chosen to stop two halves of one round of fixtures
+    landing on opposite sides of a boundary. That worry is about
+    CONTEMPORANEITY - matches played at the same time sharing information.
+
+    But a matchweek's two halves, when it is divided at all, are divided
+    BECAUSE they were played months apart. They are not contemporaneous; the
+    label says they are. The calendar date captures the real thing the block
+    was a proxy for, and captures it exactly.
+
+    The reverse is not true. A divided date would put two matches played the
+    same afternoon on opposite sides of a boundary, which is the genuine
+    defect. R5b forbids it.
+
+WHAT HAD BEEN SEEN WHEN THIS AMENDMENT WAS WRITTEN
+
+    Recorded so that this cannot later be mistaken for a choice made to
+    obtain a result:
+
+    SEEN    inner split row counts and date ranges for all four outer folds
+    SEEN    the matchweek span table reproduced above
+    SEEN    one lambda = 1 reproduction spot check, B6 fold 4, agreeing with
+            the frozen ladder to 2.2e-16 - a check that the re-indexed
+            pipeline is Instrument 3's pipeline, not a result
+    SEEN    a three-point timing probe on B6 fold 4 at lambda 0.01, 1 and 100
+
+    NOT SEEN  any selected lambda, any inner-CV curve, the outer-test surface
+              for any other rung or fold, any ladder table, any verdict
+
+    The timing probe did show three outer-test log losses. It is disclosed
+    here rather than omitted. It cannot bias the amendment in any direction:
+    the amendment changes only which rows fall in which inner segment, and
+    that machinery is identical for every rung and every lambda in the grid.
+    No threshold, no grid value and no decision rule was touched.
+
+===============================================================================
+END OF AMENDMENT 1
+===============================================================================

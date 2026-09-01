@@ -1,0 +1,730 @@
+===============================================================================
+PREMIER LEAGUE ML - PHASE 3 FEATURE ENGINEERING SPECIFICATION
+Design and raw-data audit. No features built. Written 2026-08-29.
+===============================================================================
+
+Phase 3 asks the question the project opened with:
+
+    What information can we legitimately give a model before kickoff,
+    and how should that information be represented?
+
+This document answers both halves, and it answers them from measurements
+rather than from judgement. The measuring instrument is:
+
+    scripts/phase3_raw_feature_audit.py     19 tests, 0 failures
+
+It is strictly read-only over data/raw/. It builds no features, trains
+nothing, and does not touch the Phase 0 evaluation harness.
+
+
+===============================================================================
+0. THE ANSWER IN ONE PAGE
+===============================================================================
+
+WHAT WE MAY LEGITIMATELY USE
+
+  1. Everything Phase 1 already built - 86 result-derived features on the
+     strict date < T boundary. Unchanged, untouched, still the backbone.
+
+  2. CONTEXT FROM THE FIXTURE LIST. Rest days, congestion and schedule
+     position need no new data at all. They are derivable today from dates
+     Phase 1 has already computed and already proved safe. This is free
+     information the project has not yet spent.
+
+  3. THE LAG-1 SEASON PRIOR. Phase 0 condemned all 60 FBref aggregates as
+     end-of-season information. That verdict was about the CURRENT season
+     and it stands untouched. It left one door open, and this phase walks
+     through it: for a match in season S, the aggregate for season S-1 was
+     complete and public before S kicked off. Measured, not assumed - the
+     smallest gap between a prior's completion and its target season's
+     first match is 75 days (T2, T3).
+
+WHAT WE MAY NOT USE
+
+  4. Any within-season rolling shooting, goalkeeping, playing-time or
+     miscellaneous statistic. Not because it would leak, but because it
+     CANNOT BE BUILT. There is no match-level statistical data anywhere in
+     this project. All 60 files are 20-row season aggregates. Model E in
+     UpdatesLearning.txt - "do these deeper performance statistics actually
+     improve prediction" - cannot be answered in its rolling form until
+     Football-data.co.uk arrives in Phase 4.
+
+WHAT IS MISSING AND MUST BE SOURCED
+
+  5. xG. Zero expected-goals columns exist in any of the 60 files (T13).
+     The exports were taken without FBref's Expected block. This is the
+     single highest-value acquisition on the list.
+
+  6. Rest days are NOT missing. The task brief listed them alongside xG;
+     that is worth correcting, because it changes what to do next. They are
+     available for 1,850 of 1,900 matches (97.37%) from data already in
+     outputs/phase1_historical_team_state.csv (T15).
+
+HOW IT MUST BE REPRESENTED
+
+  7. LEAGUE-RELATIVE, NEVER RAW. Sixteen columns drift more between seasons
+     than teams differ within one (T8). Under whole-season test folds, a raw
+     level of such a column is partly a fold fingerprint - it tells the model
+     which season it is looking at, which is information that cannot transfer
+     to a season the model has never seen.
+
+  8. FEW FEATURES, NOT MANY. The 60 files hold 198 stat columns. 33 are
+     constant across all 20 teams. 50 more are exactly determined by another
+     column - Overall GD is literally Playing Time's +/- , and the same
+     squad-size number appears in eight different tables. That leaves 113
+     genuinely independent quantities, to be estimated from 80 team-season
+     prior vectors. p > n. The schema below therefore ships 8 composite
+     indices per side, not 113 raw columns.
+
+
+===============================================================================
+1. WHAT WAS INSPECTED
+===============================================================================
+
+  outputs/phase0_feature_availability_registry.csv    40 entries
+      19 allowed, 19 refused (4 of them targets), 1 undetermined (Referee).
+
+  outputs/phase1_feature_provenance.csv               86 feature columns
+      current_match_history 32, current_venue_history 16,
+      previous_season 18, relative 15, availability_flag 5.
+
+  data/raw/                                           60 FBref files
+      7 distinct schemas, 198 stat columns, typed by column hierarchy.
+
+All three were re-derived by the instrument rather than read from the
+narrative, and the instrument's coverage count was cross-checked against
+Phase 1's own prior-availability figure: 1,292 home sides, both (T6).
+
+
+===============================================================================
+2. THE NINE FAMILIES
+===============================================================================
+
+Every one of the 198 columns lands in exactly one declared family (T14, 0
+unclassified). Perspective is what makes the categorisation work: FBref's
+"vs Arsenal" shooting row is not Arsenal shooting, it is what Arsenal
+CONCEDED. Reading the opponent table flips an attacking column into a
+defensive one, which is how attack and defence get separated at all.
+
+  FAMILY                COLS  CONST  DRIFT  SURVIVE  VERDICT
+  ------------------------------------------------------------------------
+  playing_time            58     24     10       34  PARTIAL - see 2.5
+  miscellaneous           28      0      6       28  ALLOW as lag-1, z-scored
+  team_form               22      7      0       15  ALLOW - mostly duplicate
+  home_away_strength      19      2      0       17  ALLOW as lag-1
+  attacking_strength      15      0      0       15  ALLOW as lag-1
+  defensive_strength      15      0      0       15  ALLOW as lag-1
+  goalkeeping             13      0      0       13  ALLOW as lag-1
+  goalkeeping_against     13      0      0       13  ALLOW - low value, see 2.4
+  shooting                 7      0      0        7  ALLOW as lag-1
+  shooting_against         7      0      0        7  ALLOW as lag-1
+  contextual               1      0      0        1  Attendance - REFUSE
+
+2.1 TEAM FORM
+    Overall Rk/W/D/L/Pts/GD/Pts-per-MP, plus Playing Time's PPM.
+    Almost entirely redundant with what Phase 1 already computes from
+    results, and Phase 1's version is better: it carries the sanction
+    explicitly (prev_season_pts vs prev_season_pts_raw vs
+    prev_season_sanction), which FBref's does not.
+    -> Take nothing new here. Phase 1 owns this family.
+
+2.2 ATTACKING / DEFENSIVE STRENGTH
+    Goals, assists, non-penalty goals, possession - squad side for attack,
+    opponent side for defence. Poss is the exception: opponent possession is
+    100 minus squad possession, measured at exactly 100.0 in all five
+    seasons (T9). One of the two is pure redundancy.
+    -> ALLOW, but goals-based columns overlap Phase 1's prev_season_gf/ga
+    almost completely. The NEW information here is possession, not goals.
+
+2.3 SHOOTING / SHOOTING AGAINST
+    Sh, SoT, SoT%, Sh/90, SoT/90, G/Sh, G/SoT, PK, PKatt - both sides.
+    The most valuable block in the dataset, because shot volume is the
+    closest thing we have to xG: it separates a team that created chances
+    from a team that converted a few. Sh and Sh/90 are the same column to
+    within floating point (every team plays exactly 38), so take the rate.
+    -> ALLOW. Highest priority of the FBref families.
+
+2.4 GOALKEEPING / GOALKEEPING AGAINST
+    Save%, CS, CS%, GA90, SoTA, Saves, and a Penalty Kicks block.
+    Two cautions. CS and CS% are the same column (r = 1.0, since MP = 38).
+    And "goalkeeping_against" is a team's opponents' collective keeping,
+    which is close to the league average by construction for every team -
+    low variance, low value.
+    -> ALLOW squad side. Deprioritise the opponent side.
+
+2.5 PLAYING TIME
+    The weakest family and the one that most needs discipline.
+    - 24 of its 58 columns are constant: Min = 3420, 90s = 38, Min% = 100,
+      Mn/MP = 90, Starts = 418, for every team in every season (T7). These
+      are arithmetic consequences of "a team plays 38 matches of 90 minutes
+      with 11 players", not facts about a team.
+    - Subs, unSub and Compl drift more BETWEEN seasons than teams differ
+      WITHIN one (ratios 1.43, 1.43, 1.43). That is the five-substitute
+      rule arriving in 2022-23: the league mean goes 106 -> 149 -> 151 ->
+      160 -> 157. A raw Subs level is mostly a season label.
+    - Opponent-side playing time is near-degenerate: within-season spread
+      5.76 against the squad side's 15.34, because a team's opponents
+      collectively are approximately the league.
+    -> ALLOW only Age, # Pl, Compl, Subs - squad side, z-scored within the
+    prior season. REFUSE every constant and the whole opponent side.
+
+2.6 MISCELLANEOUS
+    CrdY, CrdR, 2CrdY, Fls, Fld, Off, Crs, Int, TklW, PKwon, PKcon, OG.
+    Int (drift ratio 0.65) and CrdY (0.51) are the most regime-sensitive
+    columns outside Playing Time - officiating and event-definition
+    standards changed noticeably in 2023-24.
+    -> ALLOW as lag-1, z-scored. Never as raw levels.
+
+2.7 HOME / AWAY STRENGTH
+    The one FBref table that gives something Phase 1 genuinely lacks: a
+    PREVIOUS-SEASON venue split. Phase 1's venue features are all
+    current-season, which is why venue form is 0% available at MW1 and only
+    reaches 100% at MW3. A lag-1 home/away prior covers exactly that gap.
+    TRAP (Phase 0 Finding 3, re-measured as T12): this table does NOT carry
+    the points deduction while the Overall table does. Home Pts + Away Pts
+    disagrees with Overall Pts for exactly 2 of 100 team-seasons - Everton
+    and Nottingham Forest, 2023-24. Never mix the two sources.
+    -> ALLOW. Derive venue points from W/D/L inside this table only.
+
+2.8 CONTEXTUAL
+    In the FBref tables this family contains only Attendance, which is
+    recorded at the match and already refused by the Phase 0 registry.
+    The real contextual features come from the fixture list - section 5.
+
+
+===============================================================================
+3. THE LAG-1 DOCTRINE, AND WHY IT IS SAFE
+===============================================================================
+
+THE RULE
+
+    For a match at date T in season S, the season aggregate for season S-1
+    may be used. The aggregate for season S may not.
+
+WHY THE SECOND HALF STILL HOLDS
+
+    Phase 0's T6/T7 condemned season aggregates because their availability
+    date is the season's final match date. T4 re-measures this rather than
+    citing it: 1,850 of 1,900 matches are played before their own season's
+    aggregate exists. Nothing has been softened.
+
+WHY THE FIRST HALF IS SAFE - MEASURED, NOT ARGUED
+
+    target      prior       prior available   target first    gap
+    ---------------------------------------------------------------
+    2022-2023   2021-2022   2022-05-22        2022-08-05      75 days
+    2023-2024   2022-2023   2023-05-28        2023-08-11      75 days
+    2024-2025   2023-2024   2024-05-19        2024-08-16      89 days
+    2025-2026   2024-2025   2025-05-25        2025-08-15      82 days
+
+    T2: 0 violations across 4 season pairs, minimum gap 75 days.
+    T3: 0 of 1,520 matches fall on or before their own prior's
+        availability date. The property is checked per match, not just at
+        the season boundary, because an implication is not a measurement.
+
+THE MAPPING IS VERIFIED, NOT TRUSTED
+
+    The folder named "2022 PL Season" is claimed to hold 2021-22. T1 checks
+    this by rebuilding each season's goals-for vector from the fixture
+    results and requiring it to match the Overall table exactly - 5 of 5
+    seasons, 0 mismatches. A silent off-by-one here would shift every
+    prior by a year and would be invisible in every downstream metric.
+
+COVERAGE - AND ITS CEILING
+
+    status                        2021-22  2022-23  2023-24  2024-25  2025-26
+    ------------------------------------------------------------------------
+    available                           0       17       17       17       17
+    absent_from_previous_season         0        3        3        3        3
+    no_prior_season_in_dataset         20        0        0        0        0
+
+    2,584 of 3,800 team-sides covered - 68.0%, identical to Phase 1's
+    figure by construction (T6). The 32% gap is real football: 380 matches
+    lose it to the dataset boundary and 228 to promotion.
+
+    THE CEILING THAT MATTERS: only FOUR of the five FBref seasons are ever
+    used as priors. 2025-26's aggregates have no target season in this
+    dataset. So the entire FBref contribution rests on
+
+        4 prior seasons x 20 teams = 80 team-season vectors
+
+    against 113 independent candidate quantities. That is p > n, and it is
+    the single most important number in this document. It is why section 6
+    ships composite indices rather than columns.
+
+
+===============================================================================
+4. WHAT CANNOT BE RECONSTRUCTED, AND WHY
+===============================================================================
+
+4.1 ROLLING MATCH-LEVEL STATISTICS - IMPOSSIBLE, NOT UNSAFE
+
+    There is no match-level statistical data in this project. Every one of
+    the 60 files is a 20-row season aggregate. You cannot recover "Arsenal's
+    shots in their last 5 matches" from "Arsenal's shots in 2023-24" by any
+    transformation, because the information was never there.
+
+    This is the honest answer to Model E as originally written. The
+    within-season rolling versions of shooting, goalkeeping, playing time
+    and miscellaneous are not deferred for caution. They are unbuildable
+    until Phase 4 supplies match-level rows.
+
+4.2 CONSTANT COLUMNS - 33 OF THEM
+
+    Min = 3420, 90s = 38, Min% = 100, Mn/MP = 90, Starts = 418, MP = 38,
+    Home MP = Away MP = 19. Identical for every team in every season. A
+    feature that cannot vary cannot inform. Refused by rule, not by taste.
+
+4.3 EXACTLY DETERMINED COLUMNS - 50 OF THEM, IN 30 GROUPS
+
+    The tables overlap heavily. Measured at |r| > 0.99999 across 100
+    team-seasons:
+
+      Overall GF   ==  Goalkeeping-Opponent GA
+                   ==  Playing Time onG  ==  Playing Time-Opponent onGA
+      Overall GD   ==  Playing Time +/-  ==  Playing Time +/-90
+                   == -Playing Time-Opponent +/-
+      Overall W    ==  Goalkeeping W     ==  Goalkeeping-Opponent L
+      # Pl         ==  the same number in all EIGHT tables that carry it
+      CrdY, CrdR   ==  duplicated between Standard and Miscellaneous
+      Sh           ==  Sh/90        (every team plays exactly 38)
+      CS           ==  CS%
+      Gls          ==  Per-90 Gls   (same reason)
+
+    Keeping both sides of an identity inflates the feature count and the
+    variance without adding one bit. Phase 1's quality gate already applied
+    this rule and found 4 equivalent pairs among its own 86; this is the
+    same rule applied to the raw tables.
+
+    198 catalogued  ->  33 constant  ->  50 redundant  ->  113 independent.
+
+4.4 2025-26 SHOOTING-AGAINST - ABSENT, AND IT DOES NOT MATTER
+
+    Phase 0 Finding 2 established that data/raw/2026 PL Season/ holds 12
+    files but only 11 distinct tables; "Squad Shooting Opponent .xls" is a
+    byte-identical copy of the goalkeeping opponent table. T0c confirms
+    exactly one empty slot in the 60-slot grid.
+
+    Phase 3 needs shooting-against for seasons 2021-22 through 2024-25, as
+    priors for 2022-23 through 2025-26. All four are present. The missing
+    table would only be needed as a prior for 2026-27, which is not in this
+    dataset. NOT A PHASE 3 BLOCKER - re-download it before extending the
+    project into next season.
+
+4.5 REFEREE - STILL UNDETERMINED
+
+    Phase 0 section 5 left this open and it is still open. Recommendation:
+    option (b) - add an "accepted external claim" status to the registry
+    rather than flipping it to YES, so the FAIL signal keeps its meaning.
+    The feature is low-value regardless: roughly 20 referees over 1,900
+    matches, high cardinality against small n. Not worth spending the
+    project's one epistemic exception on.
+
+
+===============================================================================
+5. WHAT MUST BE SOURCED SEPARATELY
+===============================================================================
+
+  PRIORITY  WHAT                       WHERE               UNLOCKS
+  --------------------------------------------------------------------------
+  1  Match-level stats: shots, SoT,    football-data.co.uk Rolling everything.
+     corners, fouls, cards, HTHG                           Phase 4 as planned.
+  2  xG / npxG per match               understat, or       Rolling xG - the
+                                       fbref match logs    single best public
+                                                           predictor known.
+  3  xG season aggregates              re-export FBref     A lag-1 xG prior.
+                                       WITH the Expected   Cheap: same 60
+                                       block               files, one column
+                                                           block wider.
+  4  Market closing odds               football-data.co.uk The benchmark
+                                                           ceiling in
+                                                           Direction_2's table.
+  5  Championship final tables         any source          A real prior for the
+     2020-21 .. 2024-25                                    228 promoted-team
+                                                           rows now NaN.
+  6  European / cup fixture dates      UEFA, FA            True congestion,
+                                                           not just PL rest.
+  7  Injuries, squad availability      no reliable free    OUT OF SCOPE. Say
+                                       historical source   so rather than
+                                                           approximating badly.
+
+  NOT MISSING - already in hand: rest days, congestion, schedule position,
+  matchweek, venue, day of week, kickoff time. See section 6, Block C.
+
+  Note on item 3 vs item 2: the lag-1 xG prior is much cheaper to obtain and
+  much weaker than rolling xG. Get item 3 while doing Phase 3; get item 2
+  before believing any conclusion about how much xG is worth.
+
+
+===============================================================================
+6. THE FEATURE SCHEMA
+===============================================================================
+
+Naming follows the Phase 1 convention exactly: lowercase snake_case,
+home_/away_/rel_ prefix, _before suffix where a value is a date < T slice,
+and an explicit *_available boolean per block. Empty state is NaN, never
+zero - a rate with no matches behind it is undefined, not bad.
+
+-------------------------------------------------------------------------------
+BLOCK C - CONTEXT.  12 columns.  Fixture list only, no new data.
+-------------------------------------------------------------------------------
+
+  home_rest_days                 int    days since this team's previous match
+  away_rest_days                 int
+  rel_rest_days_diff             int    home - away
+  home_matches_last14            int    matches with date < T in [T-14, T)
+  away_matches_last14            int
+  rel_matches_last14_diff        int
+  home_is_season_opener          bool   no previous match this season
+  away_is_season_opener          bool
+  days_since_season_start        int    T - first match date of this season
+  kickoff_hour_bucket            cat    early / afternoon / evening
+  day_of_week                    cat
+  rel_context_available          bool
+
+  Sourcing: home_rest_days and away_rest_days come from Phase 1's existing
+  home_previous_match_date / away_previous_match_date, which already obey
+  the strict date < T rule. Do not recompute them - reuse them, so the
+  boundary is inherited rather than re-implemented.
+
+  Season boundary: at GW1 the previous match is the previous SEASON's last
+  match, 75-89 days earlier. That is not a rest advantage, it is a
+  different quantity. Rule: where is_season_opener is true, rest_days is
+  NaN. Do not cap, do not zero, do not let 82 sit in the same column as 3.
+
+  Caution recorded now so it is not discovered later: rest differential is
+  confounded with European participation. The team with LESS rest is
+  usually the one playing midweek in Europe, which is usually the better
+  team. Measured over 1,657 in-season matches, when the away side is the
+  more rested by 2+ days the HOME side wins 49.7% - the opposite of the
+  naive reading. Never test rest days without a team-strength control.
+
+-------------------------------------------------------------------------------
+BLOCK P - LAG-1 QUANTITIES.  Intermediate, z-scored. Not shipped raw.
+-------------------------------------------------------------------------------
+
+Each quantity is computed for all 20 teams of the prior season, then
+converted to a z-score WITHIN THAT SEASON'S 20 TEAMS. The z-score is what
+makes the representation league-relative, and it is what neutralises the
+16 drift-flagged columns: a rule change that moves every team moves the
+mean, not the z.
+
+  ATTACK        z_sh90        Shooting/Squad     Sh/90
+                z_sot90       Shooting/Squad     SoT/90
+                z_sot_pct     Shooting/Squad     SoT%
+                z_gsh         Shooting/Squad     G/Sh
+                z_gf90        Overall            GF / 38
+                z_poss        Standard/Squad     Poss
+  DEFENCE       z_sh90_ag     Shooting/Opponent  Sh/90
+                z_sot90_ag    Shooting/Opponent  SoT/90
+                z_ga90        Goalkeeping/Squad  GA90
+                z_save_pct    Goalkeeping/Squad  Save%
+                z_cs_pct      Goalkeeping/Squad  CS%
+  STYLE         z_fls         Miscellaneous/Sq   Fls
+                z_crdy        Miscellaneous/Sq   CrdY      [drift 0.51]
+                z_crdr        Miscellaneous/Sq   CrdR
+                z_crs         Miscellaneous/Sq   Crs
+                z_int         Miscellaneous/Sq   Int       [drift 0.65]
+  SQUAD         z_age         Playing Time/Sq    Age
+                z_npl         Playing Time/Sq    # Pl
+                z_subs        Playing Time/Sq    Subs      [drift 1.43]
+                z_compl       Playing Time/Sq    Compl     [drift 1.43]
+  VENUE         z_home_ppm    Home/Away          Home Pts/MP   (from W/D/L)
+                z_away_ppm    Home/Away          Away Pts/MP   (from W/D/L)
+                z_home_gdpm   Home/Away          (Home GF-GA)/19
+                z_away_gdpm   Home/Away          (Away GF-GA)/19
+
+  24 quantities. Venue points are derived from W/D/L inside the Home/Away
+  table and never from Overall Pts (T12).
+
+-------------------------------------------------------------------------------
+BLOCK X - COMPOSITE INDICES.  24 columns.  THIS IS WHAT SHIPS.
+-------------------------------------------------------------------------------
+
+Fixed, declared, equal weights over Block P z-scores. No weight is fitted,
+so no weight can be fitted on test data, so this block has no free
+parameters to leak through.
+
+  home_prior_attack        mean(z_sh90, z_sot90, z_gf90)
+  home_prior_finishing     mean(z_sot_pct, z_gsh)
+  home_prior_defence       mean(-z_sh90_ag, -z_sot90_ag, -z_ga90)
+  home_prior_keeping       mean(z_save_pct, z_cs_pct)
+  home_prior_control       mean(z_poss, z_crs, -z_fls)
+  home_prior_discipline    mean(z_crdy, z_crdr)
+  home_prior_rotation      mean(z_subs, -z_compl, z_npl, z_age)
+  home_prior_venue_split   z(z_home_ppm - z_away_ppm)
+  away_prior_*             the same eight
+  rel_prior_*_diff         home minus away, the same eight
+  home_prior_fbref_available / away_ / rel_    bool
+
+  WHY FINISHING IS ITS OWN INDEX AND NOT FOLDED INTO ATTACK
+    G/Sh and SoT% are conversion rates, and conversion is the least
+    persistent thing in football - it is the component most likely to be
+    last season's luck. Separating it means the ablation can DELETE it and
+    measure the difference, instead of burying it inside a composite where
+    its contribution can never be seen. If prior_finishing helps, that is a
+    finding. If it hurts, that is a bigger one.
+
+  WHY EIGHT AND NOT TWENTY-FOUR
+    80 prior vectors. Section 3's ceiling. Twenty-four correlated columns
+    on 80 independent observations is a variance machine, and it would make
+    the ablation unreadable: you could not tell which of them mattered.
+
+  MISSINGNESS
+    Promoted teams and the 2021-22 boundary give NaN, with the availability
+    flag set false and the reason carried in a status column reusing Phase
+    1's vocabulary: available / absent_from_previous_season /
+    no_prior_season_in_dataset. Never impute with zero - zero is the league
+    mean in z-space, which asserts a promoted side is exactly average.
+    Imputation is a MODELLING decision and belongs downstream, where it can
+    be fitted on training folds only.
+
+-------------------------------------------------------------------------------
+BLOCK R - REFUSED.  Documented so the refusal is auditable.
+-------------------------------------------------------------------------------
+
+  33 constant columns                     T7   cannot vary
+  50 exactly-determined columns           4.3  no information added
+  all same-season aggregates              T4   Phase 0 T6/T7
+  Attendance, Match Report, Notes, Score  registry
+  goalkeeping_against family              2.4  near-degenerate
+  opponent-side playing time              2.5  within-sd 5.76 vs 15.34
+  opponent Poss                           T9   = 100 - squad Poss
+  Referee                                 4.5  pending decision
+  all rolling FBref statistics            4.1  data does not exist
+
+TOTAL SHIPPED: 86 (Phase 1, unchanged) + 12 (Block C) + 24 (Block X) = 122.
+
+
+===============================================================================
+7. LEAKAGE REVIEW OF THE PROPOSED SCHEMA
+===============================================================================
+
+Eleven tests Phase 3 Instrument 2 must pass before any feature file is
+frozen. Each is written so that it FAILS if the thing it names is wrong.
+
+  L1  INDEX SHIFT. For every row, assert prior_source_season is exactly one
+      season earlier than the match's season, and that the prior's
+      availability date is strictly before the match date. The single most
+      damaging possible error and the easiest to make silently.
+
+  L2  PERTURBATION, BOTH DIRECTIONS.
+      (a) Rewrite every result in season S to 9-0, rebuild, and require
+          that no lag-1 prior feature for a match in S changes.
+      (b) THE NULL CONTROL. Rewrite every result in season S-1, rebuild,
+          and require that the priors for S DO change.
+      Without (b), a builder that ignored its input entirely would pass
+      (a) perfectly. Data_V records that Instrument 5 learned this the hard
+      way when T12b reported 12,822 phantom changes; the control is not
+      optional.
+
+  L3  Z-SCORE SCOPE. Each z is computed within one prior season's 20 teams.
+      Assert mean ~ 0 and sd ~ 1 over exactly 20 rows per prior season, and
+      that deleting an unrelated season leaves every z bit-identical.
+
+  L4  NO CROSS-SEASON NORMALISATION. Assert that no statistic entering any
+      feature is computed over rows spanning more than one season. This is
+      the rule that stops a global z-score quietly importing test-season
+      information into training features.
+
+  L5  MISSINGNESS EXPLAINED BOTH WAYS. Every NaN has a documented cause and
+      every documented cause produces a NaN. Phase 1 Instrument 5's rule,
+      applied to the new blocks.
+
+  L6  REST DAYS OBEY date < T. Assert previous_match_date < date strictly
+      for all 1,850 populated rows, and that the 50 NaN rows are exactly
+      the 50 GW1 matches Phase 0 identified.
+
+  L7  CONGESTION WINDOW IS HALF-OPEN. matches_last14 counts [T-14, T).
+      Perturb a same-day match and require the count not to move. 1,706 of
+      1,900 matches share a date with another, so this is where a
+      same-day leak would actually bite.
+
+  L8  SANCTION CONSISTENCY. Assert venue points are derived only from the
+      Home/Away table's W/D/L, never from Overall Pts, and that the two
+      sanctioned team-seasons are exactly Everton and Nottingham Forest
+      2023-24 (T11, T12).
+
+  L9  NO CONSTANT, NO DUPLICATE. Re-run the constancy and |r| > 0.99999
+      checks on the EMITTED schema, not just the raw tables. A composite
+      built from redundant parts can still be redundant.
+
+  L10 FILE-ACCESS RECORDER. Reuse Instrument 3's runtime hook: record every
+      path opened and assert data/raw/ is read and never written. Measured,
+      not asserted, exactly as T10 does today.
+
+  L11 FOLD-FINGERPRINT PROBE. Fit a trivial classifier that tries to
+      predict the SEASON LABEL from Block X alone. If season identity is
+      recoverable above chance from features that are supposed to be
+      league-relative, the z-scoring has failed and regime information has
+      leaked in. This is a leakage instrument, not a prediction model: it
+      never touches phase0_evaluation_harness.py, never sees the H/D/A
+      target, and its output is a verdict rather than a probability. Phase
+      0 set the precedent with probe features that "exist only inside this
+      process". Flagging it explicitly because the brief said no models;
+      if you would rather it wait, L1-L10 still stand on their own.
+
+RESIDUAL RISK THAT NO TEST CAN REMOVE
+
+  Survivorship. A lag-1 prior exists only for teams that were in the league
+  last season, and those are systematically the better teams. The 228
+  promoted-team rows are not missing at random - they are missing because
+  the team was worse. This is not leakage and cannot be tested away; it is
+  a property of football. It must be stated in the results, and the
+  availability flag must be a model input rather than a filter, so the
+  model can learn what absence means instead of never seeing it.
+
+
+===============================================================================
+8. THE EXPERIMENT - A NESTED ABLATION LADDER
+===============================================================================
+
+The project's actual question is not "can we predict" but "which
+information actually improves prediction". Each rung adds exactly one
+block, everything else held fixed, all through the existing four folds and
+five metrics. The harness is not modified.
+
+  B0  base rate                          DONE   log loss 1.0546 - 1.0845
+  B1  + Phase 1 results-only features     -     the 86 columns
+  B2  + Block C context                   -     rest, congestion  (12 cols)
+  B3  + prior_attack, prior_defence       -     the shooting core  (6 cols)
+  B4  + prior_venue_split                 -     lag-1 home/away    (3 cols)
+  B5  + finishing, keeping, control       -     (9 cols)
+  B6  + discipline, rotation              -     (6 cols)
+
+  Report the delta at every rung, not just the endpoint. B5 and B6 are
+  placed last deliberately: they are the rungs most likely to cost more in
+  variance than they return in signal, and the ladder is built so that
+  showing this is a result rather than a disappointment.
+
+  Existing reference points these must be read against:
+
+    model                 fold 1   fold 2   fold 3   fold 4   (log loss)
+    base rate             1.0546   1.0538   1.0826   1.0845
+    Elo                   0.9851   0.9679   1.0098   1.0350
+    Poisson walk-forward  0.9952   0.9430   0.9774   1.0460
+    Dixon-Coles walk-fwd  0.9980   0.9414   0.9767   1.0454
+
+
+===============================================================================
+9. THE 2025-26 QUESTION - ANSWERED
+===============================================================================
+
+    "Why does the model's ability to discriminate between home and away
+     results deteriorate so much in 2025-26 despite more training data?"
+
+It is not the model, and it is not the data. THE LEAGUE COMPRESSED.
+
+Discrimination, measured as the AUC of P(home) - P(away) over decisive
+results only, so draws cannot confound it:
+
+  test season   Elo AUC   Dixon-Coles AUC
+  2022-2023      0.770         0.748
+  2023-2024      0.781         0.798
+  2024-2025      0.762         0.770
+  2025-2026      0.719         0.702        <- both collapse together
+
+Two independent model families, one built on a rating gap and one on
+Poisson scoring rates, lose discrimination in the same season by a similar
+amount. That rules out a bug in either.
+
+The spread of the strength gaps they had to work with collapsed too:
+
+  test season   Elo rating-gap sd   DC log(lambda_h/lambda_a) sd
+  2022-2023          101.7                    0.744
+  2023-2024          110.1                    0.753
+  2024-2025          111.0                    0.716
+  2025-2026           96.7                    0.575     <- -22%
+
+And so did the league that generated them. Final tables rebuilt from
+results:
+
+  season      pts sd   GD sd   IQR   MID-14 pts sd
+  2021-2022    19.35   33.83   21.0      10.03
+  2022-2023    18.19   27.88   24.5      11.98
+  2023-2024    20.23   31.83   19.5       9.78
+  2024-2025    18.58   27.04   24.0      10.35
+  2025-2026    15.83   20.55   13.0       6.43     <- -38%
+
+The mid-14 figure is the one that matters. 2025-26 still had an 85-point
+champion and a 20-point bottom club, so the TAILS were normal. What
+vanished was the middle: the fourteen teams between them flattened into a
+near-indistinguishable block, at 6.43 points of spread against a 10.0-12.0
+norm. Most matches are between those teams.
+
+The log-loss decomposition confirms the mechanism and rules out the
+obvious alternative explanation. Mean -log p(actual), Elo:
+
+  test season       on H       on D       on A
+  2022-2023        0.7397     1.4738     1.0091
+  2023-2024        0.7197     1.4689     0.9869
+  2024-2025        0.7163     1.4950     1.0125
+  2025-2026        0.7471     1.4637     1.0531   <- H and A worse, D BETTER
+
+2025-26 had the highest draw rate in the dataset (27.4%, against a
+21.6-24.5% range), and one might reasonably blame that. The decomposition
+says no: the draw term is the BEST of all four seasons, because a higher
+draw rate makes the model's roughly-23% draw prediction better calibrated.
+The damage is entirely in H and A - which is precisely a loss of ability to
+tell which decisive result is coming.
+
+WHY MORE TRAINING DATA CANNOT HELP
+
+  Training data reduces estimation error in the ratings. It cannot increase
+  the true dispersion of team strength in the season being predicted. Fold
+  4 had the most training data and the least separable test season, and
+  those two facts are independent. Every model's edge over the base rate
+  shrank in the same season - Elo -0.049 against -0.086 in fold 2,
+  Dixon-Coles -0.039 against -0.112 - which is what a shared ceiling looks
+  like, not what four independent regressions look like.
+
+WHAT THIS PREDICTS FOR PHASE 3, AND HOW TO FALSIFY IT
+
+  The compression hypothesis makes a testable claim: 2025-26's shortfall is
+  a property of the season, not of the feature set. Then
+
+    - adding results-derived features will help LEAST in fold 4, because
+      they are drawing on the same compressed signal, and
+    - if any Block X feature closes a meaningful part of the fold-4 gap
+      specifically, it is carrying information that results do not contain
+      - which is exactly the finding the project is looking for.
+
+  Either outcome is worth having. Report fold 4's delta separately from the
+  pooled mean at every rung of the ladder in section 8, so the answer is
+  visible rather than averaged away.
+
+  One caveat, stated rather than buried: this is n = 1 at the season level.
+  Four test seasons cannot establish that compression causes discrimination
+  loss - they can only show the two moved together, in two model families,
+  in the season where the compression was largest. Treat it as the leading
+  explanation, not a settled one.
+
+
+===============================================================================
+10. DECISIONS NEEDED BEFORE INSTRUMENT 2 IS WRITTEN
+===============================================================================
+
+  1. Referee - close Phase 0 section 5. Recommendation: option (b),
+     "accepted external claim" status, feature stays out. Low value.
+
+  2. L11 fold-fingerprint probe - build it now, or defer it? It is a
+     leakage instrument by intent but it does fit a classifier, and the
+     brief said no models. Default if you do not say otherwise: build it,
+     clearly labelled as an instrument, with the harness untouched.
+
+  3. Promoted-team priors - ship NaN plus a flag (recommended, consistent
+     with Phase 1's "empty state is NaN, never zero"), or source
+     Championship tables first (section 5, item 5) and give those 228 rows
+     a real prior? The second is better modelling and more work.
+
+  4. xG - acquire the cheap version (re-export the same 60 FBref tables
+     with the Expected block) during Phase 3, or wait for match-level xG in
+     Phase 4? Recommendation: do the cheap one now. It costs one afternoon
+     and it makes the lag-1 attack index substantially stronger.
+
+===============================================================================
+NOTHING IN THIS DOCUMENT WAS BUILT. No feature file exists. No model was
+trained. scripts/phase0_evaluation_harness.py was not modified. The only
+new code is scripts/phase3_raw_feature_audit.py, which is read-only over
+data/raw/ and writes three reports to outputs/.
+===============================================================================

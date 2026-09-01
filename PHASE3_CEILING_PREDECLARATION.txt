@@ -1,0 +1,340 @@
+===============================================================================
+PHASE 3 - INSTRUMENT 5
+CEILING RESOLUTION, AND THE FROZEN REGULARISATION CHOICE
+
+PRE-DECLARATION.  Written before the experiment was run.
+===============================================================================
+
+WHY THIS EXPERIMENT EXISTS
+
+    Instrument 4 ran the declared grid 0.01 ... 100 and every one of its 28
+    (rung, fold) selections landed on the ceiling, lambda = 100. Nothing hit
+    the floor. Its own pre-declaration section 3 forbade extending the grid
+    mid-experiment and required exactly this: a second experiment, with its
+    own pre-declaration.
+
+    The ceiling hit is not cosmetic. As lambda goes to infinity every rung's
+    fit collapses onto the intercept, which IS B0, whose mean log loss is
+    1.068888. At lambda = 100 B1 scores 1.007648 - BELOW that limit. A curve
+    that is below its own asymptote at the edge of the grid must turn back up
+    somewhere beyond it. So Instrument 4 did not find B1's optimum; it found
+    the edge of the box it was allowed to look in.
+
+    This instrument opens the box in the one direction the evidence points,
+    and then stops opening it: the outcome is a FROZEN choice, so that the
+    penalty stops being a live parameter for the rest of the project.
+
+-------------------------------------------------------------------------------
+1.  THE GRID
+-------------------------------------------------------------------------------
+
+    LAMBDA_GRID = 100, 300, 1000, 3000, 10000
+
+    Five values, half-decade spacing, two further decades of range.
+
+    100 is deliberately shared with Instrument 4's grid. It is the anchor: the
+    two experiments must agree exactly at that point, and test C1 asserts it
+    to < 1e-9 rather than trusting it. That chains the reproduction all the
+    way down - Instrument 5 at lambda = 100 equals Instrument 4 at lambda =
+    100, and Instrument 4 at lambda = 1 equals Instrument 3 at lambda = 1.
+
+    The COMBINED grid across both instruments is therefore
+
+        0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30, 100, 300, 1000, 3000, 10000
+
+    thirteen points over six decades, and the combined curve is reported.
+
+    This grid is final. If a selection lands on 10000 the run reports it and
+    the freeze is BLOCKED (section 4). It does not extend the grid again.
+    Two extensions is a search.
+
+-------------------------------------------------------------------------------
+2.  THE PROTOCOL IS INSTRUMENT 4'S, UNCHANGED
+-------------------------------------------------------------------------------
+
+    Not re-specified here, because re-specifying it is how two things that are
+    supposed to be identical drift apart. Instrument 5 IMPORTS Instrument 4's
+    Run class, its fitted pipeline, its inner-split construction, its audit
+    battery and its report functions, and passes a different grid.
+
+    Restated only for the record:
+
+        model         multinomial logistic, softmax over [H, D, A], L2,
+                      intercept unpenalised, Newton to 1e-9
+        selection     expanding-window inner CV over CALENDAR-DATE blocks
+                      (Instrument 4, Amendment 1), cut from the outer fold's
+                      TRAINING rows alone, four segments, three inner folds
+        criterion     argmin of mean inner-validation log loss
+        tie-break     exact ties go to the LARGER lambda
+        after         refit on the full outer training rows at the selected
+                      lambda, score the outer test season once
+        oracle        the full outer-test surface is computed and reported,
+                      labelled ORACLE, and read by nothing
+
+    ONE CODE CHANGE IS REQUIRED AND IS DECLARED HERE
+
+        Instrument 4 reads its grid from a module-level constant. To let
+        Instrument 5 supply a different one, Run.__init__ and the report
+        helpers gain an optional `grid` argument DEFAULTING to that same
+        constant. This is behaviour-preserving: with the argument omitted,
+        Instrument 4 runs exactly as it did.
+
+        This is a refactor of a script whose results are already on disk, so
+        it is not taken on trust. C1 re-derives Instrument 4's lambda = 100
+        column from scratch through the refactored code and requires it to
+        match the stored artefact to < 1e-9, on all six metrics, for all 28
+        rung x fold pairs. If the refactor changed anything, C1 fails.
+
+-------------------------------------------------------------------------------
+3.  WHAT THIS INSTRUMENT IS TRYING TO FIND OUT
+-------------------------------------------------------------------------------
+
+    Q1  Where is the interior optimum? Every rung's outer-test curve must
+        turn around before it reaches B0's 1.068888. Does it, inside this
+        grid?
+
+    Q2  Does the rung ordering survive? Instrument 4 found B1 best at all
+        nine of its lambdas. B2-B6's deficit against B1 shrank monotonically
+        as lambda rose - from 0.2559 at lambda = 0.01 to 0.0215 at lambda =
+        100 - which is what convergence to a common limit looks like, but
+        also what an impending crossover would look like. Two more decades
+        settles it.
+
+    Q3  Does B1 still beat the base rate once the penalty is right, and by
+        how much? At lambda = 1 the margin was 0.0020. At lambda = 100 it was
+        0.0613. This is the quantity that says whether Phase 1's results-only
+        features carry anything at all.
+
+    Q1, Q2 and Q3 are all answered from the SELECTED-lambda table and from the
+    oracle surface, and the two are never mixed. Oracle statements are
+    labelled.
+
+-------------------------------------------------------------------------------
+4.  THE FROZEN CHOICE - THE RULE, FIXED BEFORE THE RESULT
+-------------------------------------------------------------------------------
+
+    The point of this instrument is to STOP tuning the penalty. So the rule
+    that turns the result into a frozen choice is written down here, before
+    the result exists.
+
+    4.1  WHAT IS FROZEN, IN ORDER OF PRECEDENCE
+
+        FIRST, the PROCEDURE. For any future logistic-regression work in this
+        project, the penalty is chosen by Instrument 4's nested inner-CV
+        selection over the COMBINED thirteen-point grid, fitted on training
+        rows only. This is the primary freeze. It is leakage-safe, it adapts
+        to a fold's sample size, and it has a proof battery already attached.
+
+        SECOND, a SCALAR, for any context that needs one fixed number rather
+        than a procedure - a quick comparison, a diagnostic, a fit where an
+        inner CV is not affordable:
+
+            FROZEN_LAMBDA_SCALAR = median over the 28 per-(rung, fold)
+                                   selected lambdas from THIS run,
+                                   snapped to the nearest grid point,
+                                   exact ties going to the LARGER.
+
+    4.2  THE FREEZE IS CONDITIONAL, AND THE CONDITIONS ARE DECLARED NOW
+
+        VALID    no selection lands on 10000. The optimum is bracketed, and
+                 both the procedure and the scalar are frozen.
+
+        BLOCKED  any selection lands on 10000. The optimum is still outside
+                 the grid; NO scalar is frozen and the artefact records the
+                 block. The grid is not extended a second time - a result
+                 that keeps running away from every box we build is itself
+                 the finding, and it would mean the penalty is not the right
+                 lever.
+
+        WEAK     VALID, but the selected lambdas span more than one decade
+                 across the 28 cells. A single scalar is then a poor summary
+                 of a genuinely fold-dependent quantity; the scalar is still
+                 recorded but marked WEAK, and the PROCEDURE freeze governs.
+
+    4.3  THE ARTEFACT
+
+        outputs/phase3_frozen_regularisation.json, carrying: the status above,
+        the scalar, the per-(rung, fold) table, the combined grid, the SHA-256
+        of both pre-declarations, and the SHA-256 of every input it was
+        derived from. Written once by this instrument. Nothing else in the
+        project writes it.
+
+-------------------------------------------------------------------------------
+5.  WHAT IS FROZEN AND MUST NOT MOVE
+-------------------------------------------------------------------------------
+
+    Everything Instrument 4 froze, PLUS Instrument 4's own outputs:
+
+        outputs/phase3_reg_*.csv                   Instrument 4's results
+        PHASE3_REGULARISATION_PREDECLARATION.txt   its declaration
+        outputs/phase3_ablation_*.csv              the lambda = 1 reference
+        outputs/phase[012]_*                       Phase 0/1/2
+        data/raw/**                                the raw data
+
+    Instrument 5 writes only outputs/phase3_ceiling_*.csv and the frozen
+    regularisation JSON. Every file above is SHA-256'd before and after; one
+    changed hash is a FAIL.
+
+    The single exception, declared in section 2, is
+    scripts/phase3_regularisation_sensitivity.py, which gains the optional
+    `grid` argument. Its behaviour is unchanged and C1 proves it.
+
+-------------------------------------------------------------------------------
+6.  THE TESTS
+-------------------------------------------------------------------------------
+
+    Instrument 4's full battery is re-run against this grid, unchanged and
+    imported rather than copied:
+
+    R1   no inner-CV row is an outer-test row
+    R2   corrupting outer-test FEATURES moves no selected lambda (+ control)
+    R3   shuffling outer-test LABELS moves no selected lambda
+    R4   the runtime tripwire, plus a control proving it can fire
+    R5   every inner split is strictly forward in time
+    R6   the grid used is the grid declared in THIS file
+    R8   nothing frozen moved; data/raw was only hashed
+    R9   a second full run is bit-identical
+    R10  B0's fit is invariant across the grid
+    R11  convergence, and the floor/ceiling report
+
+    R7 (reproduce Instrument 3 at lambda = 1) does not apply - lambda = 1 is
+    not in this grid. It is replaced by:
+
+    C1   at lambda = 100, this instrument reproduces Instrument 4's stored
+         lambda = 100 results to < 1e-9, all six metrics, all 28 rung x fold
+         pairs. This is the anchor, and it also proves the section 2 refactor
+         changed nothing.
+
+    C2   the freeze rule was applied exactly as declared in section 4: the
+         status follows the declared conditions, and the scalar is the
+         declared median-snapped-to-grid of the selections actually made.
+
+    C3   the grid now reaches the degenerate end. At lambda = 10000 the
+         fitted coefficient norm must be a small fraction of its value at
+         lambda = 100, and every rung's predictions must be measurably closer
+         to B0's than they are at lambda = 100. Without this, a grid that
+         merely failed to find a turning point could not be distinguished
+         from one that never got near the asymptote.
+
+===============================================================================
+END OF PRE-DECLARATION
+===============================================================================
+
+
+===============================================================================
+AMENDMENT 2 - 2026-08-31
+THE FREEZE RULE OPERATES OVER RUNGS THAT HAVE PENALISED PARAMETERS
+===============================================================================
+
+WHAT WAS FOUND
+
+    The run applied section 4's rule literally and returned BLOCKED. All four
+    ceiling hits were B0, and B0 alone:
+
+        B0   10000  10000  10000  10000
+        B1    1000    300    300    300
+        B2     3000   1000   1000   1000
+        B3     3000   1000   1000   1000
+        B4     3000   1000   1000   1000
+        B5     3000   1000   1000   1000
+        B6     3000   1000   1000   1000
+
+    B0 has ZERO penalised design columns. The intercept is unpenalised, so
+    lambda multiplies nothing, so every lambda produces an identical fit -
+    which is not an inference, it is test R10, and R10 passed at 0.000e+00 in
+    this very run. B0's inner-CV curve is therefore exactly constant, and the
+    declared tie-break ("exact ties go to the LARGER lambda") mechanically
+    returns the largest grid point.
+
+    So the BLOCKED status was produced by a rung whose selection carries no
+    information about where the penalty optimum lies. Section 4.2 intended
+    BLOCKED to mean "the optimum is still outside the grid". Here it meant
+    "a constant function was maximised by the tie-break".
+
+    Section 4.6 of Instrument 4's pre-declaration already anticipated the
+    underlying fact - "B0 carries no features ... every lambda gives an
+    identical fit" - and made it an assertion rather than an assumption. What
+    was not anticipated was that the freeze rule would then read that
+    degenerate selection as a boundary hit.
+
+THE AMENDMENT
+
+    Section 4 is replaced by:
+
+        The freeze rule - the median, the spread test and the ceiling test -
+        operates over selections from rungs with AT LEAST ONE PENALISED
+        DESIGN COLUMN. A rung with none is reported in every table and
+        excluded from the rule.
+
+        The test is on the design matrix, not on the rung's name: a rung
+        qualifies if its fitted design has more than zero columns. Nothing
+        is hardcoded to "B0".
+
+    Nothing else changes. Not the grid, not the protocol, not the selection
+    procedure, not the tie-break, not the three status conditions themselves,
+    and not section 3's questions.
+
+    Under the amended rule:
+
+        n = 24, min 300, max 3000, median 1000, spread exactly 1.000 decades,
+        ceiling hits 0   ->   STATUS VALID, FROZEN SCALAR lambda = 1000
+
+WHAT HAD BEEN SEEN WHEN THIS AMENDMENT WAS WRITTEN, AND WHO DECIDED IT
+
+    Disclosed in full, because this amendment CHANGES THE OUTCOME - from
+    BLOCKED with no scalar, to VALID with lambda = 1000 - and it was written
+    after the result was known. That is the opposite of the ordering this
+    project's pre-declarations exist to enforce, so it is recorded rather
+    than smoothed over.
+
+    SEEN    the complete selection table above
+    SEEN    the full outer-test surface and the combined 13-point grid
+    SEEN    that every featured rung's optimum is interior at lambda = 1000
+    SEEN    the rung verdict (UPHELD) and both C3 failures
+
+    The amendment was NOT applied by the agent on its own judgement. It was
+    put to the project owner with the literal BLOCKED outcome, the alternative
+    of accepting BLOCKED unchanged, and a third option of freezing per-rung
+    instead; the owner chose this amendment.
+
+    THE ARGUMENT THAT IT IS NOT OUTCOME-DRIVEN, for the reader to weigh:
+
+    The exclusion follows from the mathematics of the objective, not from
+    this dataset. A rung with no penalised parameters has a constant
+    lambda-curve on ANY data, so its selection is always the tie-break's
+    output and never evidence about the optimum. The amended rule would have
+    been the correct rule before any number was seen.
+
+    And it does not disarm the condition it was written for: had B1-B6
+    themselves selected 10000, the status would still be BLOCKED under the
+    amended rule, because those rungs do have penalised parameters. The
+    amendment removes a false positive; it does not remove the alarm.
+
+    The reader who rejects that argument should read the frozen artefact as
+    BLOCKED with no scalar, and use the PROCEDURE freeze alone. Both numbers
+    are in the record.
+
+C3 REMAINS FAILED, AND IS NOT AMENDED
+
+    C3a (0.1212 against a threshold of 0.10) and C3b (B6 sits marginally
+    further from B0 at lambda = 10000 than at lambda = 100) both failed and
+    are left failing.
+
+    They are correct tests of a claim that was pitched too high. C3 asserted
+    the grid reaches the DEGENERATE end; resolving the ceiling only requires
+    that it BRACKETS an interior optimum, which it does for all six featured
+    rungs, with the curve rising on both sides of lambda = 1000.
+
+    The C3a threshold was justified in the code comment by an argument that
+    ridge norms decay as 1/lambda, predicting a ratio near 0.01 over two
+    decades. That argument does not hold here: at lambda = 10000 the penalty
+    is still only comparable to the Fisher information at n = 1520, so the
+    fit is at the start of the asymptotic regime, not deep in it. The
+    observed decay is 0.4802 to 0.0582, roughly eightfold.
+
+    Lowering the threshold after seeing 0.1212 would be exactly the failure
+    mode these documents exist to prevent. The failures stand.
+
+===============================================================================
+END OF AMENDMENT 2
+===============================================================================
