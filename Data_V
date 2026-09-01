@@ -1,31 +1,27 @@
-13. This changes what "verified data" means
+Both tasks done. Phase 1 is ready to freeze — all five instruments pass on current code.
 
-Once we fix all of this, our dataset isn't just:
+Instrument	Status
+1. Match foundation	✅ 147/147
+2. Historical team state	✅ 27/27
+3. Team strength features	✅ 29/29
+4. Team transitions	✅ 30/30, 0 documented findings
+5. Feature quality gate	✅ 40/40
+Cleanup: promoted_no_pl_prior → absent_from_previous_season across Instruments 2–4, values and logic untouched, no trace of the old label in outputs/. new_to_dataset stays a separate transition vocabulary. Instrument 4's T3d was a REVIEW finding; since the label is now correct I converted it into a regression guard that fails if any prior-status ever claims promotion again, plus a new T3e keeping the two vocabularies distinct. That's why 4 went 28 → 30 with the finding cleared.
 
-1,900 football matches.
+Instrument 5 found three real problems. Two were mine, one was the project's.
 
-It becomes something much more valuable:
+My test was invalid. T12b initially reported 12,822 "changes" from end-of-season perturbation — which would have been catastrophic leakage. I ran the null control I should have built in from the start: rebuild with zero perturbation. It failed identically. The test was comparing a CSV-loaded baseline against an in-memory rebuild — apples to oranges. Fixed by rebuilding the baseline in memory, and the null control is now a permanent test (T12d): without it, a builder that ignored its input entirely would sail through T12b.
 
-Every row represents the information available BEFORE the match.
+My missingness rule was wrong. T3b flagged prev_season_status as "predicted missing but present". Correct — it's the metadata column explaining why a prior is absent, so it's always populated. A NaN there would mean an absence with no recorded reason.
 
-For example:
+The project's CSVs did not round-trip. This one matters for you. pandas loses precision in both directions by default: to_csv writes 16 significant digits where float64 needs 17, and read_csv's C parser doesn't round-trip either. Together they shifted 17,251 values by ~4e-16. Numerically irrelevant for modelling — but it meant the frozen artefact could not be verified against a rebuild, which for a project this audit-heavy is the wrong property to freeze. Fixed at source: float_format='%.17g' on write, float_precision='round_trip' on read. Now 0 differences, deviation 0.000e+00. I also made prev_season_source use NaN for absent, consistent with every other column in the schema. Instruments 3 and 4 re-run clean after both changes.
 
-Feature	Example
-Home team	Arsenal
-Away team	Chelsea
-Home current PPG	2.10
-Away current PPG	1.80
-Home GF/game	2.00
-Away GF/game	1.60
-Home GA/game	0.80
-Away GA/game	1.10
-Home last-5 PPG	2.40
-Away last-5 PPG	1.60
-Home Elo	1810
-Away Elo	1740
-Elo difference	+70
-Home venue PPG	2.30
-Away venue PPG	1.40
-Rest difference	+2
-Promoted flag	0
-Actual result	H
+Findings for the freeze decision — reported, nothing removed:
+
+0 exact duplicate columns. 4 mathematically equivalent pairs, all |r| = 1 by construction: prev_season_pts ↔ prev_season_ppm and prev_season_gd ↔ prev_season_gdpm (each is the other ÷ 38), both sides.
+2 constant features: home/away_prev_season_mp = 38.0. True by construction — every prior is a complete season.
+Missingness is fully explained, both directions: every NaN has a documented cause and every cause produces a NaN. Largest blocks: 7,600 values from the 2021-22 dataset boundary and 4,560 from mid-dataset absence — kept as separate causes, since "we have no earlier data" and "this team wasn't in the league" are different facts.
+No impossible values across 44 constraints, no infinities, all distributions inside arithmetic bounds.
+The availability curve is worth a look before you freeze: current-season form 0% at MW1 → 100% at MW2. Venue form 0% → 2% at MW2 → 100% at MW3, then a dip to 99% at MW4–5. I chased that dip: it's 2023-24 Luton Town and Burnley, whose MW2 fixture was postponed. Their MW4/MW5 matches are chronologically their first at that venue, while the MW2 fixture was played much later. Real football, and direct evidence the features order by date, not matchweek.
+
+Outputs: phase1_feature_quality_audit.csv, phase1_feature_availability.csv (3,854 scope rows), phase1_feature_provenance.csv, phase1_feature_missingness_reasons.csv. 86 feature columns audited, 0 removed — which features earn a place in the modelling dataset stays a separate decision for baseline experiments.
