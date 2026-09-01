@@ -1,0 +1,11 @@
+metric,quantity,point,ci_low,ci_high,excludes_zero,verdict,reason
+log_loss,delta_total,0.035904835917040322,0.018615376373053868,0.053544882357943406,True,WITHIN-SEASON UPDATING,recency accounts for 99% of the gap and its CI excludes 0
+log_loss,delta_recency,0.035567916198511594,0.017673557491024078,0.053334898320451657,True,WITHIN-SEASON UPDATING,recency accounts for 99% of the gap and its CI excludes 0
+log_loss,delta_sample,0.00033691971852873437,-0.00071368572262801519,0.0014063967929684898,False,WITHIN-SEASON UPDATING,recency accounts for 99% of the gap and its CI excludes 0
+log_loss,delta_half_minus_static,0.0082311680372090731,0.0014153972334188666,0.014892954407663046,True,WITHIN-SEASON UPDATING,recency accounts for 99% of the gap and its CI excludes 0
+log_loss,share_recency,0.99061631365459535,,,,WITHIN-SEASON UPDATING,recency accounts for 99% of the gap and its CI excludes 0
+rps,delta_total,0.012717194921977868,0.0074688949978944643,0.018202055154576999,True,WITHIN-SEASON UPDATING,recency accounts for 99% of the gap and its CI excludes 0
+rps,delta_recency,0.012667620545239407,0.0071398067029760821,0.018166652497720641,True,WITHIN-SEASON UPDATING,recency accounts for 99% of the gap and its CI excludes 0
+rps,delta_sample,4.9574376738464965e-05,-0.00027222728100646684,0.00037414549238412061,False,WITHIN-SEASON UPDATING,recency accounts for 99% of the gap and its CI excludes 0
+rps,delta_half_minus_static,0.0027747641678531375,0.00049162307570884518,0.0049784154049779053,True,WITHIN-SEASON UPDATING,recency accounts for 99% of the gap and its CI excludes 0
+rps,share_recency,0.99610178368401137,,,,WITHIN-SEASON UPDATING,recency accounts for 99% of the gap and its CI excludes 0

@@ -18,8 +18,8 @@ legitimately re-run. It means the artefact is no longer the one the
 pre-declaration was written against, and that has to be reconciled explicitly
 rather than noticed later.
 
-generated 2026-09-01T06:39:06Z
-28 files
+generated 2026-09-01T06:55:08Z
+33 files
 
 c0ea0bce045af978c64aa3e209ea8b9f5fb1dde52f95c83c65e3e5e316c367f0  PHASE3_CEILING_PREDECLARATION.txt
 1de3af06af72634d91d1f0f07b50256785a5a1c16fda41de85138cf975524da4  PHASE3_REGULARISATION_PREDECLARATION.txt
@@ -49,6 +49,11 @@ bf78521567129ffab14639db5cb4e561eac79ae39c97a0ee486df64ec7052b81  outputs/phase3
 12ecbbc8d4ebd62036f3527816ae46f2ef713309db86cf61a65511c81e1ad1f4  outputs/phase3_reg_surface.csv
 0d19e467900b80c3e3d1f5f0608948187f23b8dbb9c3e7bde41e0b37507d434d  outputs/phase3_reg_verdict.csv
 7a8880f9ebc654234da20059310c4d4a1858e07493ab06a84680fecbe2d1c904  outputs/phase4_dynamic_state_predeclaration.txt
+73723d1d43eaf954f7e34f4ea3b5e3ac37cd927a3be7a842b218980ecf18d67c  outputs/phase4_tier2_audit.csv
+e04545fe6b9547e1f136ae6f1aa045ace5eb59872a1acffb972c3776f550a73e  outputs/phase4_tier2_decomposition.csv
+e074ab41121a40187db4da396599223305918f9f4bae64cc0b7f8edc9202620e  outputs/phase4_tier2_fold_summary.csv
+fc93a9a1e359f78d9f0a9ea0a1d4daa7060312e927259838985468e63cccf709  outputs/phase4_tier2_pooled.csv
+3fec11ca565fa63dc6062a71a9d87391fc4437d427d95b281b6c77c4e5317693  outputs/phase4_tier2_predictions.csv
 
 ===============================================================================
 END OF MANIFEST

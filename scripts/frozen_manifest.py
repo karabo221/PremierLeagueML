@@ -53,6 +53,7 @@ FROZEN_PATTERNS = [
     "outputs/phase3_reg_*.csv",
     "outputs/phase3_ceiling_*.csv",
     "outputs/phase3_frozen_regularisation.json",
+    "outputs/phase4_tier2_*.csv",
 ]
 
 HEADER = """\

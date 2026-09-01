@@ -1,0 +1,17 @@
+test_id,test,expected,observed,status,detail
+W1,arms A and B reproduce Phase 2's stored Dixon-Coles numbers,< 1e-9,0.000e+00 (),PASS,"12 arm x metric comparisons over 4 folds; this is what makes 'reuse, do not rewrite' checkable"
+W2,"arms C and D fit exactly their declared window size, always",0,0,PASS,[]
+W3,every fitting window is strictly earlier than what it predicts,0,0,PASS,"928 windows checked; for the static arms the cutoff is the first test date, so a violation would mean a test match entered its own fit"
+W4,arm D's window ends strictly before its test season,0,0,PASS,
+W5,Delta_total equals Delta_recency + Delta_sample exactly,< 1e-12,6.939e-18,PASS,if this drifts the three numbers are not measuring one split
+W6a,"arm C's windows are the same SIZE as arm A's, every time",0,0,PASS,460 windows compared
+W6b,arm C windows whose CONTENT equals arm A's,,4 of 460,INFO,"expected to be small and to occur only at the very start of a test season, before the rolling window has dropped anything; if it were all of them, C would just be A and the experiment would be empty"
+W7,every class-A constant is the one the pre-declaration names,0,0,PASS,read from phase2_poisson_dixon_coles at runtime: all match
+W10a,every predicted row sums to 1,< 1e-9,4.441e-16,PASS,
+W10b,no negative probability,0,0,PASS,
+W10c,every arm passed the harness's own validator,16,16,PASS,validate_probabilities() is called per arm per fold before scoring
+W9a,"no frozen artefact, script, pre-declaration or raw file moved",0,0,PASS,[]
+W9b,nothing but the integrity hasher opened data/raw,0,0,PASS,matches come from Phase 1's foundation via P2.load_inputs(); the hasher's 140 opens are labelled and excluded
+W9c,data/raw opens by the integrity hasher,,140,INFO,70 files hashed before the run and again after it; a W9b that could not tell these from a real read would flag its own check
+W8a,a second full run reproduces every probability bit-identically,0.0,0.000e+00,PASS,6080 predictions compared
+W8b,the bootstrap interval is reproducible from its declared seed,identical,identical,PASS,"seed 20260901, 10000 draws"
