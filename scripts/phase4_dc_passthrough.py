@@ -71,9 +71,23 @@ AUDIT_OUTPUT = OUTPUTS_DIR / "phase4_passthrough_audit.csv"
 
 FLOAT_PRECISION = "round_trip"
 
-# Phase 4 pre-declaration section 8. Not Phase 3's lambda = 1000.
-LAMBDA_GRID = (0.01, 0.03, 0.1, 0.3, 1.0, 3.0, 10.0, 30.0, 100.0,
+# D2 pre-declaration Amendment 2 section A2.3. The upper 13 are Phase 4
+# section 8's grid unchanged; the lower 8 extend it four decades downward
+# because two folds selected the old floor of 0.01. Declared before the re-run.
+LAMBDA_GRID = (0.000001, 0.000003, 0.00001, 0.00003, 0.0001, 0.0003,
+               0.001, 0.003,
+               0.01, 0.03, 0.1, 0.3, 1.0, 3.0, 10.0, 30.0, 100.0,
                300.0, 1000.0, 3000.0, 10000.0)
+
+# D2 pre-declaration Amendment 2 section A2.1. Derived from the fold structure,
+# not from any observed value: every test season is preceded by at least one
+# complete season, so no test row is ever scored on a window below 380.
+MIN_TRAIN_WINDOW = 380
+
+# A2.2: fold 1 trains on 2021-22 alone, every match of which falls below the
+# burn-in. It has no training set under the gate, so this DIAGNOSTIC runs on
+# folds 2-4. This does NOT propagate to D2, where all four folds remain frozen.
+DIAGNOSTIC_FOLDS = (2, 3, 4)
 
 # Phase 4 pre-declaration section 7: 5 contiguous blocks, 4 expanding inner
 # folds. Tie-break on lambda is the SMALLEST among ties - note this DIFFERS
@@ -282,7 +296,7 @@ def main():
     print("              inherited from phase2_poisson_dixon_coles.run_fold()")
     print("  lambda    : per fold, {} inner blocks, ties to the {}".format(
         N_INNER_BLOCKS, TIE_BREAK))
-    print("  reference : dc_walkforward pooled log loss {:.4f}".format(DC_REFERENCE))
+    print("  reference : dc_walkforward, RECOMPUTED on folds 2-4 (4-fold was {:.4f})".format(DC_REFERENCE))
     print()
 
     spec, matches, _base, _elo = DC.load_inputs()[:4]
@@ -365,14 +379,24 @@ def main():
 
     rows = []
     all_pass_proba, all_dc_proba, all_actual = [], [], []
+    used_train_rows, used_test_rows = [], []
 
     for fold_spec in spec["folds"]:
 
         fold = int(fold_spec["fold"])
         test_season = str(fold_spec["test_season"])
 
-        train_rows = np.flatnonzero(
-            frame["season"].isin(fold_spec["train_seasons"]).to_numpy())
+        if fold not in DIAGNOSTIC_FOLDS:
+            continue
+
+        # THE BURN-IN GATE. Training rows must come from a fitting window of at
+        # least MIN_TRAIN_WINDOW, so the model is only ever taught in the regime
+        # its test rows are drawn from. Test rows are never filtered - every one
+        # of them is scored.
+        eligible = (frame["season"].isin(fold_spec["train_seasons"])
+                    & (frame["window_matches"] >= MIN_TRAIN_WINDOW)).to_numpy()
+
+        train_rows = np.flatnonzero(eligible)
         test_rows = np.flatnonzero((frame["season"] == test_season).to_numpy())
 
         chosen, curve, splits = select_lambda(
@@ -401,6 +425,8 @@ def main():
         all_pass_proba.append(pass_proba)
         all_dc_proba.append(dc_proba)
         all_actual.append(aligned_actual)
+        used_train_rows.append(train_rows)
+        used_test_rows.append(test_rows)
 
         row = {"fold": fold, "test_season": test_season,
                "selected_lambda": chosen,
@@ -427,7 +453,8 @@ def main():
     pass_scores = evaluate(actual, pass_proba)
     dc_scores = evaluate(actual, dc_proba)
 
-    banner("2. POOLED OVER ALL 1,520 OUTER TEST MATCHES")
+    banner("2. POOLED OVER {} OUTER TEST MATCHES (folds {})".format(
+        len(actual), ", ".join(str(f) for f in DIAGNOSTIC_FOLDS)))
 
     print("  {:<22} {:>10} {:>10} {:>10}".format(
         "metric", "passthru", "DC walkfwd", "gap"))
@@ -491,25 +518,56 @@ def main():
     # come from a window at least as large as the SMALLEST window any test row
     # was scored on. A model cannot be diagnosed on features drawn from a
     # regime it is never used in.
-    test_mask = frame["season"].isin(
-        [str(f["test_season"]) for f in spec["folds"]]).to_numpy()
+    train_used = np.unique(np.concatenate(used_train_rows))
+    test_used = np.unique(np.concatenate(used_test_rows))
 
-    smallest_test_window = int(frame.loc[test_mask, "window_matches"].min())
+    smallest_test_window = int(frame.iloc[test_used]["window_matches"].min())
 
-    train_only = frame.loc[~test_mask]
-    undersized = int((train_only["window_matches"] < smallest_test_window).sum())
+    # G7 asserts the DECLARED rule (Amendment 2: burn-in 380), not a threshold
+    # re-derived from whichever folds happen to be running. Re-deriving would
+    # make the gate a moving target: dropping fold 1 raises the smallest test
+    # window to 760, which would silently tighten an approved threshold. The
+    # subset-specific gap is reported separately as G7c rather than enforced.
+    undersized = int(
+        (frame.iloc[train_used]["window_matches"] < MIN_TRAIN_WINDOW).sum())
 
-    train_lambda_max = float(train_only["lambda_home"].max())
-    test_lambda_max = float(frame.loc[test_mask, "lambda_home"].max())
+    train_lambda_max = float(frame.iloc[train_used]["lambda_home"].max())
+    test_lambda_max = float(frame.iloc[test_used]["lambda_home"].max())
 
     audit.record(
-        "G7", "every training row is fitted on a window no smaller than the "
-              "smallest test window",
+        "G7", "every training row actually used is fitted on a window no "
+              "smaller than the smallest test window",
         0, undersized, undersized == 0,
-        "smallest test window {} matches; {} training rows below it; "
-        "training lambda_home reaches {:.2f} against {:.2f} across every "
-        "test row".format(smallest_test_window, undersized,
-                          train_lambda_max, test_lambda_max))
+        "burn-in {} (derived: every test season follows a complete season); "
+        "smallest test window {}; {} of {} used training rows below it; "
+        "training lambda_home reaches {:.2f} against {:.2f} across the test "
+        "rows".format(MIN_TRAIN_WINDOW, smallest_test_window, undersized,
+                      len(train_used), train_lambda_max, test_lambda_max))
+
+    audit.measure(
+        "G7b", "training rows excluded by the burn-in gate",
+        int((frame["season"].isin(
+            [s for f in spec["folds"] if int(f["fold"]) in DIAGNOSTIC_FOLDS
+             for s in f["train_seasons"]])
+            & (frame["window_matches"] < MIN_TRAIN_WINDOW)).sum()),
+        "all of 2021-22; fold 1 therefore has no training set and this "
+        "diagnostic runs on folds {} only. Does NOT propagate to D2".format(
+            ", ".join(str(f) for f in DIAGNOSTIC_FOLDS)))
+
+    below_subset = int(
+        (frame.iloc[train_used]["window_matches"] < smallest_test_window).sum())
+
+    audit.measure(
+        "G7c", "used training rows below the SMALLEST WINDOW OF THIS SUBSET's "
+               "test rows ({})".format(smallest_test_window),
+        below_subset,
+        "the declared burn-in of {} comes from the full four-fold structure, "
+        "where fold 1's test season follows one complete season. Dropping "
+        "fold 1 leaves test rows whose windows all start at {}, so these "
+        "rows sit in a window regime this three-fold subset does not itself "
+        "contain. Reported, NOT enforced - tightening an approved threshold "
+        "because the subset changed would be exactly the moving target the "
+        "amendment forbids".format(MIN_TRAIN_WINDOW, smallest_test_window))
 
     regime_ok = undersized == 0
 
@@ -520,31 +578,22 @@ def main():
         print("  INVALID. This diagnostic cannot be read yet, and the gap above")
         print("  must NOT be reported as a link measurement.")
         print()
-        print("  {} training rows are fitted on windows smaller than the".format(
-            undersized))
-        print("  smallest window any test row was scored on ({}). In that".format(
-            smallest_test_window))
-        print("  regime Dixon-Coles strengths are not identified: lambda_home")
-        print("  reaches {:.2f} on a 19-match window in August 2021, against a".format(
-            train_lambda_max))
-        print("  maximum of {:.2f} across all 1,520 test rows.".format(
-            test_lambda_max))
+        print("  {} of the {} training rows actually used are fitted on".format(
+            undersized, len(train_used)))
+        print("  windows below the declared burn-in of {}. In that regime".format(
+            MIN_TRAIN_WINDOW))
+        print("  Dixon-Coles strengths are not identified, and the resulting")
+        print("  outliers sit in TRAINING rows, distorting the standardiser")
+        print("  the test rows are then mapped through.")
         print()
-        print("  Those outliers sit in the TRAINING rows, so they distort the")
-        print("  standardiser that the test rows are then mapped through. That")
-        print("  is what produced fold 2's log loss of 27, not the logistic")
-        print("  link. Phase 2 never met this regime - its walk-forward only")
-        print("  ever fits at least a full training season and only ever")
-        print("  predicts test-season matches.")
+        print("  training lambda_home reaches {:.2f}; test rows reach {:.2f}".format(
+            train_lambda_max, test_lambda_max))
         print()
-        print("  A burn-in or minimum-window rule is needed. Choosing its")
-        print("  threshold now, having seen which value broke fold 2, is")
-        print("  exactly what this project's pre-declarations exist to")
-        print("  prevent. STOPPING for a declared rule.")
+        print("  The gate is not doing its job. STOPPING.")
     elif not ll_excludes_zero:
         verdict = "LINK SOUND"
         print("  LINK SOUND. The passthrough gap's CI includes zero, so at the")
-        print("  resolution of 1,520 matches the logistic link preserves what")
+        print("  resolution of {} matches the logistic link preserves what".format(len(actual)))
         print("  Dixon-Coles carries. Any D2 shortfall against DC is FEATURE")
         print("  LOSS and may be read as such.")
     elif ll_gap < 0:

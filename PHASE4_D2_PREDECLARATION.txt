@@ -273,3 +273,109 @@ document until that decision is made and recorded here as an amendment.
 ===============================================================================
 END OF PRE-DECLARATION
 ===============================================================================
+
+
+===============================================================================
+AMENDMENT 2 - BURN-IN THRESHOLD, AND AN EXTENDED LAMBDA GRID
+Written before the re-run. Section 9 is unblocked by this.
+===============================================================================
+
+A2.1  THE BURN-IN THRESHOLD IS 380, AND IT IS DERIVED, NOT TUNED
+
+    G7 requires every training row to come from a fitting window at least as
+    large as the smallest window any test row was scored on.
+
+    That smallest window is 380 BY CONSTRUCTION, and the derivation needs no
+    data at all:
+
+        test rows are only ever scored inside a test season;
+        every test season is preceded by at least one complete season;
+        a complete season is 380 matches;
+        therefore no test row is ever scored on a window below 380.
+
+    From which the threshold follows as a fixed point, not a choice:
+
+        below 380  admits training rows fitted on evidence no test row
+                   ever sees - the model would be taught in a regime it is
+                   never used in
+        above 380  discards training rows whose regime the test set
+                   genuinely contains - throwing away valid evidence
+
+    380 is the only value that makes the training and test regimes identical.
+    It was derivable before anything ran, and this amendment asserts it from
+    the structure above rather than from any observed number.
+
+    ON 47.26, AND WHY IT IS NOT AN INPUT HERE
+
+    lambda_home reaching 47.26 on a 19-match window is the observation that
+    prompted G7 to EXIST. It is cited for that, and for nothing else. It is
+    not an input to the threshold's value, and the threshold would be 380 had
+    the largest early lambda been 5 or 500.
+
+    That distinction is the entire difference between this amendment and the
+    pattern Phase 3's Amendment 2 fell into, where a rule was changed after
+    the result was known and the outcome moved with it. Here the failure
+    prompted a gate; the gate's threshold comes from the fold structure.
+
+A2.2  THE COST, STATED PLAINLY
+
+    Under the gate, 2021-22 contributes NO training rows - all 380 of its
+    matches are fitted on windows below 380, most of them far below.
+
+    Fold 1 trains on 2021-22 alone. So fold 1 has no training set under the
+    gate and the DC-PASSTHROUGH DIAGNOSTIC RUNS ON FOLDS 2, 3 AND 4 ONLY.
+
+    That is acceptable for this diagnostic and only this one: it answers a
+    yes/no question about whether the logistic link preserves Dixon-Coles, and
+    three folds and 1,140 test matches answer it.
+
+    IT DOES NOT PROPAGATE TO D2. All four frozen outer folds remain in force
+    for the ladder. If the burn-in gate turns out to bind on D2's own training
+    rows, that is a separate question requiring its own declaration - it is
+    NOT inherited from this amendment.
+
+    CONSEQUENCE FOR THE COMPARISON FIGURE: dc_walkforward's 0.9904 is a
+    four-fold number. A three-fold passthrough may not be compared against it.
+    DC's figure is recomputed on folds 2-4 only, and every delta and interval
+    in the re-run is against that recomputed figure.
+
+A2.3  THE LAMBDA GRID IS EXTENDED DOWNWARD - DECLARED BEFORE THE RE-RUN
+
+    Two of four folds selected lambda at the grid floor of 0.01. A floor
+    selection means the grid was wrong for this feature regime, and Phase 4
+    section 8 requires it be reported rather than absorbed.
+
+    This is independent of the window problem and is fixed independently.
+
+    NEW GRID, 21 points, half-decade spacing throughout, extending the
+    existing 13 downward by four decades:
+
+        0.000001, 0.000003, 0.00001, 0.00003, 0.0001, 0.0003,
+        0.001,    0.003,
+        0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30, 100, 300, 1000, 3000, 10000
+
+    The upper 13 are unchanged, so any earlier selection remains
+    representable and the two grids agree wherever they overlap.
+
+    A PREDICTION, RECORDED NOW SO IT CANNOT BE RETROFITTED
+
+    The passthrough design carries exactly TWO features against 760 or more
+    training rows. That is a regime in which the unpenalised maximum-likelihood
+    fit is well posed and essentially optimal, so the inner CV has little
+    reason to prefer any positive penalty. The floor may therefore continue to
+    bind however far the grid is extended, and if it does that is NOT the
+    pathology G6 was written to catch - it is the correct answer for p = 2.
+
+    G6 is nevertheless left as a hard FAIL rather than softened. Per the
+    brief, a floor selection after the G7 gate is a STOP-and-report, and the
+    reading above is offered as an interpretation for that report, not as a
+    licence to continue.
+
+A2.4  SECTION 9 IS UNBLOCKED
+
+    Option B is adopted at N = 380. Sections 1-8 are unchanged. Nothing else
+    in this document moves.
+
+===============================================================================
+END OF AMENDMENT 2
+===============================================================================

@@ -49,7 +49,13 @@ not inherit the bug's blind spot.
 
 ## 1. `python -c` fails on these scripts. Run them as FILES.
 
-**Symptom, wearing two different masks:**
+**ONE root cause, three masks.** An earlier version of this file listed these as
+three separate environment artefacts. That was wrong, and the error is worth
+recording because it cost real time: three symptoms were treated as three
+problems, and two of the "fixes" (clearing `__pycache__`, serialising processes)
+addressed nothing.
+
+**Symptom, wearing three different masks:**
 
 ```
 AttributeError: 'bytes' object has no attribute 'co_filename'   (from numpy.rec)
@@ -57,12 +63,18 @@ TypeError: bad argument type for built-in operation              (from _write_at
 AttributeError: module '__main__' has no attribute '__file__'
 ```
 
-**Cause:** `phase0_evaluation_harness.py` reads `__main__.__file__` at import
-time. Under `python -c` there is no `__main__.__file__`, so any import chain that
-reaches the harness dies. The first two messages are the same failure surfacing
-through the bytecode-cache write path, which is why it was misdiagnosed as a
-corrupt `.pyc` and then as a process race. **It was neither.** Clearing
-`__pycache__` does not help; it changes which mask you see.
+**Cause, singular:** `phase0_evaluation_harness.py` reads `__main__.__file__` at
+import time. Under `python -c` there is no `__main__.__file__`, so **any import
+chain that reaches the harness dies.**
+
+All three messages are that one failure surfacing at different points in the
+import machinery — which is why it was misdiagnosed first as a corrupt `.pyc`
+and then as a process race. **It was neither.** Clearing `__pycache__` does not
+help; it only changes which mask you see. Nor does avoiding concurrent
+processes.
+
+The tell that unified them: the failures tracked *which module was being
+imported*, never *how many processes were running* or *how old the cache was*.
 
 **Do this instead:** write a file and run it.
 
@@ -118,6 +130,35 @@ taken over the empty selection — far from the cause.
 
 Two known divergences in `phase3_ablation_ladder.py` (lines ~1009, ~1013) are
 display-only and deliberately left alone.
+
+---
+
+## 3b. 1,900 rows on disk, 1,520 of them evaluated — pool the wrong set and get a plausible wrong number
+
+`phase2_elo_results.csv` and `phase2_poisson_dc_results.csv` hold **all 1,900
+matches**. Elo and DC predict through the training seasons too, because that is
+how the state gets built. Only **1,520** are outer-test rows and only those are
+scored.
+
+Pooling per-match log loss over all 1,900 returns **1.0027**. The correct figure
+is **0.9994**.
+
+**That is the dangerous kind of wrong number: plausible.** It is the right order
+of magnitude, it sits near the base rate, and nothing raises. It was caught only
+because the fold mean disagreed with it — and with exactly 380 test matches per
+fold the unweighted fold mean *must* equal the pooled figure, so the disagreement
+was itself the detector.
+
+**Do this:**
+- Filter on the `evaluated` column (or `role == "test"`) before pooling anything.
+- Assert the count is 1,520 (or 380 × folds used) rather than trusting the filter.
+  `E0` in `phase2_elo_rps_supplement.py` does this; `E2` cross-checks pooled
+  against the fold mean, which is what would catch a future variant of the same
+  slip.
+
+The general pattern: **when two routes to the same quantity exist, compute both
+and assert they agree.** A pooled figure and a mean-of-folds figure are the same
+number under equal fold sizes, so any divergence localises the bug immediately.
 
 ---
 
