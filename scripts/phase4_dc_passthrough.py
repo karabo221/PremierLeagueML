@@ -104,6 +104,11 @@ BOOTSTRAP_SEED = 20260901
 DC_VARIANT = "dc_walkforward"
 DC_REFERENCE = 0.9904
 
+# D2 pre-declaration Amendment 3: the events-per-variable threshold below which
+# an unpenalised logistic fit is unreliable. Peduzzi et al. 1996 - imported,
+# not fitted, and not tuned to put anything on either side of the line.
+EPV_APPLICABILITY = 10.0
+
 
 # ============================================================
 # POINT-IN-TIME DC STATE  (the same rule Phase 2 walks forward on)
@@ -428,10 +433,16 @@ def main():
         used_train_rows.append(train_rows)
         used_test_rows.append(test_rows)
 
+        rarest = int(pd.Series(results[train_rows]).value_counts().min())
+
         row = {"fold": fold, "test_season": test_season,
                "selected_lambda": chosen,
                "at_grid_floor": bool(chosen == LAMBDA_GRID[0]),
                "at_grid_ceiling": bool(chosen == LAMBDA_GRID[-1]),
+               "train_matches": len(train_rows),
+               "rarest_class": rarest,
+               "design_width": matrix.shape[1],
+               "epv": rarest / matrix.shape[1],
                "dc_log_loss": dc_ll}
         row.update({m: scores[m] for m in METRICS})
         row["gap_vs_dc"] = scores["log_loss"] - dc_ll
@@ -498,14 +509,52 @@ def main():
         "if it includes zero, the link is preserving DC within the "
         "resolution these 1,520 matches provide")
 
+    # ---- G6, as amended (D2 pre-declaration Amendment 3) -----------------
+    # G6 catches a MIS-SPECIFIED grid: the data wanting a smaller penalty than
+    # the grid offers. That presupposes the penalty is doing work. Where the
+    # unpenalised fit is already well identified, lambda -> 0 is the correct
+    # answer rather than an artefact, and no extension of the grid can stop
+    # the floor binding because there is no interior optimum to find.
+    #
+    # Applicability is events-per-variable, the standard logistic-regression
+    # criterion (Peduzzi et al. 1996), imported not fitted:
+    #     EPV = rarest training class count / design width
     boundary = int(fold_frame["at_grid_floor"].sum()
                    + fold_frame["at_grid_ceiling"].sum())
 
-    audit.record(
-        "G6", "no selected lambda sits on a grid boundary",
-        0, boundary, boundary == 0,
-        "Phase 4 section 8 requires a boundary selection to be reported "
-        "clearly and the experiment to stop rather than extend the grid")
+    min_epv = float(fold_frame["epv"].min())
+    applicable = min_epv < EPV_APPLICABILITY
+
+    if applicable:
+        audit.record(
+            "G6b", "no selected lambda sits on a grid boundary",
+            0, boundary, boundary == 0,
+            "EPV falls below {} for at least one fold (min {:.2f}), so the "
+            "penalty is doing work here and a boundary selection is a "
+            "mis-specified grid".format(EPV_APPLICABILITY, min_epv))
+    else:
+        audit.measure(
+            "G6b", "boundary selections, gate NOT APPLICABLE",
+            "{} of {} folds, min EPV {:.2f}".format(
+                boundary, len(fold_frame), min_epv),
+            "every fold has EPV >= {} ({:.2f} at worst), so the unpenalised "
+            "fit is well identified and lambda -> 0 is the correct answer, "
+            "not a grid artefact. Selected: {}".format(
+                EPV_APPLICABILITY, min_epv,
+                ", ".join("fold {} lambda {:g}".format(int(r["fold"]),
+                                                       r["selected_lambda"])
+                          for _i, r in fold_frame.iterrows()
+                          if r["at_grid_floor"] or r["at_grid_ceiling"])))
+
+    audit.measure(
+        "G6a", "G6 applicability (EPV < {} means applicable)".format(
+            EPV_APPLICABILITY),
+        "APPLICABLE" if applicable else "NOT APPLICABLE",
+        "per fold: " + ", ".join(
+            "f{} EPV {:.2f} (n {} rarest {} width {})".format(
+                int(r["fold"]), r["epv"], int(r["train_matches"]),
+                int(r["rarest_class"]), int(r["design_width"]))
+            for _i, r in fold_frame.iterrows()))
 
     # ---- G7  REGIME GATE, checked before any read of the gap -------------
     # Phase 2's walk-forward only ever fits windows of at least one full

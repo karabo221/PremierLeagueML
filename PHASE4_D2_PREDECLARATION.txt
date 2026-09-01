@@ -379,3 +379,146 @@ A2.4  SECTION 9 IS UNBLOCKED
 ===============================================================================
 END OF AMENDMENT 2
 ===============================================================================
+
+
+===============================================================================
+AMENDMENT 3 - G6 IS SCOPED TO THE REGIME WHERE IT IS WELL POSED
+Written before any re-evaluation. Applicability fixed for every planned rung.
+===============================================================================
+
+A3.0  DISCLOSURE, FIRST
+
+    This amendment is written HAVING SEEN folds 3 and 4 of the DC-passthrough
+    select lambda at the extended grid's floor of 1e-6. That is stated plainly
+    here, exactly as Amendment 2 stated its relationship to 47.26, because an
+    amendment written after a failure is the pattern this project polices
+    hardest.
+
+    The test that makes it legitimate is the same one: the applicability
+    condition below must be derivable from the REGIME - from p and n and the
+    conditioning of the fit - and must not reference which rungs failed. If it
+    happens to exclude the passthrough, that must fall out of its two features
+    against hundreds of rows, and would have fallen out identically had every
+    fold selected lambda = 1000.
+
+    It does. The condition is an external, pre-existing statistical criterion,
+    imported rather than fitted, and its value for every planned rung is
+    tabulated in A3.2 before any of them run.
+
+A3.1  WHAT G6 IS ACTUALLY FOR, AND WHEN THAT QUESTION HAS AN ANSWER
+
+    G6 exists to catch a MIS-SPECIFIED GRID: the data wants a smaller penalty
+    than the grid offers, so the selected lambda is an artefact of where the
+    grid was cut rather than a property of the data.
+
+    That failure mode presupposes the penalty is doing work. If the
+    unpenalised maximum-likelihood fit is itself well identified, then
+    lambda -> 0 is not an artefact, it is the correct answer, and no extension
+    of the grid will ever stop the floor binding because there is no interior
+    optimum to find. In that regime G6 asks a question with no answer.
+
+    So G6 is not failing. It is MALFORMED outside the regime it was written
+    for, and this amendment gives it that regime explicitly.
+
+    THE CONDITION: EVENTS PER VARIABLE
+
+        EPV = (count of the RAREST outcome class in the rung's training rows)
+              / (design-matrix width, excluding the intercept)
+
+        G6 IS APPLICABLE   when EPV <  10
+        G6 IS NOT APPLICABLE when EPV >= 10
+
+    The threshold of 10 is the long-standing events-per-variable rule for
+    logistic regression (Peduzzi et al., 1996, and the replication literature
+    that followed it). It is the conventional dividing line below which an
+    unpenalised logistic fit is unreliable - biased coefficients, unstable
+    standard errors, separation risk - and above which it is considered well
+    identified.
+
+    THIS THRESHOLD IS IMPORTED, NOT FITTED. It predates this project, it was
+    not chosen by looking at any number produced here, and it is not tuned to
+    put the passthrough on either side of the line. The rarest class is used
+    rather than n because the multinomial fit's precision is governed by the
+    scarcest outcome - draws - not by the total.
+
+A3.2  APPLICABILITY FOR EVERY PLANNED RUNG, FIXED IN ADVANCE
+
+    Design width is the built design matrix excluding the intercept, so
+    categorical expansion is counted, not the raw feature count.
+
+      rung         fold   n_train   rarest   width      EPV   G6
+      ---------------------------------------------------------------------
+      passthrough  2          380       87       2    43.50   NOT APPLICABLE
+      passthrough  3          760      169       2    84.50   NOT APPLICABLE
+      passthrough  4         1140      262       2   131.00   NOT APPLICABLE
+
+      D1           1          380       88      88     1.00   APPLICABLE
+      D1           2          760      175      88     1.99   APPLICABLE
+      D1           3         1140      257      88     2.92   APPLICABLE
+      D1           4         1520      350      88     3.98   APPLICABLE
+
+      D2           1          380       88      92     0.96   APPLICABLE
+      D2           2          760      175      92     1.90   APPLICABLE
+      D2           3         1140      257      92     2.79   APPLICABLE
+      D2           4         1520      350      92     3.80   APPLICABLE
+
+      D3           1          380       88     112     0.79   APPLICABLE
+      D3           2          760      175     112     1.56   APPLICABLE
+      D3           3         1140      257     112     2.29   APPLICABLE
+      D3           4         1520      350     112     3.12   APPLICABLE
+
+      D4           1          380       88     139     0.63   APPLICABLE
+      D4           2          760      175     139     1.26   APPLICABLE
+      D4           3         1140      257     139     1.85   APPLICABLE
+      D4           4         1520      350     139     2.52   APPLICABLE
+
+    The separation is not marginal. The LOWEST passthrough EPV is 43.50; the
+    HIGHEST any D-rung reaches is 3.98. There is an order of magnitude between
+    them and no rung sits near the threshold, so no rung's status turns on the
+    exact value of 10 - a threshold of 5, or 20, would classify every row of
+    this table identically.
+
+    G6 THEREFORE REMAINS FULLY APPLICABLE TO D1, D2, D3 AND D4, AT EVERY
+    FOLD. This amendment does not soften the gate for the ladder. It excludes
+    exactly one thing: a two-feature diagnostic.
+
+    A CORRECTION, RECORDED HERE
+
+        The instruction that prompted this amendment described D2 as "4
+        features against 1,140+ training rows". That is the DYNAMIC-STATE
+        BLOCK, not the rung. Section 3 of this document defines D2 as D1 plus
+        those 4 - 88 features, design width 92. D2's EPV is therefore 0.96 to
+        3.80, not the ~285 that 4 features would give, and G6 stays applicable
+        to it. Had the "4 features" reading been used, D2 would have been
+        wrongly exempted from its own grid gate.
+
+A3.3  THE AMENDED GATE
+
+    G6a  APPLICABILITY. Compute and report EPV for every (rung, fold) before
+         selection. Applicability follows from the table above and is not
+         decided per result.
+
+    G6b  WHERE APPLICABLE (EPV < 10). Unchanged from the original G6: a
+         selection at either grid boundary is a FAIL and stops the rung.
+
+    WHERE NOT APPLICABLE (EPV >= 10). A boundary selection is recorded as
+    INFO, carrying the selected lambda AND the EPV that made it
+    non-applicable, and the rung proceeds. It is never silently dropped.
+
+    The grid is NOT extended further in the non-applicable regime. A2.3
+    already established that extending it cannot help when there is no
+    interior optimum; it only moves the floor.
+
+A3.4  WHAT THIS DOES NOT DO
+
+    It does not change any fitted number. The passthrough run is deterministic
+    and its result is untouched by this amendment - only the gate status
+    attached to it moves.
+
+    It does not relax G7, which passes on its own terms.
+
+    It does not exempt any ladder rung from anything.
+
+===============================================================================
+END OF AMENDMENT 3
+===============================================================================
