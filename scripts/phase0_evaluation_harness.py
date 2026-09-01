@@ -312,6 +312,33 @@ def brier_score(y_true, proba):
     return float(np.mean(np.sum((proba - onehot) ** 2, axis=1)))
 
 
+def rps_score(y_true, proba):
+    """Ranked probability score. Ordered outcomes: H > D > A.
+
+    Mean over matches of
+
+        1 / (r - 1)  *  SUM over i of  ( cumsum(p)[i] - cumsum(o)[i] ) ** 2
+
+    for i = 1 .. r - 1, with r = 3 classes. The final cumulative pair is
+    1 - 1 = 0 by construction and is excluded, which is what the -1 in the
+    slice and the divisor are for.
+
+    Log loss and Brier score see only how much mass landed on the true class.
+    RPS knows that D sits BETWEEN H and A, so mass misplaced onto the adjacent
+    class costs less than the same mass placed at the far end. Two forecasts
+    can be identical under log loss and Brier and still differ here - the
+    self-tests below demonstrate exactly that case, which is the whole reason
+    this metric earns a place beside them rather than duplicating one.
+
+    Ranges 0 (perfect) to 1 (all mass on the opposite end of the order).
+    """
+    onehot = np.zeros_like(proba)
+    onehot[np.arange(len(y_true)), y_true] = 1.0
+    cumulative_error = np.cumsum(proba, axis=1) - np.cumsum(onehot, axis=1)
+    per_match = np.sum(cumulative_error[:, :-1] ** 2, axis=1) / (len(CLASSES) - 1)
+    return float(np.mean(per_match))
+
+
 def evaluate(y_true_labels, proba):
     """The single scoring function. Every model and the baseline pass through it.
 
@@ -328,6 +355,7 @@ def evaluate(y_true_labels, proba):
         "macro_f1": macro_f1_score(y_true, y_pred),
         "log_loss": log_loss_score(y_true, array),
         "brier_score": brier_score(y_true, array),
+        "rps": rps_score(y_true, array),
     }
 
 
@@ -380,6 +408,8 @@ def run_metric_selftests():
                     abs(scores["brier_score"]) < 1e-12, scores["brier_score"], 0.0))
     results.append(("perfect predictions -> log loss ~0",
                     scores["log_loss"] < 1e-9, scores["log_loss"], 0.0))
+    results.append(("perfect predictions -> RPS 0.0",
+                    abs(scores["rps"]) < 1e-12, scores["rps"], 0.0))
 
     # 2. uniform predictions have exact closed forms
     uniform = np.full((len(labels), 3), 1.0 / 3.0)
@@ -392,6 +422,12 @@ def run_metric_selftests():
     results.append(("uniform -> Brier 2/3",
                     abs(scores["brier_score"] - expected_brier) < 1e-9,
                     scores["brier_score"], expected_brier))
+    # uniform RPS on a set with equal H/D/A counts: H and A each score 5/18,
+    # D scores 1/9, and the mean of those three is 2/9.
+    expected_rps = 2.0 / 9.0
+    results.append(("uniform -> RPS 2/9",
+                    abs(scores["rps"] - expected_rps) < 1e-9,
+                    scores["rps"], expected_rps))
 
     # 3. a constant rule scores 1/3 balanced accuracy on a balanced set
     constant = np.tile(np.array([0.8, 0.1, 0.1]), (len(labels), 1))
@@ -399,6 +435,33 @@ def run_metric_selftests():
     results.append(("constant 'always H' -> balanced accuracy 1/3",
                     abs(scores["balanced_accuracy"] - 1.0 / 3.0) < 1e-12,
                     scores["balanced_accuracy"], 1.0 / 3.0))
+
+    # 4. RPS is bounded above by 1: all mass at the wrong end of the order
+    worst = evaluate(["H", "A"], np.array([[0.0, 0.0, 1.0], [1.0, 0.0, 0.0]]))
+    results.append(("mass at the far end -> RPS 1.0",
+                    abs(worst["rps"] - 1.0) < 1e-12, worst["rps"], 1.0))
+
+    # 5. THE REASON RPS IS NOT REDUNDANT.
+    #    True outcome H. Both forecasts put 0.5 on H, so log loss is identical
+    #    and Brier score is identical. They differ only in WHERE the other half
+    #    went: onto the adjacent class D, or onto the far class A. Only RPS can
+    #    tell them apart. If this test ever passes trivially - both RPS values
+    #    equal - the metric has stopped being ordered and is duplicating Brier.
+    adjacent = evaluate(["H"], np.array([[0.5, 0.5, 0.0]]))
+    far = evaluate(["H"], np.array([[0.5, 0.0, 0.5]]))
+    results.append(("ordering case: log loss cannot separate",
+                    abs(adjacent["log_loss"] - far["log_loss"]) < 1e-12,
+                    adjacent["log_loss"], far["log_loss"]))
+    results.append(("ordering case: Brier cannot separate",
+                    abs(adjacent["brier_score"] - far["brier_score"]) < 1e-12,
+                    adjacent["brier_score"], far["brier_score"]))
+    results.append(("ordering case: RPS prefers adjacent 0.125",
+                    abs(adjacent["rps"] - 0.125) < 1e-12, adjacent["rps"], 0.125))
+    results.append(("ordering case: RPS punishes far end 0.250",
+                    abs(far["rps"] - 0.250) < 1e-12, far["rps"], 0.250))
+    results.append(("ordering case: RPS separates them",
+                    far["rps"] > adjacent["rps"] + 1e-9,
+                    far["rps"] - adjacent["rps"], 0.125))
     return results
 
 
@@ -630,7 +693,7 @@ def main():
     print("=" * 78)
     print("  Arithmetic on the observed label distribution. No model is fitted,")
     print("  and this is NOT the baseline being evaluated - it is the reason the")
-    print("  metric set has five entries instead of one.")
+    print("  metric set has six entries instead of one.")
     print()
 
     home_rate = float((matches["result"] == "H").mean())
@@ -640,13 +703,18 @@ def main():
     print("    macro F1          low       <- two of three classes score zero")
     print("    log loss          unbounded <- a confident wrong call is punished")
     print("    Brier score       poor      <- squared error against the outcome")
+    print("    RPS               poor      <- and it lands at the wrong end of H>D>A")
     print()
     print("  Accuracy rewards collapsing onto the majority class. Draws are the")
     print("  hardest and least frequent outcome, and a model that never predicts one")
     print("  can still look accurate. Balanced accuracy and macro F1 expose that;")
     print("  log loss and Brier score judge the PROBABILITIES rather than the")
-    print("  argmax, which is what a forecast is actually for. RPS belongs here too")
-    print("  once ordered outcomes matter - noted in the spec, not yet required.")
+    print("  argmax, which is what a forecast is actually for. RPS goes further and")
+    print("  judges them as ORDERED: H > D > A, so a forecast that misses towards")
+    print("  the draw is treated more kindly than one that misses to the far end.")
+    print("  Log loss and Brier score are both blind to that distinction, which the")
+    print("  self-tests below demonstrate on a case where they cannot separate two")
+    print("  forecasts and RPS can.")
     print()
 
     # ------------------------------------------------------------------
@@ -750,8 +818,9 @@ def main():
             "direction": "lower is better",
             "purpose": "ranked probability score; respects H > D > A ordering and "
                        "is the standard in football forecasting",
-            "required_for_model": "NOT YET - named in Direction_2.txt; add when "
-                                  "ordered outcomes are modelled",
+            "required_for_model": "YES - the condition it was held back for is "
+                                  "met: base rate, Elo and Dixon-Coles all "
+                                  "produce ordered H/D/A probabilities",
         },
     ]
 
