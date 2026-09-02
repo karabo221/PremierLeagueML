@@ -49,6 +49,15 @@ FROZEN_PATTERNS = [
     # amendment that can be edited after the fact is worth as little as a
     # pre-declaration that can, so it is frozen on the same terms.
     "PHASE4_AMENDMENT6_D2STATIC.txt",
+    # PHASE 5. The market pre-declaration fixes the bookmaker, the de-vig and
+    # the calibration bins BEFORE any score existed; a pre-declaration whose
+    # hash can move is not one.
+    "PHASE5_MARKET_PREDECLARATION.txt",
+    # THE ODDS SOURCE ITSELF. data/raw is immutable by project rule, but that
+    # rule is prose and this is the first source that arrived over the network
+    # rather than on the stick. A re-download that moves a hash is a NEW
+    # SOURCE, not a refresh, and this is what makes that checkable.
+    "data/raw/Odds/E0_*.csv",
     "outputs/phase4_dynamic_state_predeclaration.txt",
     "outputs/phase0_evaluation_folds.csv",
     "outputs/phase0_evaluation_spec.csv",
@@ -106,6 +115,7 @@ FROZEN_PATTERNS = [
     # their own filenames, so the rungs they are compared against are not
     # overwritten by the rungs that extend them.
     "outputs/phase4_d34_*.csv",
+    "outputs/phase5_*.csv",
     "outputs/phase4_etg_*.csv",
 ]
 

@@ -18,14 +18,20 @@ legitimately re-run. It means the artefact is no longer the one the
 pre-declaration was written against, and that has to be reconciled explicitly
 rather than noticed later.
 
-generated 2026-09-02T17:36:00Z
-70 files
+generated 2026-09-02T18:04:41Z
+83 files
 
 c0ea0bce045af978c64aa3e209ea8b9f5fb1dde52f95c83c65e3e5e316c367f0  PHASE3_CEILING_PREDECLARATION.txt
 1de3af06af72634d91d1f0f07b50256785a5a1c16fda41de85138cf975524da4  PHASE3_REGULARISATION_PREDECLARATION.txt
 90743c9ba407476316e0e46b7e1645faed87ef342305425229594c2fc03c4812  PHASE4_AMENDMENT6_D2STATIC.txt
 952652311366eaae152f9d10d08a7cf4ff1a9dfa443bfb2d28ea1c645d2bf0ad  PHASE4_D2_PREDECLARATION.txt
 4c38a173b26fb97d46f69da7146c3c7fc1c109fde35f2fe6096b056b5216c7f7  PHASE4_TIER2_WINDOW_PREDECLARATION.txt
+aacaf1d003847e775205984c8454af58a579d32aadf1b9096ecb0b927f177fa9  PHASE5_MARKET_PREDECLARATION.txt
+335afcbabeb2939fa10ab39ba3e8215072d0b577cb8d0705c1e44c56e934e703  data/raw/Odds/E0_2122.csv
+8442792d3b614c94ea3cf381bd2736805889cc1713169035368fff19c3d02380  data/raw/Odds/E0_2223.csv
+b2e057b0ed959f198b0f63d2391c01239f3608e6de5db68edab3f88e04d07ff3  data/raw/Odds/E0_2324.csv
+d0c8ce4a96d886cf60cf101f570f4a3893844226f91c7bd769eb568c49edbfa4  data/raw/Odds/E0_2425.csv
+3e3a8352f9ada6789c508d6ca184424421fed56a30400904a4a327c583407e62  data/raw/Odds/E0_2526.csv
 7feebd66c7effcab517070a2669e576e655b2e3283d82547e793a40c5cba82cd  outputs/phase0_evaluation_folds.csv
 907ddffa9afbe8db64566798d56c93428887dbc357fd41dad65e2c015156e0c8  outputs/phase0_evaluation_spec.csv
 871b5850a790895a9c76c4f2466d01d04cf8a6d4c216bb3e770750ea903abbbb  outputs/phase0_evaluation_spec.json
@@ -91,6 +97,13 @@ e04545fe6b9547e1f136ae6f1aa045ace5eb59872a1acffb972c3776f550a73e  outputs/phase4
 e074ab41121a40187db4da396599223305918f9f4bae64cc0b7f8edc9202620e  outputs/phase4_tier2_fold_summary.csv
 fc93a9a1e359f78d9f0a9ea0a1d4daa7060312e927259838985468e63cccf709  outputs/phase4_tier2_pooled.csv
 3fec11ca565fa63dc6062a71a9d87391fc4437d427d95b281b6c77c4e5317693  outputs/phase4_tier2_predictions.csv
+295dec1b711b9a984e903828543c02500d558ae4365af3081ae92726aa3244e2  outputs/phase5_calibration.csv
+fc0e0293e498993e8caa59050dcbe56978b9ba9b22fb3de4daab2a8de01c513e  outputs/phase5_market_audit.csv
+dd8528b1de68ca4c26c2d08246ad20a063155bda8fbc99344f15d06da2ade5c7  outputs/phase5_market_deltas.csv
+27cb0ca0531e25c381c3bffc7d9169b04397dc6d972eeed85bd8c1a1dad92185  outputs/phase5_market_fold_summary.csv
+43f3c0aa841ecdad9acd37398ab91b15d5a79a366845e244462568a6f4eebeb7  outputs/phase5_market_pooled.csv
+4d2f102310837d7b9a6d3f0d4c75ee2375a441f1289cd8cf720216da09a539b0  outputs/phase5_market_probabilities.csv
+b7e27a24de767f6676573454110dbbc22d6631369c82bbc62de7b5b21d8e0bf5  outputs/phase5_reliability.csv
 
 ===============================================================================
 END OF MANIFEST

@@ -1,0 +1,268 @@
+===============================================================================
+PHASE 5 - INSTRUMENT B:  THE MARKET BENCHMARK AND THE CALIBRATION AUDIT
+PRE-DECLARATION, WRITTEN BEFORE ANY SCORE WAS COMPUTED
+===============================================================================
+
+STATUS      Declared 2026-09-02, before the instrument was written and before
+            any market log loss, RPS or calibration figure existed.
+
+            Everything in sections 1 to 6 was decided from PROPERTIES OF THE
+            SOURCE FILES - completeness, panel composition, join integrity -
+            and not from any score. Section 7 states what would have made
+            those decisions contaminated, so a later reader can check.
+
+-------------------------------------------------------------------------------
+0.  THE EXCLUSION THIS LIFTS, AND ON WHOSE AUTHORITY
+-------------------------------------------------------------------------------
+
+B0.1  Step 2 of the Phase 4 brief excluded market odds, alongside xG,
+      XGBoost, random forests and betting backtests. That exclusion has
+      been LIFTED for odds by explicit direction, as Phase 5 item B.
+
+B0.2  WHAT IS LIFTED IS NARROW. Odds enter as a BENCHMARK TO BE SCORED
+      AGAINST, never as a feature. No rung of the D-ladder gains an odds
+      column, nothing is re-fitted, and no number already reported moves.
+
+B0.3  THE BETTING-BACKTEST EXCLUSION STANDS. This instrument computes no
+      stake, no return, no yield and no closing-line value. It measures
+      where the project sits against the market on the project's own
+      metrics. XGBoost and random forests stay excluded. xG is Phase 5
+      item A and is not in scope here.
+
+-------------------------------------------------------------------------------
+1.  THE SOURCE
+-------------------------------------------------------------------------------
+
+B1.1  football-data.co.uk, division E0, five season files, downloaded
+      2026-09-02 to data/raw/Odds/ and thereafter IMMUTABLE under the same
+      rule as every other file in data/raw/.
+
+          E0_2122.csv  2021-2022   sha256 335afcba...4e703
+          E0_2223.csv  2022-2023   sha256 8442792d...d02380
+          E0_2324.csv  2023-2024   sha256 b2e057b0...d07ff3
+          E0_2425.csv  2024-2025   sha256 d0c8ce4a...9edbfa4
+          E0_2526.csv  2025-2026   sha256 3e3a8352...3407e62
+
+      Each carries exactly 380 rows. All five go under FROZEN_MANIFEST.txt.
+      A re-download that moves a hash is a new source, not a refresh.
+
+B1.2  THIS IS A SECOND INDEPENDENT DESCRIPTION OF MATCHES THE PROJECT
+      ALREADY HAS. That is what makes it usable, and it is checked rather
+      than assumed - see M1 and M2.
+
+-------------------------------------------------------------------------------
+2.  THE JOIN, AND THE TEAM MAPPING
+-------------------------------------------------------------------------------
+
+B2.1  JOIN KEY: (season, home_team, away_team). Not date. Two sources can
+      disagree about the date of a rearranged fixture while agreeing about
+      the fixture; the key that cannot drift is who played whom in which
+      season. The date is then RECONCILED rather than joined on (M2).
+
+B2.2  THE MAPPING IS EXPLICIT AND CLOSED. Eight names differ between the
+      sources. They are listed here in full, and the instrument fails if
+      any name on either side is not accounted for. NOTHING IS
+      FUZZY-MATCHED - Phase 0 Instrument 4's rule, unchanged:
+
+          Ipswich          -> Ipswich Town
+          Leeds            -> Leeds United
+          Leicester        -> Leicester City
+          Luton            -> Luton Town
+          Man City         -> Manchester City
+          Man United       -> Manchester Utd
+          Norwich          -> Norwich City
+          Nott'm Forest    -> Nottingham
+
+      Twenty-seven teams appear on each side. A twenty-eighth name from
+      either source is a FAILURE, not a row to drop.
+
+-------------------------------------------------------------------------------
+3.  WHICH ODDS, AND WHY - DECIDED FROM COMPLETENESS, NOT FROM SCORE
+-------------------------------------------------------------------------------
+
+B3.1  THE PROBLEM THAT DRIVES THIS SECTION. The obvious benchmark is
+      Pinnacle closing (PSCH/PSCD/PSCA), the sharpest line and the usual
+      choice in the literature. It cannot be the primary here:
+
+          PSC is missing on 170 of 1,900 matches, and ALL 170 ARE IN
+          2025-2026 - fold 4's test season, where it covers 210 of 380.
+
+      A primary benchmark absent from 45% of the most recent test fold
+      would be a benchmark that silently changes population by fold.
+
+B3.2  THE PANEL BEHIND "MARKET AVERAGE" IS NOT CONSTANT EITHER. Counting
+      bookmakers with a closing home price present, by season:
+
+          2021-2022   B365 BW PS WH VC IW              (IW 377)
+          2022-2023   B365 BW PS WH VC IW
+          2023-2024   B365 BW PS WH VC IW              (BW 368, IW 198)
+          2024-2025   B365 BW BF PS WH 1XB BFE         (BW 239, WH 289)
+          2025-2026   B365 BW PS LB BFE                (PS 210, LB 281)
+
+      AvgC is complete on all 1,900 rows, but it is an average over a
+      DIFFERENT SET OF BOOKMAKERS in each season. Its overround moves with
+      the panel: 1.0388 in 2021-22 rising to 1.0567 in 2025-26, the last
+      of which is an average taken largely without Pinnacle.
+
+B3.3  THE DECLARED PRIMARY IS BET365 CLOSING (B365CH/B365CD/B365CA).
+
+      It is the only bookmaker present and COMPLETE - 380 of 380 - in all
+      five seasons. It is therefore the only column that is THE SAME
+      INSTRUMENT AT EVERY FOLD, which is the property a cross-fold
+      benchmark needs and the property neither PSC nor AvgC has.
+
+      This is not a claim that Bet365 is the sharpest line. It is a claim
+      that it is the only one that does not change what it is between
+      fold 1 and fold 4.
+
+B3.4  TWO SENSITIVITIES, DECLARED NOW, REPORTED WHATEVER THEY SAY.
+
+      (a) AvgC, all 1,900 rows, with B3.2's panel caveat attached to every
+          figure it produces.
+
+      (b) PSC, RESTRICTED TO THE 1,730 ROWS WHERE IT EXISTS, reported PER
+          FOLD and NEVER POOLED against the other two. A pooled Pinnacle
+          number over a different row set than the primary is the kind of
+          comparison that looks like evidence and is not.
+
+      If the primary and the sensitivities disagree about where the
+      project sits, that disagreement is the result and is reported as
+      one. The primary is not swapped for whichever reads better.
+
+-------------------------------------------------------------------------------
+4.  FROM PRICES TO PROBABILITIES
+-------------------------------------------------------------------------------
+
+B4.1  DECLARED PRIMARY: PROPORTIONAL NORMALISATION.
+
+          p_i  =  (1 / o_i)  /  SUM_j (1 / o_j)
+
+      The simplest de-vig, the one most reported results use, and the one
+      that assumes the bookmaker's margin is spread proportionally across
+      the three outcomes.
+
+B4.2  DECLARED SENSITIVITY: SHIN (1992), solved for z by bisection on the
+      same three prices. Shin assumes part of the margin is protection
+      against informed money and redistributes it away from longshots. It
+      is the standard alternative and it moves draw and away prices in
+      opposite directions from B4.1.
+
+      BOTH ARE REPORTED. The primary is B4.1 and does not change.
+
+B4.3  NO OTHER TRANSFORMATION. No shrinkage toward the base rate, no
+      blending of bookmakers, no per-season recalibration of the market.
+      The market is scored as it stands, because a market that has been
+      fitted to this data is no longer an external benchmark.
+
+-------------------------------------------------------------------------------
+5.  WHAT IS SCORED, AND OVER WHICH ROWS
+-------------------------------------------------------------------------------
+
+B5.1  THE SAME 1,520 OUTER-TEST MATCHES, the same four frozen folds, and
+      the full Phase 0 metric set through the harness's own evaluate().
+      Every market probability array passes validate_probabilities()
+      before it is scored, exactly as every model's does.
+
+B5.2  THE COMPARISON SET is D0, D1, D2 rescaled, D3, D4, Elo v1, Poisson
+      and Dixon-Coles, read from the committed artefacts. NOTHING IS
+      RE-FITTED BY THIS INSTRUMENT.
+
+B5.3  DELTAS use the project's paired per-match bootstrap, 10,000 draws,
+      seed 20260901, and the same binding verdict rule: RPS must agree in
+      sign with log loss or the comparison is INCONCLUSIVE.
+
+      Declared pairs: market - D4, market - D2rescaled, market - Elo v1,
+      market - Dixon-Coles, market - D0. Pooled and per fold.
+
+B5.4  THE HEADLINE NUMBER THIS REPLACES. Phase 4 recorded "the market's
+      ~0.95 is out of reach by construction". That 0.95 is an ASSUMPTION
+      carried in prose and has never been measured on these matches. This
+      instrument replaces it with a measurement, and the measurement
+      stands whether it is above or below 0.95.
+
+-------------------------------------------------------------------------------
+6.  THE CALIBRATION AUDIT, DECLARED BEFORE IT IS RUN
+-------------------------------------------------------------------------------
+
+B6.1  The project has tracked calibration and never made it a first-class
+      result. It becomes one here, on the same 1,520 matches, for the
+      market and for every model in B5.2.
+
+B6.2  BINS ARE DECLARED NOW, NOT CHOSEN AFTER SEEING THE CURVE: ten fixed
+      bins of width 0.1 on [0, 1], applied to each class separately and
+      pooled over the three classes. A bin with fewer than 20 predictions
+      is reported with its count and is NOT smoothed, merged or dropped.
+
+B6.3  REPORTED PER MODEL: expected calibration error (ECE) weighted by bin
+      count, maximum calibration error (MCE), the full reliability table
+      (bin, n, mean predicted, observed frequency) per class, and the
+      mean predicted minus observed frequency per class as a bias figure.
+
+B6.4  ECE IS A DESCRIPTION, NOT A RANKING. A model may be better
+      calibrated and worse on log loss; log loss and RPS remain the
+      metrics that decide anything in this project. No model is declared
+      better on ECE.
+
+B6.5  NO RECALIBRATION IS FITTED. Not Platt, not isotonic, not
+      temperature. Fitting a correction on the outer-test rows would be
+      scoring on data used to fit, which is the one thing every gate in
+      this project exists to prevent. If the audit shows a fixable bias,
+      that is a Phase 5 finding and its fix is a separate, declared piece
+      of work.
+
+-------------------------------------------------------------------------------
+7.  GATES
+-------------------------------------------------------------------------------
+
+      M1   every one of the 1,900 project matches joins exactly one odds
+           row, and no odds row is used twice
+      M2   the two sources agree on FTHG/FTAG and on the date for every
+           joined match; any disagreement is reported per match and FAILS
+      M3   the team mapping is closed - 27 names on each side, no
+           unmapped name, no fuzzy match
+      M4   the primary odds column is complete on all 1,520 scored rows
+      M5   every de-vigged probability array passes the harness's
+           validate_probabilities()
+      M6   proportional de-vig returns rows summing to 1 within 1e-12, and
+           Shin's solved z lies in [0, 1) with its bisection converged
+      M7   the market's per-fold row counts are exactly 380, 380, 380, 380
+      M8   pooled log loss equals the unweighted mean of the four fold
+           values, to 1e-12 - the identity that has caught two bugs
+      M9   the model figures this instrument prints match the committed
+           artefacts bit for bit; nothing is re-derived
+      M10  reliability bin counts sum to the number of predictions, per
+           class and pooled
+
+-------------------------------------------------------------------------------
+8.  WHAT WOULD HAVE MADE THIS CONTAMINATED
+-------------------------------------------------------------------------------
+
+      Choosing the bookmaker after seeing which gave the market its worst
+      score. Choosing the de-vig after seeing which narrowed the gap.
+      Moving the calibration bins after seeing the reliability curve.
+      Dropping the 170 Pinnacle-less matches from the PRIMARY rather than
+      choosing a primary that does not need them. Reporting ECE as a win.
+
+      Section 3's choice is the one most exposed to this, which is why the
+      completeness table is written out in full above: the reasoning is
+      checkable against the source files without running anything.
+
+-------------------------------------------------------------------------------
+9.  WHAT THIS INSTRUMENT CANNOT ESTABLISH
+-------------------------------------------------------------------------------
+
+      It cannot establish that the market is a ceiling. It measures where
+      the market sits on these 1,520 matches; whether that is reachable
+      without lineup and injury data is not a question these numbers
+      answer.
+
+      It cannot make the project's numbers out-of-sample. 2025-2026 was
+      scored during Phase 3's lambda sweep and its B0-B6 ablation. The
+      market has never been fitted to anything, so the comparison is
+      between a development estimate and a clean external benchmark, and
+      it is BIASED IN THE PROJECT'S FAVOUR. That direction is stated
+      before the numbers, and it does not change after them.
+
+===============================================================================
+END
+===============================================================================

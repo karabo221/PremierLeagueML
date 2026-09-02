@@ -127,3 +127,9 @@ desktop.ini
 # expected_total_goals redundancy diagnostic that preceded them.
 !outputs/phase4_d34_*.csv
 !outputs/phase4_etg_*.csv
+
+# Phase 5 Instrument B - the market benchmark and the calibration audit.
+# The odds source itself is small, immutable and the thing the benchmark
+# stands on, so it is tracked rather than re-downloaded: a re-download that
+# moves a hash is a NEW SOURCE, not a refresh.
+!outputs/phase5_*.csv

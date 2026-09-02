@@ -9,6 +9,201 @@ and the same 1,520 outer-test matches unless it says otherwise.
 
 ---
 
+## Phase 5 — Instrument B: the market benchmark, measured
+
+*Run 2026-09-02. `scripts/phase5_market_benchmark.py`, 19 checks, **0 failures**.
+Pre-declaration `PHASE5_MARKET_PREDECLARATION.txt`, written before any score
+existed. Fits nothing: every model figure is read from a committed artefact and
+asserted against it.*
+
+### The number that was an assumption
+
+Phase 4 recorded, in prose, that "the market's ~0.95 is out of reach by
+construction". That figure was never measured on these matches. It is now.
+
+**The market's pooled log loss on the same 1,520 outer-test matches is
+0.96057**, RPS 0.19469. The assumption was optimistic by about 0.01 — the
+market is not as good as the project had been assuming it was.
+
+| model | log loss | RPS | Brier |
+|---|---|---|---|
+| **market — Bet365 closing** | **0.96057** | 0.19469 | 0.5702 |
+| Dixon-Coles walk-forward | 0.99036 | 0.20350 | 0.5897 |
+| Poisson walk-forward | 0.99042 | 0.20355 | 0.5900 |
+| Elo v1 | 0.99943 | 0.20667 | 0.5958 |
+| D4 | 0.99975 | 0.20619 | 0.5963 |
+| D2 rescaled | 1.00028 | 0.20646 | 0.5970 |
+| D3 | 1.00125 | 0.20662 | 0.5976 |
+| D1 | 1.00393 | 0.20769 | 0.5994 |
+| D0 base rate | 1.06889 | 0.23185 | 0.6467 |
+
+### The gap, and it is significant at every fold
+
+| comparison | Δ log loss | 95% CI | Δ RPS | verdict |
+|---|---|---|---|---|
+| market − D4 | −0.03918 | [−0.05041, −0.02787] | −0.01150 | **significant** |
+| market − D2 rescaled | −0.03971 | [−0.05106, −0.02838] | −0.01177 | **significant** |
+| market − Elo v1 | −0.03886 | [−0.05037, −0.02755] | −0.01198 | **significant** |
+| market − Dixon-Coles | −0.02979 | [−0.04229, −0.01759] | −0.00881 | **significant** |
+| market − D0 | −0.10831 | [−0.12806, −0.08891] | −0.03716 | **significant** |
+
+Negative favours the market. Signs agree on every row, and every interval
+excludes zero. Per fold, market − D4 is −0.0320, −0.0592, −0.0397, −0.0259 —
+**significant at all four**, never once inconclusive.
+
+This is the first comparison in the project where something beats the ladder
+decisively. Every internal delta from D1 upward has been under 0.004; this one
+is ten times that.
+
+**And the comparison is biased in the project's favour.** 2025-26 was scored
+during Phase 3's lambda sweep and its B0–B6 ablation, so every model figure
+here is a walk-forward development estimate, optimistic by an unknown margin.
+The market has never been fitted to anything. The project loses by 0.039 with
+the thumb on its own side of the scale.
+
+### Where the ladder sits on the road to the market
+
+Of the 0.10831 in log loss between the base rate and the market:
+
+- **D0 → D4 covers 0.06914, or 64%**
+- the remaining **0.03918, or 36%**, is not covered by anything in this project
+- Dixon-Coles covers 0.07853 of it, 72%, and is still 0.02979 short
+
+### Which odds, and why it is not Pinnacle
+
+Decided from completeness before any score was computed, and this is the part
+of the instrument most exposed to being chosen after the fact.
+
+| book | present on 1,520 | by test season |
+|---|---|---|
+| **Bet365 closing (primary)** | **1520/1520** | 380 / 380 / 380 / 380 |
+| market average closing | 1520/1520 | 380 / 380 / 380 / 380 |
+| Pinnacle closing | 1350/1520 | 380 / 380 / 380 / **210** |
+
+Pinnacle is the sharper line and the usual choice. It is missing on 170 rows
+and **all 170 are in fold 4**, where it covers 210 of 380 — a primary benchmark
+that changes population between folds. The market average is complete but is an
+average over a *different set of bookmakers each season*: VC and WH leave, 1XB
+and BFE arrive, Pinnacle drops to 210, and the overround climbs from 1.0388 to
+1.0567 as the panel shifts underneath it.
+
+Bet365 closing is 380 of 380 in all five seasons — the only column that is the
+same instrument at every fold. That is the whole of the argument for it; it is
+not a claim that Bet365 is sharpest.
+
+**It does not matter.** All four book × de-vig combinations land inside 0.0006
+of each other:
+
+| variant | log loss |
+|---|---|
+| market average, Shin | 0.96001 |
+| Bet365, Shin | 0.96011 |
+| market average, proportional | 0.96031 |
+| Bet365, proportional | 0.96057 |
+
+Pinnacle, per fold and never pooled, scored on exactly the rows it covers
+against Bet365 on those same rows: 0.9622 vs 0.9617, 0.8996 vs 0.8997, 0.9664
+vs 0.9678, 0.9875 vs 0.9842. Indistinguishable. **The 0.039 gap is not an
+artefact of which bookmaker was picked.**
+
+### The calibration audit, and why ECE decides nothing
+
+Ten fixed bins of width 0.1, declared before the curve was seen. Thin bins are
+reported with their counts, never merged or dropped. No recalibration is fitted
+— Platt or isotonic on the outer-test rows would be fitting on the rows being
+scored.
+
+| model | ECE | MCE | bias H | bias D | bias A |
+|---|---|---|---|---|---|
+| D0 base rate | **0.00760** | 0.01140 | +0.0025 | −0.0114 | +0.0089 |
+| market avg, Shin | 0.00778 | 0.05061 | −0.0037 | −0.0032 | +0.0069 |
+| market Bet365, Shin | 0.00790 | 0.09139 | +0.0008 | −0.0082 | +0.0074 |
+| market Bet365, proportional | 0.01059 | 0.10230 | −0.0037 | −0.0042 | +0.0078 |
+| D2 rescaled | 0.01625 | 0.11800 | +0.0107 | −0.0122 | +0.0014 |
+| Dixon-Coles | 0.01677 | 0.16273 | −0.0082 | −0.0112 | +0.0194 |
+| D4 | 0.01716 | 0.10010 | +0.0075 | −0.0100 | +0.0025 |
+| Elo v1 | 0.02695 | 0.19316 | +0.0040 | −0.0132 | +0.0092 |
+
+**D0 has the best calibration in the project and is the worst model in it.** A
+constant base-rate prediction is almost perfectly calibrated by construction
+and carries no information whatever. That is the entire argument for B6.4: ECE
+is a description, and nothing here is decided on it.
+
+Two real findings survive that caveat:
+
+**Every model under-predicts draws.** `bias D` is negative for all twelve
+entries, market included, from −0.0032 to −0.0175. The market's draw bias is
+the smallest; Poisson's is the largest at −0.0175, with a matching +0.0225 on
+away wins.
+
+**The market shows the textbook favourite–longshot bias**, and Shin corrects
+it. Bet365's proportional reliability curve, pooled over classes:
+
+| bin | n | mean predicted | observed |
+|---|---|---|---|
+| 0.0–0.1 | 148 | 0.0764 | **0.0473** |
+| 0.1–0.2 | 763 | 0.1590 | 0.1547 |
+| 0.2–0.3 | 1750 | 0.2535 | 0.2474 |
+| 0.3–0.4 | 581 | 0.3456 | 0.3666 |
+| 0.4–0.5 | 492 | 0.4485 | 0.4370 |
+| 0.5–0.6 | 378 | 0.5519 | 0.5661 |
+| 0.6–0.7 | 258 | 0.6486 | 0.6550 |
+| 0.7–0.8 | 142 | 0.7483 | 0.7465 |
+| 0.8–0.9 | 48 | 0.8352 | **0.9375** |
+
+Longshots over-priced, heavy favourites under-priced — the middle eight bins
+sit within 0.02. Applying Shin, which exists to redistribute margin away from
+longshots, drops ECE from 0.01059 to 0.00790 and MCE from 0.1023 to 0.0914.
+**A declared sensitivity behaving exactly as its theory predicts is a check on
+the implementation, and it passed.** The 0.8–0.9 bin holds 48 predictions and
+is flagged thin; it is not evidence on its own.
+
+### The join
+
+1,900 project matches against 1,900 football-data.co.uk rows, joined on
+(season, home, away) rather than on date — two sources can disagree about the
+date of a rearranged fixture while agreeing about the fixture. The date is then
+reconciled instead of joined on.
+
+**Zero unmatched, zero duplicate keys, zero scoreline disagreements, zero date
+disagreements.** Two independently-built descriptions of the same 1,900
+matches agree completely — the Phase 0 Instrument 4 discipline applied to a new
+source. Eight team names differ and all eight are mapped by explicit
+dictionary lookup; a ninth would fail the gate rather than be fuzzy-matched.
+
+### What this does and does not license
+
+It **does not** establish that the market is a ceiling. It measures where the
+market sits on these 1,520 matches. Whether 0.96057 is reachable without lineup
+and injury data is not a question these numbers answer — and the project's own
+scoping decision at Step 2 is why it has neither.
+
+It **does** retire the 0.95 assumption. Any future claim about the distance to
+the market should quote 0.96057 and this instrument, not a remembered figure.
+
+Step 2's betting exclusion stands: no stake, no return, no yield, no closing
+line value is computed anywhere in this instrument. Odds enter as a benchmark
+to be scored against and never as a feature; no rung was re-fitted and no
+number already reported moved. XGBoost and random forests stay excluded.
+
+### Evidence
+
+`outputs/phase5_{market_fold_summary,market_pooled,market_deltas,market_probabilities,calibration,reliability,market_audit}.csv`,
+`data/raw/Odds/E0_{2122,2223,2324,2425,2526}.csv`. All under
+`FROZEN_MANIFEST.txt`.
+
+19 checks, 0 failures: M1a–M1b (join integrity), M2a–M2b (cross-source
+reconciliation), M3 (closed mapping), M4/M4b (primary completeness, Pinnacle
+never pooled), M5 (harness validation), M6a–M6b per book (de-vig identities and
+Shin's bracket), M7 (380 per fold), M8 (the pooled/fold-mean identity), M9a–M9b
+(committed artefacts reproduce to 0.000e+00), M10 (bin counts).
+
+**M9b is the one worth naming.** Re-scoring the committed probabilities of all
+seven models reproduced every one of the six pooled metrics to **0.000e+00**.
+Nothing in this entry is a re-derivation.
+
+---
+
 ## Phase 4 — the ladder finished: D3, D4, and the Phase 4 conclusion
 
 *Run 2026-09-02. `scripts/phase4_d34_ladder.py`, 44 checks, **0 failures** in this
