@@ -1,0 +1,262 @@
+===============================================================================
+PHASE 5 - INSTRUMENT A:  DIXON-COLES ON EXPECTED GOALS
+PRE-DECLARATION, WRITTEN BEFORE THE DATA EXISTED
+===============================================================================
+
+STATUS      Declared 2026-09-02. NOT RUN - the xG source is not yet on the
+            stick. See section 8, which records exactly why, so that the
+            next session does not re-derive it.
+
+            Everything below was decided from the EXISTING CODE and from the
+            structure of the estimator, not from any xG number. No xG value
+            has been seen by anyone writing this.
+
+-------------------------------------------------------------------------------
+0.  THE CLAIM BEING TESTED, AND THE EXCLUSION THIS LIFTS
+-------------------------------------------------------------------------------
+
+A0.1  Step 2 of the Phase 4 brief excluded xG. That exclusion is lifted by
+      explicit direction, as Phase 5 item A. The betting-backtest, XGBoost
+      and random-forest exclusions all stand.
+
+A0.2  THE CLAIM. Prior work generally finds xG-based ratings beat
+      goal-based ones over short windows, because goals are a low-count
+      realisation of an underlying rate and xG estimates that rate with
+      less noise per match.
+
+A0.3  WHY IT IS WORTH THE TROUBLE. Phase 5B measured the market at 0.96057
+      against Dixon-Coles at 0.99036 - a gap of 0.02979, significant, and
+      the largest unexplained quantity in the project. Blocks C and X added
+      nothing; dynamic state added 0.0036. This is the only remaining
+      candidate with a mechanism that could move a number of that size.
+
+A0.4  WHAT WOULD FALSIFY IT. xG-DC no better than goals-DC, on the same
+      folds, with signs agreeing. That result is reported exactly as
+      readily as the other one, and section 7 fixes the wording in advance
+      so it cannot be softened afterwards.
+
+-------------------------------------------------------------------------------
+1.  THE ESTIMATOR ALREADY ACCEPTS xG, AND THAT IS NOT A COINCIDENCE
+-------------------------------------------------------------------------------
+
+A1.1  fit_attack_defence() in scripts/phase2_poisson_dixon_coles.py is
+      multiplicative iterative scaling - the closed-form coordinate
+      solution of the WEIGHTED POISSON LIKELIHOOD. Its inputs enter only
+      through
+
+          scored[t]    = sum of weights * goals scored by t
+          conceded[t]  = sum of weights * goals conceded by t
+          total_home_goals
+
+      These are SUMS. Nothing in the update requires the summands to be
+      integers. Substituting xG for goals is therefore well defined and
+      changes no line of the estimator.
+
+A1.2  THIS IS THE WHOLE REASON THE EXPERIMENT IS CONTAINED. The likelihood
+      being maximised is sum( k log lambda - lambda - log Gamma(k+1) ), and
+      the log Gamma term does not involve the parameters. It drops out of
+      every derivative. A continuous k changes the value of the likelihood
+      and not its argmax, so the estimator is the same estimator.
+
+A1.3  fit_rho() IS DIFFERENT AND MUST NOT BE FED xG. It selects matches by
+
+          low = (home_goals <= 1) & (away_goals <= 1)
+
+      and corrects the four discrete cells 0-0, 1-0, 0-1, 1-1. Those are
+      SCORELINE CATEGORIES. "Both teams' xG was at most 1" is a different
+      event from "both teams scored at most one", and tau is not defined
+      over it.
+
+A1.4  THEREFORE, DECLARED: rho is fitted on ACTUAL GOALS in both arms,
+      from the same window, with the same time weights. Only the
+      attack/defence/home-advantage parameters are estimated from xG.
+
+      This is stated as a constraint rather than a preference. Fitting rho
+      on thresholded xG would be inventing a correction for an event the
+      Dixon-Coles paper does not describe, and calling the result
+      Dixon-Coles.
+
+-------------------------------------------------------------------------------
+2.  THE TWO ARMS
+-------------------------------------------------------------------------------
+
+A2.1  GOALS-DC     the committed dc_walkforward, re-fitted in-process so
+                   that every delta is a genuinely paired bootstrap. It
+                   must reproduce outputs/phase2_poisson_dc_fold_summary.csv
+                   bit for bit - gate X1 - or the comparison is void.
+
+A2.2  xG-DC        identical in every respect except that attack, defence
+                   and the home multiplier are estimated from xG. Same
+                   window rule, same time-decay weights, same rho on
+                   goals, same MAX_GOALS, same score matrix, same
+                   outcome_probabilities().
+
+A2.3  ONE DIFFERENCE, AND ONLY ONE. If any other parameter, window or
+      convergence setting differs between the arms, the comparison
+      measures that instead. Gate X2 asserts the two configurations are
+      identical outside the goals/xG substitution.
+
+A2.4  PREDICTIONS ARE STILL OVER SCORELINES. Both arms produce H/D/A
+      through the same discrete Poisson score matrix. xG enters the RATE
+      ESTIMATE and never the outcome space. There is no xG-based scoreline
+      distribution anywhere in this design.
+
+-------------------------------------------------------------------------------
+3.  A THIRD ARM, DECLARED NOW SO IT CANNOT BE ADDED LATER
+-------------------------------------------------------------------------------
+
+A3.1  BLEND-DC: attack and defence estimated from (goals + xG) / 2.
+
+      Declared here because the obvious response to an inconclusive
+      two-arm result is to try a blend and report the best of three. That
+      is three shots at the same target, and the third is only legitimate
+      if it was named in advance. It is named. It is reported with its
+      interval whatever it says, and it does not become the headline if it
+      happens to win.
+
+A3.2  NO WEIGHT IS TUNED. The blend is a fixed 50/50. A fitted blending
+      weight would be a parameter selected on the outer-test rows.
+
+-------------------------------------------------------------------------------
+4.  LEAKAGE, WHICH IS WHERE THIS EXPERIMENT IS MOST EXPOSED
+-------------------------------------------------------------------------------
+
+A4.1  xG IS A POST-MATCH QUANTITY. It is computed from shots taken during
+      the match it describes. A match's own xG must therefore never reach
+      its own prediction, and the walk-forward window must be
+
+          matches with date STRICTLY LESS THAN the match being predicted
+
+      the same rule DS1a already asserts for DC state, tested the same way:
+      by CORRUPTING every match from the cutoff onward and asserting the
+      fitted state does not move.
+
+A4.2  SECOND-ORDER LEAK, AND THE ONE MORE LIKELY TO BE MISSED. xG models
+      are RETRO-FITTED by their providers. The xG a provider publishes
+      today for a 2021 match may come from a model trained on data through
+      2026. Nothing in this project can detect that, and no gate here can
+      test it.
+
+      IT IS RECORDED AS AN UNTESTABLE ASSUMPTION, not waved away: any
+      advantage xG-DC shows is an upper bound on what would have been
+      available in real time. That sentence goes in the report whatever
+      the result is.
+
+A4.3  The four frozen outer folds, 1,520 matches, unchanged. No refolding.
+
+-------------------------------------------------------------------------------
+5.  THE SOURCE, AND WHAT IT MUST SATISFY
+-------------------------------------------------------------------------------
+
+A5.1  Per-match home and away xG for all 1,900 matches of 2021-2022
+      through 2025-2026.
+
+A5.2  IT JOINS THE SAME WAY THE ODDS DID, and is gated the same way:
+      joined on (season, home_team, away_team), never fuzzy-matched, with
+      the date reconciled rather than joined on, and the SCORELINE
+      reconciled against the project's own foundation. Phase 5B's join
+      passed all of that with zero disagreements over 1,900 matches; the
+      xG source is held to the identical standard.
+
+A5.3  COVERAGE IS A GATE, NOT A FOOTNOTE. Phase 5B found Pinnacle absent
+      from 170 rows, all of them in one fold, and that single fact decided
+      which bookmaker could be primary. The same question is asked of xG
+      BEFORE anything is fitted: per season and per fold, how many of the
+      380 matches carry it. A source missing a fold is not usable as a
+      primary, whatever its quality.
+
+A5.4  ONE PROVIDER ONLY, NAMED IN ADVANCE, AND ITS FILES FROZEN UNDER
+      FROZEN_MANIFEST.txt on arrival. Two providers' xG for the same match
+      differ; picking per match, or switching provider after seeing a
+      result, would be the contaminated move.
+
+-------------------------------------------------------------------------------
+6.  GATES
+-------------------------------------------------------------------------------
+
+      X1   goals-DC re-fitted in-process reproduces the committed
+           phase2_poisson_dc_fold_summary.csv bit for bit
+      X2   the two arms differ in exactly one input and nothing else -
+           window, weights, rho source, MAX_GOALS and convergence settings
+           compared field by field
+      X3   xG joins 1,900 matches exactly once each, with zero scoreline
+           and zero date disagreements against the project's foundation
+      X4   xG coverage reported per fold; the primary arm requires 380 of
+           380 in every fold
+      X5   corrupting every match from a cutoff onward moves no fitted xG
+           state, at six probe dates - DS1a's test, on the new state
+      X6   rho is identical between the arms, because it is fitted on the
+           same goals from the same window
+      X7   every probability array passes validate_probabilities()
+      X8   pooled log loss equals the unweighted mean of the four fold
+           values to 1e-12
+      X9   no xG value is negative, and none exceeds a declared sanity
+           ceiling of 10 per team per match, reported rather than clipped
+
+-------------------------------------------------------------------------------
+7.  HOW THE RESULT IS WORDED, FIXED BEFORE IT IS KNOWN
+-------------------------------------------------------------------------------
+
+A7.1  The binding rule is unchanged: paired per-match bootstrap, 10,000
+      draws, seed 20260901; RPS must agree in sign with log loss or the
+      comparison is INCONCLUSIVE.
+
+A7.2  IF xG-DC WINS SIGNIFICANTLY: report the delta, and state what
+      remains between it and the market's 0.96057. A win does not become
+      "xG closes the gap" unless it closes the gap, and the arithmetic is
+      shown.
+
+A7.3  IF THE COMPARISON IS NOT SIGNIFICANT: it is reported as not
+      significant. It is NOT reported as xG and goals being equivalent.
+      1,520 matches did not separate Block C from nothing either, and that
+      was not equality.
+
+A7.4  IF xG-DC LOSES: reported plainly, with the note that it contradicts
+      the prior literature and that the likeliest reasons are the single
+      provider, the retro-fit of A4.2, and a window long enough that goals
+      have already averaged out. No post-hoc arm is added to rescue it.
+
+A7.5  NO NUMBER IN PHASES 0 TO 5B MOVES BECAUSE OF THIS INSTRUMENT.
+
+-------------------------------------------------------------------------------
+8.  WHY THIS IS DECLARED BUT NOT RUN
+-------------------------------------------------------------------------------
+
+A8.1  Neither named source is reachable from this machine, checked
+      2026-09-02:
+
+          understat.com   serves a data-free shell. The league pages for
+                          2021, 2022 and 2023 are byte-identical in length
+                          at 18,697 bytes, carry no datesData or teamsData
+                          payload, and the only JSON.parse on the page is
+                          an advertisement. Match pages render a title but
+                          carry no data variables either. Full browser
+                          headers make no difference.
+
+          fbref.com       HTTP 403 to a direct request, and a CAPTCHA
+                          challenge page through a text proxy.
+
+A8.2  THE FIXTURE FILES ALREADY ON THE STICK DO NOT CARRY IT. All five
+      data/raw/Fixtures/*.xls files parse to a single table whose columns
+      are Wk, Day, Date, Time, Home, Score, Away, Attendance, Venue,
+      Referee, Match Report, Notes. FBref's Scores & Fixtures normally
+      carries home and away xG for the Premier League; this export does
+      not. Whatever view produced these files excluded it.
+
+A8.3  THE ROUTE THAT MATCHES HOW EVERY OTHER FILE HERE ARRIVED. Every
+      file in data/raw/ is a browser-saved page. Re-saving the five FBref
+      Scores & Fixtures pages from a browser, with the xG columns present,
+      would satisfy section 5 in five manual downloads and needs no
+      scraper at all:
+
+          fbref.com/en/comps/9/<season>/schedule/<season>-Premier-League-Scores-and-Fixtures
+
+      for 2021-2022 through 2025-2026, saved into data/raw/xG/.
+
+A8.4  UNTIL THOSE FILES EXIST, NOTHING IN THIS DECLARATION IS RUN. It is
+      written now so that the design was fixed before the data arrived,
+      which is the only time a pre-declaration is worth anything.
+
+===============================================================================
+END
+===============================================================================

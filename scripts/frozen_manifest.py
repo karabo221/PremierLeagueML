@@ -53,6 +53,9 @@ FROZEN_PATTERNS = [
     # the calibration bins BEFORE any score existed; a pre-declaration whose
     # hash can move is not one.
     "PHASE5_MARKET_PREDECLARATION.txt",
+    # Declared before the xG source existed. That is the only time a
+    # pre-declaration is worth anything, so its hash is frozen from now.
+    "PHASE5_XG_PREDECLARATION.txt",
     # THE ODDS SOURCE ITSELF. data/raw is immutable by project rule, but that
     # rule is prose and this is the first source that arrived over the network
     # rather than on the stick. A re-download that moves a hash is a NEW
