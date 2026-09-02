@@ -104,3 +104,7 @@ desktop.ini
 # IDE
 .vscode/
 .idea/
+
+# Phase 4 Amendments 4 and 5 - the rescaled rung and D2-static
+!outputs/phase4_a4_*.csv
+!outputs/phase4_static_state.csv

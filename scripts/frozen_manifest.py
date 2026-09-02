@@ -72,6 +72,10 @@ FROZEN_PATTERNS = [
     # filenames rather than over these.
     "outputs/phase4_dynamic_state.csv",
     "outputs/phase4_ladder_*.csv",
+    # Amendments 4 and 5. Written to their own filenames so the first run's
+    # artefacts above are not overwritten by the rung that supersedes them.
+    "outputs/phase4_a4_*.csv",
+    "outputs/phase4_static_state.csv",
 ]
 
 HEADER = """\

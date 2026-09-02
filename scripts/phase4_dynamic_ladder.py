@@ -80,6 +80,20 @@ BOOTSTRAP_SEED = 20260901
 
 EPV_APPLICABILITY = 10.0     # Amendment 3 A3.1, Peduzzi et al. 1996
 
+# Amendment 4 A4.2. The normal-consistency constant 2 * PHI^-1(0.75). For a
+# Gaussian sample the interquartile range is this many sigma in expectation,
+# so dividing by it turns the IQR into an estimator of the SAME quantity the
+# standard deviation estimates. That is what makes robust scaling a drop-in
+# replacement for a broken estimator rather than a change of units.
+IQR_TO_SIGMA = 1.3489795003921634
+
+# Amendment 4 A4.1. Qualifying by SOURCE: read out of a Dixon-Coles fit whose
+# window can be too short to identify the strengths. rel_elo_diff is not on
+# this list because Elo has no fitting window, not because its coefficient
+# came back large.
+DC_DERIVED_COLUMNS = ("rel_attack_diff", "rel_defence_diff",
+                      "expected_total_goals")
+
 DC_VARIANT = "dc_walkforward"
 POISSON_VARIANT = "poisson_walkforward"
 
@@ -137,20 +151,40 @@ def build_design(features, feature_names, dynamic=None):
     return matrix, names, passthrough
 
 
+def robust_mask(names):
+    """Amendment 4 A4.1's qualifying columns, located by name in the design."""
+
+    return np.array([n in DC_DERIVED_COLUMNS for n in names], dtype=bool)
+
+
 # ============================================================
 # THE FITTED PIPELINE
 # ============================================================
 
-def fit_pipeline(matrix, labels, train_rows, eval_rows, penalty, passthrough):
+def fit_pipeline(matrix, labels, train_rows, eval_rows, penalty, passthrough,
+                 robust=None):
     """
     Impute, standardise and fit on train_rows; transform and predict
     eval_rows with the TRAINING statistics.
 
-    This is I4.fit_pipeline with one declared difference: section 6's
-    pass-through rule for boolean and indicator columns. With an all-False
-    mask it IS I4.fit_pipeline, and DS0 asserts that bit-for-bit - which is
-    what stops this from being an unanchored code path.
+    This is I4.fit_pipeline with two declared differences:
+
+      section 6      the pass-through rule for boolean and indicator columns
+      Amendment 4    robust scaling for the columns flagged in the robust mask
+
+    With both masks empty it IS I4.fit_pipeline, and DS0 asserts that
+    bit-for-bit. An omitted robust mask means no column takes robust scaling,
+    so every number the first ladder run produced is reproduced unchanged -
+    DS13 asserts that against the committed artefact rather than trusting it.
     """
+
+    if robust is None:
+        robust = np.zeros(matrix.shape[1], dtype=bool)
+
+    if np.any(robust & passthrough):
+        raise RuntimeError(
+            "a column cannot both pass through unstandardised and take "
+            "robust scaling; Amendment 4 applies only to continuous columns")
 
     train = matrix[train_rows]
     held = matrix[eval_rows]
@@ -168,6 +202,11 @@ def fit_pipeline(matrix, labels, train_rows, eval_rows, penalty, passthrough):
     with np.errstate(invalid="ignore"):
         centre = np.nanmean(train, axis=0)
 
+        if robust.any():
+            # A4.2: the mean of a column containing 47.26 is not a typical
+            # value of it, so a qualifying column is filled with its median.
+            centre = np.where(robust, np.nanmedian(train, axis=0), centre)
+
     centre = np.where(np.isfinite(centre), centre, 0.0)
 
     imputed = int(np.isnan(train).sum() + np.isnan(held).sum())
@@ -177,6 +216,22 @@ def fit_pipeline(matrix, labels, train_rows, eval_rows, penalty, passthrough):
 
     mean = train.mean(axis=0)
     sd = train.std(axis=0, ddof=0)
+
+    # Amendment 4 A4.2: median and IQR / 1.3489795 on the qualifying columns.
+    # The same target quantity, estimated by something a handful of outliers
+    # cannot move. Computed on the training rows of THIS fit - the outer
+    # training rows outside the inner CV, that inner fold's rows inside it.
+    if robust.any():
+        quartiles = np.percentile(train, [25.0, 75.0], axis=0)
+        spread = (quartiles[1] - quartiles[0]) / IQR_TO_SIGMA
+        mean = np.where(robust, np.median(train, axis=0), mean)
+        sd = np.where(robust, spread, sd)
+
+    # The scale BEFORE the degenerate-column guard. G10 needs it: the guard
+    # assumes "spread of zero implies a constant column", and where that
+    # implication is false the guard is being applied outside its domain and
+    # silently leaves a varying column unscaled.
+    raw_scale = sd.copy()
 
     constant = int((sd == 0).sum())
     sd = np.where(sd == 0, 1.0, sd)
@@ -194,7 +249,7 @@ def fit_pipeline(matrix, labels, train_rows, eval_rows, penalty, passthrough):
     return {
         "proba": L3.predict_multinomial(weights, held),
         "weights": weights, "iterations": iterations, "gradient": gradient,
-        "mean": mean, "sd": sd,
+        "mean": mean, "sd": sd, "raw_scale": raw_scale,
         "imputed_cells": imputed, "constant_columns": constant,
     }
 
@@ -267,7 +322,8 @@ def inner_splits(train_rows, blocks):
     return splits
 
 
-def select_lambda(matrix, labels, results, train_rows, blocks, passthrough):
+def select_lambda(matrix, labels, results, train_rows, blocks, passthrough,
+                  robust=None):
     """Mean validation log loss over the 4 inner folds. Ties to the SMALLEST."""
 
     splits = inner_splits(train_rows, blocks)
@@ -280,7 +336,8 @@ def select_lambda(matrix, labels, results, train_rows, blocks, passthrough):
 
         for split in splits:
             fitted = fit_pipeline(matrix, labels, split["train_rows"],
-                                  split["valid_rows"], penalty, passthrough)
+                                  split["valid_rows"], penalty, passthrough,
+                                  robust)
             losses.append(evaluate(results[split["valid_rows"]],
                                    fitted["proba"])["log_loss"])
 
@@ -404,7 +461,8 @@ def run_d0(frame, spec, results):
     return pd.DataFrame(rows), proba_by_fold
 
 
-def run_rung(name, matrix, passthrough, frame, spec, labels, results, blocks):
+def run_rung(name, matrix, passthrough, frame, spec, labels, results, blocks,
+             robust=None):
     """One fitted rung, all four frozen outer folds."""
 
     rows, curves, coefficients, proba_by_fold, diagnostics = [], [], [], {}, []
@@ -420,10 +478,10 @@ def run_rung(name, matrix, passthrough, frame, spec, labels, results, blocks):
             (frame["season"] == test_season).to_numpy())
 
         chosen, curve, splits = select_lambda(
-            matrix, labels, results, train_rows, blocks, passthrough)
+            matrix, labels, results, train_rows, blocks, passthrough, robust)
 
         fitted = fit_pipeline(matrix, labels, train_rows, test_rows,
-                              chosen, passthrough)
+                              chosen, passthrough, robust)
 
         validate_probabilities(fitted["proba"], len(test_rows))
         scores = evaluate(results[test_rows], fitted["proba"])
@@ -471,7 +529,9 @@ def run_rung(name, matrix, passthrough, frame, spec, labels, results, blocks):
         diagnostics.append({"fold": fold, "splits": splits,
                             "train_rows": train_rows, "test_rows": test_rows,
                             "weights": fitted["weights"],
-                            "mean": fitted["mean"], "sd": fitted["sd"]})
+                            "mean": fitted["mean"], "sd": fitted["sd"],
+                            "raw_scale": fitted["raw_scale"],
+                            "robust": robust})
 
     return (pd.DataFrame(rows), pd.DataFrame(curves), proba_by_fold,
             diagnostics)
@@ -697,14 +757,45 @@ def ds2_no_test_row_fits(audit, rung_diagnostics, matrix, frame, spec):
 
             train = matrix[name][entry["train_rows"]]
 
+            # AMENDMENT 4 RUNS THROUGH THIS CHECK IN TWO PLACES, and the first
+            # two executions of it each missed one. The first computed only
+            # the sample mean and SD, and disagreed with the pipeline by 29.0
+            # on every robust-scaled column. The second added the robust SCALE
+            # but still imputed with the mean, and disagreed by 1.0 wherever
+            # imputation moved the quartiles. Both were failures of the CHECK.
+            #
+            # This is deliberately a REIMPLEMENTATION rather than a call into
+            # fit_pipeline: a verifier that runs the code it is verifying
+            # proves only that the code is deterministic. The cost is that it
+            # has to track the declared rule exactly, which is what the two
+            # failures above were.
+            robust = entry.get("robust")
+
+            if robust is None:
+                robust = np.zeros(train.shape[1], dtype=bool)
+
             with np.errstate(invalid="ignore"):
                 centre = np.nanmean(train, axis=0)
+
+                if robust.any():
+                    # A4.2: a qualifying column is filled with its MEDIAN
+                    centre = np.where(
+                        robust, np.nanmedian(train, axis=0), centre)
 
             centre = np.where(np.isfinite(centre), centre, 0.0)
             filled = np.where(np.isnan(train), centre, train)
 
             recomputed_mean = filled.mean(axis=0)
             recomputed_sd = filled.std(axis=0, ddof=0)
+
+            if robust.any():
+                quartiles = np.percentile(filled, [25.0, 75.0], axis=0)
+                recomputed_mean = np.where(
+                    robust, np.median(filled, axis=0), recomputed_mean)
+                recomputed_sd = np.where(
+                    robust, (quartiles[1] - quartiles[0]) / IQR_TO_SIGMA,
+                    recomputed_sd)
+
             recomputed_sd = np.where(recomputed_sd == 0, 1.0, recomputed_sd)
 
             mask = entry["passthrough"]
@@ -722,6 +813,63 @@ def ds2_no_test_row_fits(audit, rung_diagnostics, matrix, frame, spec):
         "0.0", "{:.3e}".format(scaler_gap), scaler_gap == 0.0,
         "recomputed independently of the pipeline, from the training rows "
         "only; a test row leaking into the scaler would move this")
+
+
+def g10_scale_domain(audit, rung_diagnostics, matrices):
+    """
+    G10 - THE DEGENERATE-COLUMN GUARD, TESTED INSIDE ITS OWN DOMAIN.
+
+    DISCLOSURE: this check is written HAVING SEEN D2-static return a scale of
+    1.0 on two varying columns and 0.0011 on a third. It is stated here
+    because a check added after a failure is the pattern this project polices
+    hardest.
+
+    WHAT MAKES IT LEGITIMATE: it carries NO THRESHOLD. It is a pure logic
+    test of an implication the pipeline already relies on -
+
+        the guard replaces a zero scale with 1.0 on the grounds that a
+        column with zero spread is CONSTANT, and scaling a constant column
+        is meaningless
+
+    - and it fails exactly when that implication is false: spread zero on a
+    column whose training values are not all equal. There is no tuned
+    constant to move, and the check would read identically had every rung
+    passed it. A column in that state enters the penalised fit in RAW units,
+    which is the same class of defect Amendment 4 exists to remove.
+    """
+
+    offenders = []
+
+    for name, diagnostics in rung_diagnostics.items():
+
+        if name not in matrices:
+            continue
+
+        for entry in diagnostics:
+
+            train = matrices[name][entry["train_rows"]]
+
+            for index in range(matrices[name].shape[1]):
+
+                if entry["raw_scale"][index] != 0.0:
+                    continue
+
+                column = train[:, index]
+                column = column[np.isfinite(column)]
+
+                if len(column) and column.min() != column.max():
+                    offenders.append("{} fold {} column {}".format(
+                        name, entry["fold"], index))
+
+    audit.record(
+        "G10", "no column takes the zero-scale guard while actually varying",
+        0, len(offenders), not offenders,
+        "the guard means 'this column is constant, so do not scale it'. Where "
+        "the column is NOT constant the guard leaves it in raw units inside a "
+        "penalised fit. Offenders: {}".format(
+            ", ".join(offenders) if offenders else "none"))
+
+    return offenders
 
 
 def ds3_widths(audit, features, widths):
@@ -772,7 +920,8 @@ def ds3_widths(audit, features, widths):
 
 
 def ds4_ds5_corruption(audit, features, frame, spec, labels, results, blocks,
-                       dynamic, baseline_lambdas, baseline_proba):
+                       dynamic, baseline_lambdas, baseline_proba,
+                       robust=None, rung="D2"):
     """
     DS4  corrupting an outer test season's FEATURES moves no selected lambda
          and no other fold's predictions - with the control that its own do.
@@ -814,13 +963,13 @@ def ds4_ds5_corruption(audit, features, frame, spec, labels, results, blocks,
             (frame["season"] == str(fold_spec["test_season"])).to_numpy())
 
         chosen, _curve, _splits = select_lambda(
-            matrix, labels, results, train_rows, blocks, passthrough)
+            matrix, labels, results, train_rows, blocks, passthrough, robust)
 
         if chosen != baseline_lambdas[fold]:
             moved_lambda += 1
 
         fitted = fit_pipeline(matrix, labels, train_rows, test_rows, chosen,
-                              passthrough)
+                              passthrough, robust)
 
         gap = float(np.abs(fitted["proba"] - baseline_proba[fold][1]).max())
 
@@ -833,7 +982,7 @@ def ds4_ds5_corruption(audit, features, frame, spec, labels, results, blocks,
         "DS4a", "corrupting {}'s features moves no selected lambda".format(
             CORRUPTION_SEASON),
         0, moved_lambda, moved_lambda == 0,
-        "D2, all four folds re-selected on the corrupted matrix")
+        "{}, all four folds re-selected on the corrupted matrix".format(rung))
 
     audit.record(
         "DS4b", "corrupting {}'s features moves no OTHER fold's "
@@ -869,7 +1018,7 @@ def ds4_ds5_corruption(audit, features, frame, spec, labels, results, blocks,
 
         chosen, _curve, _splits = select_lambda(
             clean_matrix, dirty_labels, dirty_results, train_rows, blocks,
-            clean_mask)
+            clean_mask, robust)
 
         if chosen != baseline_lambdas[fold]:
             moved += 1
@@ -932,7 +1081,7 @@ def ds7_frozen_blocks(audit, features):
 
 
 def ds8_determinism(audit, rungs, matrix, passthrough, frame, spec, labels,
-                    results, blocks, baseline):
+                    results, blocks, baseline, robust=None):
     """A second full run is bit-identical."""
 
     worst_proba, moved_lambda = 0.0, 0
@@ -941,7 +1090,8 @@ def ds8_determinism(audit, rungs, matrix, passthrough, frame, spec, labels,
 
         folds, _curves, proba_by_fold, _diag = run_rung(
             name, matrix[name], passthrough[name], frame, spec, labels,
-            results, blocks)
+            results, blocks,
+            None if robust is None else robust.get(name))
 
         for fold, (_rows, proba) in proba_by_fold.items():
             worst_proba = max(worst_proba, float(
