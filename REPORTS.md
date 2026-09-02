@@ -9,6 +9,91 @@ and the same 1,520 outer-test matches unless it says otherwise.
 
 ---
 
+## Phase 4 — Amendment 4 (robust scaling) and Amendment 5 (D2-static)
+
+*Run 2026-09-02. `scripts/phase4_amendment4_ladder.py`, 35 checks, **2 failures**
+(G9, G10) — both reported, neither fixed by moving the rule that caught them.
+Pre-declaration sha256 `95265231…d2bf0ad`.*
+
+### Amendment 4 did what it was written to do
+
+`expected_total_goals` now enters the fit divided by 0.64–0.88 instead of
+15–30. Its test season spans **4.8–5.8 standardised units instead of
+0.14–0.25**; `rel_defence_diff` spans 3.7–5.7 instead of 0.45–0.81.
+
+**D2 rescaled − D2 original = −0.00058 log loss [−0.00097, −0.00020]**, RPS
+−0.00021 [−0.00034, −0.00009]. Signs agree, significant. Real, and small.
+
+| model | log loss | RPS |
+|---|---|---|
+| D1 | 1.003929 | 0.207687 |
+| D2 original | 1.000863 | 0.206671 |
+| **D2 rescaled** | **1.000283** | **0.206458** |
+| Elo v1 | 0.999431 | 0.206670 |
+| Dixon-Coles walk-forward | 0.990364 | 0.203499 |
+
+**D2 rescaled − Elo v1 is INCONCLUSIVE**: log loss +0.00085, RPS −0.00021. The
+rescaled rung passes Elo on RPS and trails it on log loss, and the binding rule
+makes a sign disagreement inconclusive rather than a win. The headline of the
+previous entry survives in substance — 92 columns are still level with a single
+K=20 rating — but it can no longer be stated as "lands on the same number".
+
+**D2 rescaled − D1 = −0.00365 [−0.00489, −0.00241]**, significant at every fold.
+
+### A4.6's prediction resolved on its second branch
+
+Given a sane scale and five SD of room, **`expected_total_goals` shrank**: its
+coefficient norm fell to **0.1–0.3×** the original at every fold. It was not
+being silenced by compression. It genuinely carries little.
+
+`rel_attack_diff` is the column that gained (1.3–1.7×); `rel_defence_diff` moved
+in neither direction consistently (0.8–1.5×). So the dynamic-state block is a
+two-column block **on its merits** — `rel_elo_diff` and `rel_attack_diff` — and
+the column section 2 argued was structurally load-bearing is not one of them.
+
+### Amendment 5's rung is not readable
+
+A5.2 declared in advance that 2021-22 has no frozen state and predicted fold 1
+would go inert. **G9b confirms it exactly** — every dynamic coefficient zero,
+identical λ, log loss equal to 17 significant figures.
+
+What A5.2 did not anticipate: the same missing season is **50%, 33% and 25% of
+folds 2, 3 and 4's training rows**, imputed to the median. At 50% the imputed
+value necessarily occupies both quartiles, so the IQR is identically zero. Two
+D2-static columns took the degenerate-column guard **while genuinely varying**
+and entered the penalised fit in raw units; a third took a scale of 0.0011.
+
+**G10 FAILS on that and is deliberately left failing.** It carries no threshold —
+it tests an implication the pipeline already relies on (zero spread ⟹ constant
+column) and fails where that is false.
+
+So **D2 − D2static does not answer the tier-2 question yet.** The numbers exist
+(−0.00269 pooled [−0.00542, +0.00001]; −0.00220 over folds 2–4) and are **not
+quoted as a recency measurement**. Fixing the rung needs its own declaration.
+
+### G9 failed as written
+
+The strict form — "bit for bit" — was too strong for a design that adds four
+all-zero columns and therefore solves a 279×279 Newton system where D1 solves
+267×267. G9c measures the resulting disagreement in the shared coefficients at
+6.9e-18. The wording was ours; **A5.2 is not amended to soften it.**
+
+### Two checker bugs, both ours
+
+DS2b computed a sample SD where Amendment 4 declares median/IQR (off by 29.0),
+then still imputed with the mean where A4.2 declares the median (off by 1.0).
+Neither was a pipeline defect. It now reimplements the declared rule in full and
+passes at 0.0. **A verifier that does not implement the rule cannot verify it.**
+
+DS13 confirms the pipeline edit changed nothing it should not have: D1 and the
+original D2 reproduce the artefact committed at `c2528c5` to 0.0 with no λ moves.
+
+### Still standing
+
+Section 6 unchanged. D3 and D4 not run.
+
+---
+
 ## Phase 4 — the dynamic-state ladder: D0, D1, D2
 
 *Run 2026-09-02. `scripts/phase4_dynamic_ladder.py`, 24 checks, 0 failures.
