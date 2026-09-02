@@ -56,6 +56,10 @@ FROZEN_PATTERNS = [
     # Declared before the xG source existed. That is the only time a
     # pre-declaration is worth anything, so its hash is frozen from now.
     "PHASE5_XG_PREDECLARATION.txt",
+    # E1 sizes the xG arm. Its design was fixed before any fit, and its
+    # section 2 records source-error COUNTS that gate E4 - so a hash that
+    # moves is either a rewritten declaration or a changed source.
+    "PHASE5_E1_SHOT_PREDECLARATION.txt",
     # THE ODDS SOURCE ITSELF. data/raw is immutable by project rule, but that
     # rule is prose and this is the first source that arrived over the network
     # rather than on the stick. A re-download that moves a hash is a NEW

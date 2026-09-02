@@ -1,0 +1,369 @@
+===============================================================================
+PHASE 5 - INSTRUMENT E1:  SHOTS ON TARGET AS A RATING INPUT
+PRE-DECLARATION, WRITTEN BEFORE ANY FIT
+===============================================================================
+
+STATUS      Declared 2026-09-02. NOT RUN. Awaiting sign-off.
+
+            Section 2's data audit HAS been run, because it is read-only,
+            builds no feature, fits nothing, and its findings change what
+            this declaration has to say. Checking for a definitional break
+            after declaring the design would be checking it after the
+            decision it was supposed to inform.
+
+            No model has been fitted. No log loss exists.
+
+-------------------------------------------------------------------------------
+0.  WHAT THIS IS FOR
+-------------------------------------------------------------------------------
+
+E0.1  THE TARGET, SIZED AGAINST WHAT PHASE 4 COULD SEE:
+
+          Dixon-Coles -> market        0.02979    what Phase 5 competes for
+          D1 -> Dixon-Coles            0.01357    the whole Phase 4 rating gap
+          D2 - D1                      0.00365    Phase 4's largest effect
+
+      Resolution on 1,520 matches is roughly 0.005. The target is 2.2x the
+      entire Phase 4 rating gap, so unlike most Phase 4 blocks an effect
+      here is detectable if it is there.
+
+E0.2  WHY THIS RUNS BEFORE THE xG ARM. Shots on target is a cruder version
+      of what xG measures - shots weighted by quality - so SoT-based
+      ratings are a LOWER BOUND on xG's information. E1 sizes A.
+
+E0.3  ONE RESPECT IN WHICH E1 IS A BETTER BOUND THAN IT LOOKS. The xG
+      pre-declaration records an untestable leak: providers refit their xG
+      models, so today's xG for a 2021 match may come from a model trained
+      through 2026 (A4.2). SHOT COUNTS HAVE NO SUCH PROBLEM. They were
+      recorded contemporaneously and no model produced them. E1's estimate
+      is therefore clean in a way the xG arm's cannot be, and a positive E1
+      is stronger evidence for A than a positive A would be for itself.
+
+-------------------------------------------------------------------------------
+1.  THE DATA, AND WHAT USING IT DOES NOT LICENSE
+-------------------------------------------------------------------------------
+
+E1.1  The shot columns arrive in the football-data.co.uk files already
+      frozen for Phase 5B: HS, AS, HST, AST, HC, AC, HF, AF, HY, AY, HR,
+      AR, on all 1,900 matches, joined 1,900/1,900 with zero unmatched and
+      zero scoreline or date disagreements. No download and no scrape.
+
+E1.2  THE ODDS COLUMNS IN THOSE SAME FILES REMAIN BENCHMARK-ONLY. They
+      never enter a design matrix, a rating window, or a feature. That a
+      file is now read for two purposes does not merge the purposes, and a
+      gate asserts it - E9.
+
+E1.3  THE FILES DO NOT CHANGE. They are under FROZEN_MANIFEST.txt at the
+      hashes Phase 5B recorded. This instrument re-reads them; it does not
+      re-download them.
+
+-------------------------------------------------------------------------------
+2.  THE DATA AUDIT, RUN BEFORE THIS DESIGN WAS FIXED
+-------------------------------------------------------------------------------
+
+E2.1  MISSINGNESS: ZERO. All twelve columns, all five seasons, all 1,900
+      matches. Nothing to impute and no coverage gate to fail - which is
+      the opposite of what Phase 5B found for Pinnacle, and it is why
+      there is no primary/sensitivity split here.
+
+E2.2  PER-SEASON MEANS - no definitional discontinuity:
+
+          season      HS      AS     HST     AST      HC      AC
+          2021-22   13.85   11.74   4.68    4.14    5.60    4.82
+          2022-23   13.95   11.31   4.91    3.90    5.64    4.47
+          2023-24   15.40   12.18   5.44    4.43    6.12    4.71
+          2024-25   13.75   12.17   4.83    4.27    5.43    4.87
+          2025-26   13.84   11.16   4.50    3.87    5.40    4.60
+
+      2023-24 sits high on every shot column at once and returns to trend
+      afterwards. A DEFINITIONAL change would not revert. This is recorded
+      as a season effect and is NOT adjusted for; adjusting it would be
+      fitting the source to the expectation.
+
+E2.3  GOALS PER SHOT ON TARGET IS REMARKABLY STABLE, which matters
+      directly for section 4's conversion step:
+
+          2021-22  0.3195    2022-23  0.3241    2023-24  0.3323
+          2024-25  0.3224    2025-26  0.3284
+
+      A spread of 0.013 across five seasons. The quantity section 4 needs
+      to estimate is not a volatile one.
+
+E2.4  ONE IMPOSSIBLE ROW, REPORTED AND NOT REPAIRED:
+
+          2021-08-15  Newcastle 2-4 West Ham   AS = 8, AST = 9
+
+      Shots on target exceed shots. It is a source error. It is left
+      exactly as it is, and E4 asserts the count is exactly one - so a
+      change in the source is detected rather than absorbed.
+
+E2.5  TWELVE ROWS WHERE GOALS EXCEED SHOTS ON TARGET, WHICH ARE PROBABLY
+      NOT ERRORS. An own goal is not credited as a shot on target to the
+      side that benefits, so goals > SoT is the EXPECTED signature of an
+      own goal, not of corruption. Examples: Manchester City 5-0 Norwich
+      with HST 4; Crystal Palace 1-1 Newcastle with AST 0.
+
+      THIS IS STATED AS THE LIKELY EXPLANATION AND NOT AS A VERIFIED ONE -
+      nothing in this dataset records own goals, so it cannot be checked
+      here. E4 asserts the count is exactly twelve for the same reason as
+      E2.4.
+
+E2.6  WHY NEITHER FINDING BLOCKS THE RUNG. The estimator of section 3
+      consumes weighted SUMS over a window of hundreds of matches. One
+      unit of error in one match of 1,900 cannot move a fold-level result.
+      The rows are reported because a source error that is known is
+      different from a source error that is absorbed, not because they
+      threaten the estimate.
+
+-------------------------------------------------------------------------------
+3.  E1a - THE ESTIMATOR, AND THE ONE THING THAT CHANGES
+-------------------------------------------------------------------------------
+
+E3.1  fit_attack_defence() IS REUSED UNCHANGED. No second estimator is
+      written. It is multiplicative iterative scaling, the closed-form
+      coordinate solution of the weighted Poisson likelihood, and its
+      inputs enter only as
+
+          scored[t]   = sum of weights * (SoT by t)
+          conceded[t] = sum of weights * (SoT against t)
+
+      Sums. Nothing requires integers, and SoT are integers anyway.
+
+E3.2  rho IS FITTED ON ACTUAL GOALS IN BOTH ARMS. STATED EXPLICITLY HERE
+      RATHER THAN INHERITED FROM THE xG DECLARATION.
+
+      fit_rho() selects matches by (home_goals <= 1) & (away_goals <= 1)
+      and corrects the four discrete cells 0-0, 1-0, 0-1, 1-1. Those are
+      SCORELINE categories. "Both sides had at most one shot on target" is
+      a different event - it is common, it is not low-scoring, and tau is
+      not defined over it. A correction invented for an event Dixon-Coles
+      does not describe would not be Dixon-Coles.
+
+      So only attack, defence and the home multiplier come from SoT.
+
+E3.3  EVERYTHING ELSE IS HELD IDENTICAL between the arms, and E2 asserts
+      it field by field: 107-day half-life, one refit per distinct match
+      date, window of matches with date STRICTLY EARLIER than the match
+      predicted, same initialisation, same convergence settings, same
+      MAX_GOALS = 25, same score matrix, same outcome_probabilities().
+
+      If anything else differs, the comparison measures that instead.
+
+-------------------------------------------------------------------------------
+4.  THE LOAD-BEARING CHOICE:  HOW SoT RATES BECOME H/D/A
+-------------------------------------------------------------------------------
+
+E4.1  CANDIDATE (i) IS CHOSEN. Scale the SoT lambdas to the goal scale by
+      the training-window conversion rate, then use the existing
+      outcome_probabilities() unchanged.
+
+E4.2  WHY, AND THE REASON IS NOT CONVENIENCE.
+
+      (a) IT IS THE ONLY ONE THAT BOUNDS THE xG ARM. The xG declaration
+          commits to the Dixon-Coles architecture with rho on goals. If E1
+          used a different architecture - SoT differences as ladder
+          features - it would not be a lower bound on that experiment. It
+          would be a different experiment that happens to use shots.
+
+      (b) IT MAKES "E1a - Dixon-Coles" A RATING-VERSUS-RATING COMPARISON.
+          Two models identical in every respect except what the rating is
+          estimated from. That is the claim being tested, and candidate
+          (ii) cannot express it: a ladder rung against Dixon-Coles
+          confounds the rating input with the whole logistic apparatus.
+
+      (c) Candidate (ii) is not discarded - it is E1b's territory, and E1b
+          runs second by the pre-committed gate order.
+
+E4.3  THE CONVERSION RATE, ESTIMATED ON TRAINING ROWS ONLY.
+
+          c  =  ( sum of weights * total goals in window )
+                / ( sum of weights * total SoT in window )
+
+      computed over THE SAME decayed window as the ratings, at the same
+      refit dates, from matches strictly earlier than the match being
+      predicted. It never sees the match it scales, and never sees an
+      outer-test row. Both lambdas are multiplied by the same c.
+
+E4.4  ONE CONSTANT, POOLED OVER HOME AND AWAY. The home multiplier is
+      already fitted inside the SoT model, so a second home-specific
+      conversion would be a second home-advantage parameter estimated from
+      the same window.
+
+      DECLARED SENSITIVITY, reported whatever it says: separate home and
+      away conversion constants. The primary is the pooled one and does
+      not change.
+
+E4.5  E2.3 IS THE JUSTIFICATION FOR TREATING c AS ESTIMABLE. It moves
+      0.013 across five seasons. If it had swung wildly, candidate (i)
+      would have been the wrong choice and this section would say so.
+
+-------------------------------------------------------------------------------
+5.  THE FALSIFIABLE PREDICTION, IN A4.6's FORM
+-------------------------------------------------------------------------------
+
+E5.1  THE MECHANISM CLAIMED: goals are a low-count realisation of a rate.
+      A team's SoT count per match is roughly 4-5 against roughly 1.4
+      goals, so SoT estimates the same underlying attacking rate with less
+      sampling noise per match.
+
+E5.2  IF THAT MECHANISM IS REAL, BOTH OF THESE FOLLOW:
+
+      (a) E1a beats goals-Dixon-Coles on log loss, with RPS agreeing.
+      (b) E1a's fitted attack and defence estimates are MORE STABLE across
+          consecutive refits than goals-DC's, measured as the mean
+          absolute change in a team's attack parameter between successive
+          refit dates.
+
+E5.3  IF ONLY (b) HOLDS AND NOT (a): SoT is estimating the rate more
+      precisely and the rate is not what the extra information was needed
+      for. That is a real and reportable finding, and it is the outcome
+      that would most change how the xG arm is read - it would say the
+      remaining 0.02979 is not a rating-precision problem at all.
+
+E5.4  IF NEITHER HOLDS: the conversion constant has absorbed the
+      difference and SoT is a noisier proxy for what goals already carry.
+      Reported plainly, with no third arm added afterwards to rescue it.
+
+E5.5  BOTH BRANCHES ARE WRITTEN HERE SO THAT NEITHER CAN BE PRESENTED AS
+      THE ONE THAT WAS EXPECTED.
+
+-------------------------------------------------------------------------------
+6.  E1b - ROLLING SHOT RESIDUALS
+-------------------------------------------------------------------------------
+
+E6.1  THE SIGNAL: who has been finishing above or below their chances.
+      Orthogonal to the rating by construction, because it is the
+      DIFFERENCE between what the shots implied and what the scoreline
+      recorded.
+
+E6.2  WINDOW: THE LAST FIVE MATCHES, WITHIN SEASON. This is not a chosen
+      parameter - it is the project's existing convention, matching D1's
+      last5_pts_before and last5_mp_before. Introducing a new window
+      length would be introducing a tuned one, and the tuning would happen
+      on these outer-test rows.
+
+E6.3  SEASON BOUNDARIES: the window NEVER crosses one. Phase 1's T2
+      already asserts that current-season state does not carry across a
+      season boundary, and these columns are built by the same rule and
+      inherit the same gate.
+
+E6.4  INSUFFICIENT HISTORY: a team with fewer than five prior matches in
+      the current season gets NaN, imputed to the TRAINING MEDIAN by the
+      pipeline's declared rule - the same rule every other column takes -
+      accompanied by an availability indicator on the project's existing
+      *_available convention. No back-filling from the prior season, which
+      would violate E6.3.
+
+E6.5  THE COLUMNS, six of them:
+
+          home_sot_residual_last5     away_sot_residual_last5
+          rel_sot_residual_diff
+          home_sot_residual_available away_sot_residual_available
+          rel_sot_residual_available
+
+      where a team's residual is (its SoT differential over the window)
+      minus (its goal differential over the window), both per match.
+
+E6.6  SCALING: SECTION 6's STANDARD TREATMENT, NOT AMENDMENT 4's ROBUST
+      SCALING. Amendment 4's robust rule applies to DC-DERIVED columns -
+      it selects rel_attack_diff, rel_defence_diff and
+      expected_total_goals BY NAME. These residuals come from a rolling
+      arithmetic window and not from any fitted model, so they are not in
+      that class. A4a continues to assert the robust mask still selects
+      exactly three columns, which is what would catch this drifting.
+
+      The indicators pass through unstandardised under section 6, as every
+      indicator in this project does.
+
+E6.7  E1b IS A LADDER BLOCK on D2 rescaled, so per-rung per-fold lambda,
+      blocked inner CV on training rows only, and G6 all apply to it.
+
+-------------------------------------------------------------------------------
+7.  GATE ORDER, PRE-COMMITTED
+-------------------------------------------------------------------------------
+
+E7.1  E1a FIRST. THEN E1b ON WHICHEVER BASE E1a LEAVES STANDING.
+
+      If E1a beats goals-DC significantly, E1b is built on the base that
+      result implies. If E1a is null or inconclusive, E1b is built on D2
+      rescaled. Written now so the base cannot be chosen after seeing
+      which gives E1b the better number.
+
+E7.2  A NOTE ON THE REPORT TEMPLATE. Lambda, EPV and G6 are penalised-
+      logistic concepts. E1a is a standalone probability model in the
+      Dixon-Coles family and HAS NO PENALISED FIT, so it has no lambda, no
+      EPV and no G6 row. It reports the full Phase 0 metric set, rho, the
+      conversion constant c, and the fitted attack/defence parameters.
+      E1b reports lambda, EPV and G6 in full. This is a deviation from the
+      requested template and is declared rather than silently applied.
+
+-------------------------------------------------------------------------------
+8.  GATES
+-------------------------------------------------------------------------------
+
+      E1   goals-DC re-fitted in-process reproduces the committed
+           outputs/phase2_poisson_dc_fold_summary.csv bit for bit
+      E2   the two arms differ in exactly one input - half-life, refit
+           cadence, window rule, initialisation, MAX_GOALS, convergence
+           settings and rho compared field by field
+      E3   rho is IDENTICAL between the arms, because it is fitted on the
+           same goals from the same window
+      E4   the audit's counts are exactly what section 2 recorded: 1 row
+           with SoT > shots, 12 with goals > SoT, 0 missing cells. A
+           change in the source fails here
+      E5   corrupting every match from a cutoff onward moves no fitted SoT
+           state, at six probe dates - DS1a's test on the new state
+      E6   the conversion constant c is computed from training rows only,
+           asserted by corrupting outer-test rows and checking c does not
+           move
+      E7   every probability array passes validate_probabilities()
+      E8   pooled log loss equals the unweighted mean of the four fold
+           values to 1e-12
+      E9   NO ODDS COLUMN APPEARS IN ANY DESIGN MATRIX, RATING WINDOW OR
+           FEATURE - asserted by name over the built designs, not by
+           intention
+      E10  E1b's design width is exactly D2 rescaled + 6, and the six are
+           the six named in E6.5
+      E11  full DS suite on every fitted rung, DS7 live
+
+-------------------------------------------------------------------------------
+9.  INTERPRETATION, DECLARED BEFORE RUNNING
+-------------------------------------------------------------------------------
+
+E9.1  E1 SIGNIFICANT      xG is very likely to add more, since SoT is a
+                          crude version of what xG measures. The five
+                          FBref downloads are justified.
+
+E9.2  E1 NULL             shot information adds little over goals at this
+                          resolution. xG's expected gain is small. A is
+                          SCOPED ACCORDINGLY - not abandoned, not expected
+                          to move much.
+
+E9.3  E1 INCONCLUSIVE     reported as such, read neither way.
+
+E9.4  THE STANDING RULES. No block is declared useful on accuracy. A
+      non-significant difference is not equality - 1,520 matches did not
+      separate Block C from nothing either, and that was not equality.
+      RPS must agree in sign with log loss or the comparison is
+      INCONCLUSIVE.
+
+E9.5  NO NUMBER IN PHASES 0 TO 5B MOVES BECAUSE OF THIS INSTRUMENT.
+
+-------------------------------------------------------------------------------
+10. WHAT THIS CANNOT ESTABLISH
+-------------------------------------------------------------------------------
+
+      It cannot establish what xG would do. It bounds it from below on an
+      argument about information content, and that argument could be
+      wrong: xG could carry something SoT does not in a way that changes
+      the sign rather than the size.
+
+      It cannot make the project's numbers out-of-sample. 2025-26 was
+      scored during Phase 3's lambda sweep and its B0-B6 ablation. Every
+      figure remains a walk-forward development estimate, optimistic by an
+      unknown margin, and the market benchmark it is measured against is
+      not.
+
+===============================================================================
+END
+===============================================================================
