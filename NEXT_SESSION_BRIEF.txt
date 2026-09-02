@@ -1,0 +1,254 @@
+===============================================================================
+NEXT SESSION BRIEF - D3, D4, AND THE D2-STATIC DEFERRAL
+===============================================================================
+
+STATUS: NOT STARTED. Written down at the end of the 2026-09-02 session and
+        deliberately NOT executed there. Everything below is the brief as
+        issued, verbatim, so the next session works from the instruction
+        rather than from a summary of it.
+
+REPO STATE WHEN THIS WAS WRITTEN
+        clean at 78b27d3, manifest verifies at 55 files
+        D2 rescaled is the governing D2
+        D3 and D4 unblocked
+        G9 and G10 stand FAILING, deliberately - see STEP 4
+
+ONE THING IN THIS BRIEF IS ALREADY DONE. The REPORTS.md headline rephrasing
+under CONTEXT was applied in the session that received the brief, because it
+corrects already-committed text rather than producing a new result. The two
+corrections (1) and (2) were written into the same entry. Nothing else here
+has been run. Re-read REPORTS.md before repeating it.
+
+Start with:  pnpm-free repo - use ./venv/Scripts/python.exe -B <script>
+             see PROJECT_GOTCHAS.md section 1 before any python -c
+
+===============================================================================
+BRIEF AS ISSUED
+===============================================================================
+
+PROJECT: d:\PremierLeagueML
+Clean at 78b27d3, manifest verifies at 55 files. D2 rescaled is the
+governing D2. D3 and D4 are now unblocked.
+
+CONTEXT - TWO CORRECTIONS TO MY PRIOR BRIEFS
+
+(1) I was wrong about expected_total_goals. A4.6 resolved on its second
+    branch and the column genuinely carries little. Record it that way.
+    Do NOT soften it into "compression may still explain part of it" -
+    the A4 scale sits alongside both the burn-in-clearing SD and the
+    test SD, so the defect is gone and the shrinkage is real.
+
+(2) I was wrong that D2-static answers the tier-2 question in the
+    ladder's units. D1's 84 form features update match-by-match in BOTH
+    arms; only the rating state freezes. So D2 - D2static measures the
+    marginal recency of the RATING on top of already-fresh form
+    features. It cannot approach tier 2's 0.0356 and was never going to.
+    See Step 3.
+
+HEADLINE REPHRASING. My "92 columns land on the same number" no longer
+holds literally. D2 rescaled - Elo v1 is INCONCLUSIVE: RPS passes Elo
+(-0.00021), log loss trails (+0.00085), signs disagree. Elo still leads
+on log loss. Phrase it as: neither metric separates 92 columns from a
+single K=20 rating. Update the REPORTS.md entry accordingly.
+
+BINDING (unchanged)
+- Per-rung per-fold lambda, blocked inner CV, training rows only.
+- Four frozen outer folds, 1,520 matches, for D3 and D4. Do not alter.
+- Paired per-match bootstrap, 10,000 draws, seed 20260901, every delta.
+  RPS must agree in sign with log loss or INCONCLUSIVE.
+- G6 applicable at every D-rung and fold; boundary selection FAILs and
+  stops that rung.
+- Section 6 standardisation unchanged. Amendment 4's robust scaling
+  applies to the three DC-derived columns only and carries into D3/D4.
+- Step 2 exclusions hold: no xG, no odds, no XGBoost, no random forests,
+  no betting backtests.
+
+==================================================
+STEP 1 - ETG REDUNDANCY, NO NEW FIT
+==================================================
+
+Test whether expected_total_goals is redundant given D1 rather than
+uninformative in general. No refit required.
+
+Per fold, on training rows: regress expected_total_goals on D1's
+scoring-environment columns (home and away GF/game and GA/game, plus
+any last-5 goal columns) and report R-squared. Report its simple
+correlation with each of those columns too.
+
+  High R-squared  -> redundant given D1. State that DC needs the column
+                     because DC has nothing else; D2 does not.
+  Low R-squared   -> genuinely uninformative. Cleaner finding, record it.
+
+Either way this is a diagnostic, not a gate. It does not change any
+reported number and D3/D4 proceed regardless.
+
+==================================================
+STEP 2 - D3 AND D4
+==================================================
+
+The declared ladder, on D2 rescaled as the base.
+
+  D3  D2rescaled + Block C   112 columns
+  D4  D3 + Block X           139 columns
+
+Use the frozen Phase 3 Block C and Block X outputs. Do NOT rebuild
+either block, do not introduce new FBref variables, do not touch the
+raw audit.
+
+Run D3, report, then D4. If either FAILs G6, stop at that rung.
+
+DS7 becomes live for the first time. Run it.
+
+EPV runs 0.79-3.12 at D3 and 0.63-2.52 at D4. D4 is thin. Expect high
+lambda selections and read a large D4 lambda as the penalty doing its
+job, not as a defect.
+
+Report per fold and pooled: full Phase 0 metric set, selected lambda,
+EPV, G6 status, design width, and per-fold coefficients on the Block C
+and Block X columns.
+
+DELTAS, paired bootstrap, per fold and pooled:
+  D3 - D2rescaled     does context add beyond dynamic state
+  D4 - D3             does prior-season FBref add beyond both
+  D4 - D2rescaled
+  and each against D0, Elo v1, Poisson, Dixon-Coles
+
+BINDING INTERPRETATION RULE: if D3 or D4 contradict Phase 3's "Block C
+and Block X add nothing", Phase 4 wins and Phase 3's conclusion is
+amended, not defended. Phase 3's lambda was selected under a rule
+rewritten after the result was known; these rungs are the clean test.
+
+Do not declare a block useful on accuracy. Do not claim a
+non-significant difference proves equality.
+
+==================================================
+STEP 3 - D2-STATIC: DECLARE THE NARROWER QUESTION, DO NOT RUN
+==================================================
+
+Do not fix or re-run D2-static this session.
+
+Write an amendment recording:
+
+  (a) G10's defect and its cause - 2021-22 is 50/33/25% of folds 2/3/4's
+      training rows, imputed to the training median, driving IQR to zero
+      at 50% and inflating one column ~400x. Two columns took the
+      degenerate-column guard while genuinely varying.
+
+  (b) That the rung as designed answers a NARROWER question than the one
+      it was commissioned for, because D1's form features are fresh in
+      both arms. Attribute that framing error to me, not to the
+      implementation.
+
+  (c) The only design that would make it readable: restrict BOTH arms'
+      training rows to seasons with frozen state (2022-23 onward), run
+      folds 2-4 only, and re-run D2 on the SAME restricted training set
+      so the comparison is paired. Comparing restricted D2static against
+      the existing full-training D2 would confound cadence with training
+      size and must not be done.
+
+  (d) That it is deferred, with the cost stated: it would decompose the
+      0.0037 D2-D1 effect into rating-information and rating-recency
+      components. Real, but small stakes and outside the declared ladder.
+
+Leave the existing D2-static numbers in the artefacts marked NOT
+READABLE. Do not quote them anywhere.
+
+==================================================
+STEP 4 - GATES
+==================================================
+
+G9 stands failing. 2.220e-16 from a 279x279 versus 267x267 Newton
+system is a correct test of an over-strong claim, same class as
+C3a/C3b. Do not soften A5.2 and do not add a tolerance.
+
+G10 stays. It carries no tunable constant and tests an implication the
+pipeline already relies on. Keep it failing until D2-static is fixed.
+
+The two manifest/gitignore holes you closed beyond the ask were right.
+REPORTS.md on main matching this repo's linear history is fine.
+
+==================================================
+REPORT AND STOP
+==================================================
+
+1. ETG redundancy: per-fold R-squared and correlations, and the read
+2. D3: full metrics, lambda, EPV, G6, coefficients
+3. D4: same
+4. All deltas with CIs, per fold and pooled
+5. Updated comparison table across D0-D4, Elo, Poisson, DC
+6. DS suite including DS7's first live run
+7. D2-static amendment text and new sha256
+8. Whether Phase 3's Block C / Block X conclusion is upheld or amended
+9. Deviations
+10. Stop.
+
+===============================================================================
+POINTERS THE NEXT SESSION WILL WANT AND WOULD OTHERWISE RE-DERIVE
+===============================================================================
+
+THE INSTRUMENTS
+
+    scripts/phase4_dynamic_ladder.py       D0/D1/D2, and the shared machinery
+                                           every later rung imports:
+                                           build_design, robust_mask,
+                                           fit_pipeline, select_lambda,
+                                           run_rung, pool, compare,
+                                           ds0..ds13, g10_scale_domain
+    scripts/phase4_amendment4_ladder.py    D2 rescaled and D2-static. The
+                                           closest template for a D3/D4
+                                           instrument - copy its shape.
+    scripts/phase4_dynamic_state.py        build() per-date, build_static()
+                                           per-season
+    scripts/phase4_ladder_diagnostics.py   the standardisation sensitivity and
+                                           the burn-in exposure table
+
+HOW D3 AND D4 ARE BUILT
+
+    LADDER.build_design(features, feature_names, dynamic) already takes any
+    feature list. D3 and D4 are the same call with a longer list:
+
+        base   = LADDER.d1_features(features)
+        c_cols = [c for c in features.columns if block_of(c) == "C_context"]
+        x_cols = [c for c in features.columns if block_of(c) == "X_prior_composite"]
+        xa     = [c for c in features.columns if block_of(c) == "X_availability"]
+
+        D3 = base + c_cols                    -> width 112
+        D4 = base + c_cols + x_cols + xa      -> width 139
+
+    X_metadata (4 columns) is NOT added - section 3 of the pre-declaration.
+    Those widths are already ASSERTED by DS3a in the existing run, so they
+    are not a guess.
+
+    The robust mask comes from LADDER.robust_mask(names) and finds the three
+    DC-derived columns wherever they sit in the design. It carries into D3
+    and D4 unchanged.
+
+DS7 GOES LIVE
+
+    It has been INFO ("NOT EXERCISED") in every run so far because no C or X
+    column entered D0-D2. LADDER.ds7_frozen_blocks() currently only measures
+    block counts - it must be REWRITTEN to actually assert byte-identity of
+    the C and X columns against the frozen Phase 3 artefact before D3 is
+    read. Do not leave it as a measurement.
+
+TRAPS ALREADY PAID FOR
+
+    - Run scripts as FILES. python -c dies on anything importing the
+      harness (PROJECT_GOTCHAS.md section 1).
+    - ./venv/Scripts/python.exe is the interpreter. Bare python has no
+      pandas. .venv/ with a leading dot is dead.
+    - A verifier that does not implement the declared rule cannot verify
+      it. DS2b failed twice on exactly this - first missing Amendment 4's
+      scale, then its median imputation. Both were the CHECK, not the
+      pipeline.
+    - Check the measurement against the thing it measures. Pooled log loss
+      must equal the unweighted fold mean at 380 test rows per fold; that
+      identity has caught two bugs.
+    - A full run of the amendment instrument is ~21 minutes. Background it.
+    - Outputs are gitignored except the exception block in .gitignore, which
+      is kept in step with FROZEN_PATTERNS in scripts/frozen_manifest.py.
+      New D3/D4 artefacts need adding to BOTH.
+
+===============================================================================
+END
+===============================================================================

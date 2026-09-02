@@ -33,18 +33,26 @@ Pre-declaration sha256 `95265231…d2bf0ad`.*
 | Dixon-Coles walk-forward | 0.990364 | 0.203499 |
 
 **D2 rescaled − Elo v1 is INCONCLUSIVE**: log loss +0.00085, RPS −0.00021. The
-rescaled rung passes Elo on RPS and trails it on log loss, and the binding rule
-makes a sign disagreement inconclusive rather than a win. The headline of the
-previous entry survives in substance — 92 columns are still level with a single
-K=20 rating — but it can no longer be stated as "lands on the same number".
+rescaled rung passes Elo on RPS and trails it on log loss; signs disagree, and
+the binding rule makes that inconclusive rather than a win. **Elo still leads on
+log loss.**
+
+**The headline is therefore: neither metric separates 92 columns from a single
+K=20 rating.** The earlier phrasing — "92 columns land on the same number" — was
+literally true of the original D2's RPS and is not true of the rescaled rung. It
+is withdrawn, not softened.
 
 **D2 rescaled − D1 = −0.00365 [−0.00489, −0.00241]**, significant at every fold.
 
 ### A4.6's prediction resolved on its second branch
 
 Given a sane scale and five SD of room, **`expected_total_goals` shrank**: its
-coefficient norm fell to **0.1–0.3×** the original at every fold. It was not
-being silenced by compression. It genuinely carries little.
+coefficient norm fell to **0.1–0.3×** the original at every fold.
+
+**The column genuinely carries little.** That is the finding, stated without a
+hedge: the Amendment 4 scale sits alongside *both* the burn-in-clearing SD and
+the test SD, so the compression defect is gone and the shrinkage that remains is
+real. It is not "compression may still explain part of it".
 
 `rel_attack_diff` is the column that gained (1.3–1.7×); `rel_defence_diff` moved
 in neither direction consistently (0.8–1.5×). So the dynamic-state block is a
@@ -67,9 +75,17 @@ and entered the penalised fit in raw units; a third took a scale of 0.0011.
 it tests an implication the pipeline already relies on (zero spread ⟹ constant
 column) and fails where that is false.
 
-So **D2 − D2static does not answer the tier-2 question yet.** The numbers exist
-(−0.00269 pooled [−0.00542, +0.00001]; −0.00220 over folds 2–4) and are **not
-quoted as a recency measurement**. Fixing the rung needs its own declaration.
+**And the rung answers a narrower question than it was commissioned for.** D1's
+84 form features — season-to-date PPG, last-5, venue form — update match by match
+in *both* arms; only the rating state freezes. So D2 − D2static measures the
+marginal recency of the **rating**, on top of form features that are already
+fresh. It cannot approach tier 2's 0.0356 and was never going to. That framing
+error was the project's, not the implementation's.
+
+So **D2 − D2static neither answers the tier-2 question nor is readable as it
+stands.** Its numbers are in the artefacts, marked NOT READABLE, and are not
+quoted here. Fixing the rung needs its own declaration — see
+`NEXT_SESSION_BRIEF.txt` step 3 for the only design that would make it paired.
 
 ### G9 failed as written
 
