@@ -77,6 +77,19 @@ outputs/*
 # Phase 4 tier-2 resolution - the evidence that decides what D2 is built from
 !outputs/phase4_tier2_*.csv
 
+# Phase 4 DC passthrough - the diagnostic that decided the link is sound, and
+# the point-in-time state it wrote. The ladder's S1 ANCHORS against
+# phase4_dc_state.csv, so leaving it unversioned was the exact half-protection
+# this exception block exists to prevent.
+!outputs/phase4_dc_state.csv
+!outputs/phase4_passthrough_*.csv
+
+# Phase 4 ladder - D0, D1, D2, their audit trail and the state they are built
+# from. The rescaled rung of Amendment 4 writes to its own filenames, so these
+# stay the artefacts the first run produced.
+!outputs/phase4_dynamic_state.csv
+!outputs/phase4_ladder_*.csv
+
 # Environment / secrets
 .env
 .env.*

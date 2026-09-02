@@ -41,6 +41,10 @@ FROZEN_PATTERNS = [
     "PHASE3_REGULARISATION_PREDECLARATION.txt",
     "PHASE3_CEILING_PREDECLARATION.txt",
     "PHASE4_TIER2_WINDOW_PREDECLARATION.txt",
+    # The D2 pre-declaration governs the whole of Phase 4 and was tracked in
+    # git from the start, but was never listed here - so its hash could move
+    # under an amendment with nothing but a diff to say so. Listed now.
+    "PHASE4_D2_PREDECLARATION.txt",
     "outputs/phase4_dynamic_state_predeclaration.txt",
     "outputs/phase0_evaluation_folds.csv",
     "outputs/phase0_evaluation_spec.csv",
@@ -60,6 +64,14 @@ FROZEN_PATTERNS = [
     "outputs/phase3_ceiling_*.csv",
     "outputs/phase3_frozen_regularisation.json",
     "outputs/phase4_tier2_*.csv",
+    # The passthrough diagnostic and the state it wrote. The ladder's S1
+    # anchors against phase4_dc_state.csv.
+    "outputs/phase4_dc_state.csv",
+    "outputs/phase4_passthrough_*.csv",
+    # The D0/D1/D2 ladder. Amendment 4's rescaled rung writes to its own
+    # filenames rather than over these.
+    "outputs/phase4_dynamic_state.csv",
+    "outputs/phase4_ladder_*.csv",
 ]
 
 HEADER = """\

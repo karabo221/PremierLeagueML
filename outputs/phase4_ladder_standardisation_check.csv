@@ -1,0 +1,21 @@
+rung,variant,fold,selected_lambda,log_loss,rps,n
+D1,declared (section 6 pass-through),1,1000,0.99681289908311221,,
+D1,declared (section 6 pass-through),2,1000,0.9629609815274065,,
+D1,declared (section 6 pass-through),3,300,1.0111170015383215,,
+D1,declared (section 6 pass-through),4,300,1.0448237591047551,,
+D1,declared (section 6 pass-through),-1,,1.0039286603133988,0.20768661472157898,1520
+D1,all columns standardised (Phase 3),1,1000,0.99702331407554512,,
+D1,all columns standardised (Phase 3),2,1000,0.96192435421216493,,
+D1,all columns standardised (Phase 3),3,1000,1.001736754926039,,
+D1,all columns standardised (Phase 3),4,1000,1.0410969477751759,,
+D1,all columns standardised (Phase 3),-1,,1.0004453427472313,0.20672130191510779,1520
+D2,declared (section 6 pass-through),1,1000,0.99335767809045461,,
+D2,declared (section 6 pass-through),2,1000,0.96054143449710416,,
+D2,declared (section 6 pass-through),3,300,1.0079767747836197,,
+D2,declared (section 6 pass-through),4,300,1.0415757238124559,,
+D2,declared (section 6 pass-through),-1,,1.0008629027959084,0.20667120600201169,1520
+D2,all columns standardised (Phase 3),1,1000,0.99356565748107939,,
+D2,all columns standardised (Phase 3),2,1000,0.95965619174611627,,
+D2,all columns standardised (Phase 3),3,1000,0.99997889187750444,,
+D2,all columns standardised (Phase 3),4,1000,1.0393220989609386,,
+D2,all columns standardised (Phase 3),-1,,0.99813071001640963,0.20596346336860522,1520
