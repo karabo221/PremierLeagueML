@@ -45,6 +45,10 @@ FROZEN_PATTERNS = [
     # git from the start, but was never listed here - so its hash could move
     # under an amendment with nothing but a diff to say so. Listed now.
     "PHASE4_D2_PREDECLARATION.txt",
+    # Amendment 6 records a defect, a framing error and a deferral. An
+    # amendment that can be edited after the fact is worth as little as a
+    # pre-declaration that can, so it is frozen on the same terms.
+    "PHASE4_AMENDMENT6_D2STATIC.txt",
     "outputs/phase4_dynamic_state_predeclaration.txt",
     "outputs/phase0_evaluation_folds.csv",
     "outputs/phase0_evaluation_spec.csv",
@@ -58,6 +62,28 @@ FROZEN_PATTERNS = [
     # five-metric output rather than gaining the sixth.
     "outputs/phase2_elo_metrics_full.csv",
     "outputs/phase2_poisson_dc_fold_summary.csv",
+    # THE FEATURE FILE ITSELF, and the inventory that describes it.
+    #
+    # This was the largest hole in the manifest and it survived three phases.
+    # Every rung of every ladder builds its design by reading
+    # outputs/phase3_features.csv - D0 through D4, the ablation, the ceiling,
+    # the regularisation surface. It was untracked and unhashed, so the one
+    # file the whole of Phase 3 and Phase 4 rests on could have been
+    # regenerated with nothing anywhere to detect it.
+    #
+    # It was found because DS7 could not be made to do its declared job. DS7
+    # asserts that Block C and Block X are "byte-identical to the frozen
+    # Phase 3 artefacts", and its own note claimed "DS10 verifies the file's
+    # hash". DS10 did not, because the file was not listed here. The note was
+    # false in a way that only became visible when DS7 went live at D3.
+    #
+    # phase3_feature_inventory.csv is listed beside it deliberately. It
+    # records per-column non-null, distinct, min, median, mean, max and std,
+    # written by the feature builder in the same run, so it is an INDEPENDENT
+    # description of the same bytes. DS7 checks the feature file against that
+    # record rather than only against itself.
+    "outputs/phase3_features.csv",
+    "outputs/phase3_feature_inventory.csv",
     "outputs/phase3_ablation_fold_summary.csv",
     "outputs/phase3_ablation_ladder.csv",
     "outputs/phase3_reg_*.csv",
@@ -76,6 +102,11 @@ FROZEN_PATTERNS = [
     # artefacts above are not overwritten by the rung that supersedes them.
     "outputs/phase4_a4_*.csv",
     "outputs/phase4_static_state.csv",
+    # D3 and D4, and the expected_total_goals redundancy diagnostic. Again
+    # their own filenames, so the rungs they are compared against are not
+    # overwritten by the rungs that extend them.
+    "outputs/phase4_d34_*.csv",
+    "outputs/phase4_etg_*.csv",
 ]
 
 HEADER = """\

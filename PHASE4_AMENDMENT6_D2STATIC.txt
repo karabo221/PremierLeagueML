@@ -1,0 +1,256 @@
+===============================================================================
+PHASE 4 - AMENDMENT 6
+D2-STATIC: A BROKEN SCALER, AND A QUESTION NARROWER THAN THE ONE IT WAS
+COMMISSIONED FOR
+===============================================================================
+
+STATUS      D2-static is DEFERRED. It is not fixed and not re-run.
+            Its existing numbers stay in outputs/phase4_a4_*.csv and are
+            MARKED NOT READABLE. They are quoted nowhere - not in this
+            amendment, not in REPORTS.md, not in any later rung.
+
+            G10 STAYS FAILING until the rung is rebuilt as section 3
+            describes. G9 stays failing on its own separate grounds; it is
+            not this amendment's subject and nothing here softens it.
+
+WHY THIS IS TWO FINDINGS, NOT ONE
+
+            The rung has an IMPLEMENTATION defect and a FRAMING error, and
+            they are independent. Fixing the scaler would produce a rung
+            that runs cleanly and still answers a narrower question than
+            the one it was built to answer. Both have to be recorded or the
+            next session fixes the first, sees green, and reports the
+            second as an answer.
+
+            The framing error is MINE. It is not a defect in the
+            implementation, which built exactly the rung that was
+            specified.
+
+-------------------------------------------------------------------------------
+1.  THE DEFECT: THE DEGENERATE-COLUMN GUARD FIRING ON COLUMNS THAT VARY
+-------------------------------------------------------------------------------
+
+A6.1  WHAT G10 CAUGHT
+
+      G10 asserts that no column takes the zero-scale guard while actually
+      varying. The guard replaces a computed scale of zero with 1.0, on the
+      reasoning that a column with no spread is CONSTANT and scaling a
+      constant is meaningless. Where the column is not constant, the guard
+      instead hands a genuinely varying column to a penalised fit in RAW
+      units - the same class of defect Amendment 4 exists to remove.
+
+      OBSERVED: 2 offenders, both at D2-static fold 2 -
+
+          rel_attack_diff        scale 1.0, training values not all equal
+          rel_defence_diff       scale 1.0, training values not all equal
+
+      D2 rescaled has ZERO offenders at every fold. The defect is specific
+      to the static rung.
+
+A6.2  THE CAUSE, IN FULL
+
+      The static rung freezes DC state at season start (A5.1). 2021-22 is
+      the first season in the data, so it has no prior season to freeze
+      from and every one of its 380 rows carries NO DC STATE AT ALL.
+
+      Those rows are imputed to the TRAINING MEDIAN, which is the
+      pipeline's declared rule and is not itself the defect.
+
+      2021-22's share of each fold's training rows, measured, not inferred
+      (audit rows G10b-D2_static in outputs/phase4_a4_audit.csv):
+
+          fold 1      100%     trains on 2021-22 alone
+          fold 2       50%     2021-22 of 2021-22 + 2022-23
+          fold 3       33%
+          fold 4       25%
+
+      AT EXACTLY 50% THE ARITHMETIC IS FORCED. Half the training rows hold
+      one identical imputed value - the median. The 25th and 75th
+      percentiles therefore BOTH land on that value, the interquartile
+      range is identically zero, and Amendment 4's robust scale IQR/1.34898
+      is identically zero. The guard fires. This is not a numerical
+      accident that a tolerance would absorb; it is what the median does to
+      the quartiles when it occupies half the mass.
+
+      Fold 1 is a different case and G10 correctly does NOT flag it. There
+      all four columns are genuinely constant, so a scale of 1.0 is the
+      right answer for the right reason.
+
+A6.3  THE THIRD COLUMN, WHICH THE GUARD DID NOT CATCH
+
+      expected_total_goals at fold 2 did not take the guard, because its
+      imputed median does not sit exactly on both quartiles. It got
+      something worse, because it passed silently:
+
+          D2-static  fold 2   train_scale   0.001083   (centre 2.697387)
+          D2 rescaled fold 2  train_scale   0.690275
+
+      The same column, the same fold, divided by a scale 637x smaller. Its
+      standardised values enter the penalised fit inflated by that factor
+      against every other column in the design, and no gate fired.
+
+      A NOTE ON THE MULTIPLIER. The brief that commissioned this amendment
+      put the inflation at "~400x". The measured ratio against D2
+      rescaled's scale on the same column and fold is 637x. The figure
+      depends on which scale is taken as the reference, so the two are not
+      in conflict about the defect - only about the denominator. The
+      measured number is recorded here rather than the remembered one.
+
+      Folds 3 and 4 are compressed too, at 2.0x to 3.0x, and are not
+      flagged by anything. The defect is a GRADIENT, not a fold-2 event;
+      fold 2 is only where it crosses the threshold that makes it visible.
+
+A6.4  WHAT THIS DOES AND DOES NOT IMPLY
+
+      It does NOT imply the D2-static numbers are slightly off. Two columns
+      entering a penalised fit in raw units and a third inflated 637x means
+      the rung's coefficients are not on a common scale, and a ridge penalty
+      is not scale-invariant. THE NUMBERS ARE NOT READABLE. That is why
+      they are marked so rather than reported with a caveat.
+
+-------------------------------------------------------------------------------
+2.  THE FRAMING ERROR, WHICH IS MINE
+-------------------------------------------------------------------------------
+
+A6.5  WHAT THE RUNG WAS COMMISSIONED TO ANSWER
+
+      D2-static was commissioned to give the RECENCY contribution in the
+      ladder's own units, as a within-family replacement for the tier-2
+      comparison's 0.0356 - which crosses model families and carries that
+      caveat.
+
+A6.6  WHY IT CANNOT ANSWER THAT, AS DESIGNED
+
+      D1's 84 form features UPDATE MATCH BY MATCH IN BOTH ARMS. Only the
+      four dynamic-state columns freeze. So:
+
+          D2 - D2static  =  the MARGINAL recency of the RATING, on top of
+                            form features that are already fresh in both
+                            arms
+
+      That is a real quantity. It is not the tier-2 quantity, which
+      compares a fresh model against a genuinely stale one. The tier-2
+      comparison freezes everything; this rung freezes four columns out of
+      eighty-eight and leaves the rest current.
+
+      IT COULD NEVER HAVE APPROACHED 0.0356, and no result it returned
+      would have been evidence about that number in either direction. A
+      small D2 - D2static would not have contradicted tier 2, and a large
+      one would not have confirmed it.
+
+A6.7  WHOSE ERROR THIS IS
+
+      MINE, and it is a FRAMING error, not an implementation one. The rung
+      that was specified is the rung that was built: identical features,
+      folds, grid, family and scaling, with the state frozen at season
+      start. A5.1 through A5.3 describe it accurately and it implements
+      them accurately.
+
+      The error is that I declared the resulting difference would answer
+      the tier-2 question in the ladder's units. It does not, and the
+      reason was visible in the design before anything was fitted. This is
+      recorded against the brief, not against the code.
+
+-------------------------------------------------------------------------------
+3.  THE ONLY DESIGN THAT WOULD MAKE THE RUNG READABLE
+-------------------------------------------------------------------------------
+
+A6.8  THE RESTRICTION
+
+      Restrict BOTH arms' TRAINING rows to seasons that carry frozen state
+      at all - 2022-23 onward - and run FOLDS 2, 3 AND 4 ONLY. Fold 1
+      trains on 2021-22 alone and would have no training rows left.
+
+      This removes the imputed mass that drives A6.1 through A6.3 at its
+      source, rather than adding a guard or a tolerance downstream of it.
+      A6.2's arithmetic is forced by the imputation share; delete the share
+      and the arithmetic does not arise.
+
+A6.9  THE PAIRING REQUIREMENT, WHICH IS THE PART EASIEST TO GET WRONG
+
+      D2 MUST BE RE-RUN ON THE SAME RESTRICTED TRAINING SET.
+
+      COMPARING A RESTRICTED D2-STATIC AGAINST THE EXISTING FULL-TRAINING
+      D2 IS FORBIDDEN. It would confound the thing being measured (state
+      cadence) with a thing that is not (training-set size), and the two
+      move the same direction, so the confound would inflate rather than
+      cancel. The resulting number would look like a recency effect and
+      would be partly a sample-size effect, with nothing in the output to
+      separate them.
+
+      This is stated as a prohibition rather than a caution because it is
+      the cheap path and it produces a publishable-looking number.
+
+A6.10 WHAT THE RESTRICTED RUNG WOULD AND WOULD NOT FIX
+
+      It fixes the SCALER defect. It does NOT fix the framing error of
+      A6.6: form features stay fresh in both arms whatever the training
+      restriction is. The restricted rung answers A6.6's marginal-recency
+      question CLEANLY. It still does not answer the tier-2 question.
+
+      Answering that would need both arms' FORM FEATURES frozen too, which
+      is a different rung again and is not the one that was declared.
+
+-------------------------------------------------------------------------------
+4.  THE DEFERRAL, AND ITS COST
+-------------------------------------------------------------------------------
+
+A6.11 DEFERRED, DELIBERATELY
+
+      The restricted rung is not run in this session and is not scheduled.
+
+A6.12 WHAT IS GIVEN UP BY DEFERRING IT
+
+      It would decompose the D2 - D1 effect of 0.0037 into two components:
+
+          RATING-INFORMATION    what the DC and Elo state contribute at all
+          RATING-RECENCY        what is contributed specifically by
+                                updating that state per calendar date
+                                rather than per season
+
+      That decomposition is REAL and it is not obtainable any other way in
+      the ladder's units.
+
+      IT IS ALSO SMALL. The whole effect being decomposed is 0.0037, so
+      both components are bounded well below it, and the rung sits outside
+      the declared D0-D4 ladder. Three folds rather than four, on a
+      reduced training set, would put wide intervals on both halves of a
+      small number.
+
+      The stakes are stated plainly here so that deferring it is a decision
+      on the record rather than an omission - and so that a later session
+      picking it up knows it is buying a decomposition of 0.0037 and not a
+      headline.
+
+-------------------------------------------------------------------------------
+5.  WHAT THIS AMENDMENT DOES NOT DO
+-------------------------------------------------------------------------------
+
+A6.13 G10 IS NOT SOFTENED AND NO TOLERANCE IS ADDED
+
+      G10 carries no tunable constant. It tests an implication the pipeline
+      already relies on - that the guard's "this column is constant" is
+      true when the guard fires - and it fails exactly when that
+      implication is false. It would read identically had every rung
+      passed. It STAYS FAILING until D2-static is rebuilt per section 3.
+
+A6.14 G9 IS NOT TOUCHED
+
+      G9 fails at 2.220e-16, from a 279x279 Newton system against a
+      267x267 one. That is a correct test of an over-strong claim in A5.2,
+      the same class as C3a/C3b, and A5.2 is NOT softened. G9b separately
+      records that the MECHANISM A5.2 predicted did hold exactly - every
+      dynamic-state coefficient at fold 1 is 0.0 - so the strict form
+      failing is not reported as the mechanism failing. Both rows stand as
+      they are.
+
+A6.15 NO D2-STATIC NUMBER IS QUOTED
+
+      The scales in A6.3 are properties of the BROKEN SCALER and are the
+      evidence for the defect. No log loss, RPS, Brier, accuracy, delta or
+      confidence interval from the D2-static rung appears in this document
+      or anywhere else.
+
+===============================================================================
+END OF AMENDMENT 6
+===============================================================================

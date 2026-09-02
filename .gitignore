@@ -67,6 +67,15 @@ outputs/*
 !outputs/phase2_elo_fold_summary.csv
 !outputs/phase2_poisson_dc_fold_summary.csv
 
+# Phase 3: THE FEATURE FILE every rung is built from, and the inventory that
+# independently describes it. Both were untracked until Phase 4's DS7 went
+# live at D3 and could not assert "byte-identical to the frozen Phase 3
+# artefacts" against an artefact that was not frozen. The largest hole this
+# block has had: D0-D4, the ablation, the ceiling and the regularisation
+# surface every one of them read phase3_features.csv.
+!outputs/phase3_features.csv
+!outputs/phase3_feature_inventory.csv
+
 # Phase 3: the lambda = 1 reference (R7), Instruments 4 and 5, and the freeze
 !outputs/phase3_ablation_fold_summary.csv
 !outputs/phase3_ablation_ladder.csv
@@ -90,6 +99,11 @@ outputs/*
 !outputs/phase4_dynamic_state.csv
 !outputs/phase4_ladder_*.csv
 
+# The D3/D4 instrument's crash-safety copy. Deliberately NOT under outputs/,
+# so that DS10's frozen_manifest.py --verify cannot see a half-finished run's
+# tables as unlisted frozen artefacts. Never evidence; deleted freely.
+.d34_inprogress/
+
 # Environment / secrets
 .env
 .env.*
@@ -108,3 +122,8 @@ desktop.ini
 # Phase 4 Amendments 4 and 5 - the rescaled rung and D2-static
 !outputs/phase4_a4_*.csv
 !outputs/phase4_static_state.csv
+
+# Phase 4 D3 and D4 - Block C and Block X on top of D2 rescaled, and the
+# expected_total_goals redundancy diagnostic that preceded them.
+!outputs/phase4_d34_*.csv
+!outputs/phase4_etg_*.csv

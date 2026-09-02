@@ -9,6 +9,235 @@ and the same 1,520 outer-test matches unless it says otherwise.
 
 ---
 
+## Phase 4 — the ladder finished: D3, D4, and the Phase 4 conclusion
+
+*Run 2026-09-02. `scripts/phase4_d34_ladder.py`, 44 checks, **0 failures** in this
+instrument. G9 and G10 stand failing at the project level on grounds outside it.
+Brief `NEXT_SESSION_BRIEF.txt`; D2-static amendment sha256 `90743c9b…c4812`.*
+
+### What the added blocks actually did
+
+**Block X's three availability columns are exact duplicates of columns D1
+already had.** `home_prior_fbref_available` is byte-identical to
+`home_prev_season_available`, and the same holds for the away and the relative
+pair — three of Block X's 27 columns carrying nothing the backbone was not
+already carrying. The ridge does the only thing it can with perfectly collinear
+columns and splits the weight evenly between them: at D4 fold 4 both members of
+each pair land on **|β| = 0.026751**, equal to six figures.
+
+So D4's 27 new columns are 24 new descriptions and 3 restatements, and that was
+true before anything was fitted.
+
+**The added columns do not dominate the design.** At D4 fold 4 the twelve
+largest coefficients are all Phase 1 backbone columns, led by `rel_elo_diff`
+(0.0592) and `rel_attack_diff` (0.0580) — the same two columns Amendment 4
+identified as the dynamic-state block's real content. The largest Block C
+column reaches 0.0236 and the largest Block X composite 0.0251, both below every
+one of the top twelve.
+
+| block | n | max \|β\| | mean \|β\| |
+|---|---|---|---|
+| phase1_backbone | 92 | 0.059238 | 0.015460 |
+| X_availability | 3 | 0.026751 | 0.016496 |
+| X_prior_composite | 24 | 0.025053 | 0.012912 |
+| C_context | 20 | 0.023571 | 0.009366 |
+
+**A correction.** An earlier reading of this session's evidence said the six
+largest coefficients in the design were Block C and Block X columns. That was an
+artefact of ranking within `phase4_d34_block_coefficients.csv`, which by design
+holds only the added blocks; no ranking inside it can support a claim about the
+design. Re-fitted over all 139 columns, **none** of the top ten is a C or X
+column. The claim is withdrawn.
+
+**What does hold** is that Block X's coefficient mass grows monotonically with
+training data — summed L2 norm across its 27 columns of **0 → 0.255 → 0.320 →
+0.359** over folds 1 to 4 — and converts into no measurable gain at any fold.
+The penalty is not suppressing these columns to zero. They take weight, they
+take more of it as evidence accumulates, and the predictions do not move.
+
+### The null result
+
+Every ladder-internal delta is not significant, RPS agreeing in sign with log
+loss throughout.
+
+| comparison | Δ log loss | 95% CI | Δ RPS | verdict |
+|---|---|---|---|---|
+| D3 − D2 rescaled | +0.00097 | [−0.00082, +0.00277] | +0.00016 | not significant |
+| D4 − D3 | −0.00150 | [−0.00448, +0.00148] | −0.00043 | not significant |
+| D4 − D2 rescaled | −0.00053 | [−0.00363, +0.00259] | −0.00027 | not significant |
+
+Per fold the sign moves in both directions and no interval excludes zero.
+**Phase 3's conclusion that Block C and Block X add nothing is upheld.** The
+binding rule written before the fit — that Phase 4 wins a contradiction and
+Phase 3 is amended rather than defended — never had to fire.
+
+The counterpart rule bites instead: **a non-significant difference is not
+equality.** These intervals are wide enough to contain effects worth having, and
+1,520 matches cannot separate them from zero.
+
+Against the references both rungs behave as D2 rescaled did: **significant
+against D0** (−0.0676 at D3, −0.0691 at D4), **inconclusive against Elo v1** on
+sign disagreement, and not significantly different from Poisson or Dixon-Coles.
+
+### The ladder, D0 to D4
+
+| model | columns | log loss | RPS |
+|---|---|---|---|
+| D0 base rate | 0 | 1.068888 | 0.231851 |
+| D1 current-season results | 88 | 1.003929 | 0.207687 |
+| D2 rescaled | 92 | 1.000283 | 0.206458 |
+| D3 (+ Block C context) | 112 | 1.001250 | 0.206615 |
+| D4 (+ Block X prior season) | 139 | 0.999749 | 0.206188 |
+| **Elo v1 (single K=20 rating)** | **1** | **0.999431** | 0.206670 |
+| Poisson walk-forward | — | 0.990415 | 0.203547 |
+| Dixon-Coles walk-forward | — | 0.990364 | 0.203499 |
+
+Accuracy is in the artefacts and decides nothing here.
+
+### D4 fold 1 is identical to D3 fold 1, and that is structural
+
+Fold 1 trains on 2021-22, the first season in the data, so no team has a prior
+season to describe. All 27 Block X columns are constant over its training rows —
+24 of them wholly missing — and a constant column takes scale 1.0 and a
+coefficient of exactly zero. `constant_columns` goes 29 → 56, the difference
+exactly 27, and the D4 − D3 fold 1 delta is **5.1e-18**: floating-point zero,
+not a tolerance on a difference that ought to be zero. Every one of the 27
+added coefficients is exactly 0.0, so the residue is summation order and
+nothing else.
+
+This is asserted rather than narrated — **X1a–X1d** in the audit ledger — and
+flagged in the `structural_note` column of both the fold summary and the delta
+table, where the numbers are actually read. A fold summary row that looks
+duplicated and a delta of 5e-18 are otherwise exactly what a reader files as a
+bug.
+
+**The flag earns itself immediately.** That row's verdict reads *INCONCLUSIVE
+(sign disagreement)* — the log loss residue is +5.1e-18 and the RPS residue
+−1.8e-18, so the sign test fires on noise 15 orders of magnitude below
+anything meaningful. Without the note, the delta table shows an inconclusive
+verdict on a comparison that is an identity.
+
+**These rungs were re-fitted on the E: laptop; the first run was on D:.** Every
+reported figure reproduces bit-for-bit — pooled metrics to all 17 digits,
+pooled deltas to 13. What moves is the residue: A1 against the committed
+Amendment 4 artefact reads 5.551e-17 here against 0.000e+00 there, and this
+fold 1 delta 5.113e-18 against 5.405e-18. Both are far below their gates, and
+DS8a still reproduces every probability exactly **within** a process. The
+lesson for anything that keys on these numbers: bit-identity holds within a
+machine, not across two.
+
+### expected_total_goals resolved on the uninformative branch
+
+The diagnostic asked whether the column is redundant *given D1* rather than
+uninformative in general. Regressed on D1's twelve scoring-environment columns,
+per fold, training rows only:
+
+| fold | adj R² (all 12) | strongest single correlation |
+|---|---|---|
+| 1 | 0.073 | `rel_gapm_diff` r = +0.138 |
+| 2 | 0.046 | `rel_gapm_diff` r = +0.109 |
+| 3 | 0.027 | `rel_gapm_diff` r = +0.086 |
+| 4 | 0.019 | `rel_gapm_diff` r = +0.074 |
+
+Falling as training grows, and low throughout. **The column is not redundant
+given D1 — it is uninformative.** D1 does not contain it, nothing in D1 predicts
+it, and Amendment 4 already established that it carries little once its scale is
+sane. Dixon-Coles needs it because Dixon-Coles has nothing else.
+
+The structural argument for the column was wrong, and wrong for a different
+reason than was supposed when it was conceded: not that the results-derived
+columns already encoded it, but that there is little there to encode.
+
+### The Phase 4 conclusion
+
+The four questions Phase 4 committed to, answered from the experiment.
+
+**1. Does dynamic team-strength state explain most of the remaining gap between
+the results-derived rung and Poisson/DC?** No — about a quarter of it. D2
+rescaled − D1 = **−0.00365 [−0.00489, −0.00241]**, significant, against a
+D1-to-Dixon-Coles gap of 0.01357. That is **26.9%**. The residual, D2 rescaled −
+DC = +0.00992 [−0.00330, +0.02314], is **not significant on 1,520 matches**.
+That is resolution, not equality: the remaining 73% is unmeasured, not shown to
+be absent.
+
+**2. Once dynamic state is present, does Block C add anything?** No. D3 − D2
+rescaled = +0.00097 [−0.00082, +0.00277].
+
+**3. Once dynamic state is present, does Block X add anything?** No. D4 − D3 =
+−0.00150 [−0.00448, +0.00148]. Three of its 27 columns are exact duplicates of
+backbone columns, and fold 1 cannot see any of it at all.
+
+**4. Where is the strongest signal?** **Continuously updated strength — and it
+does not need the engineering.** Decomposing the whole D0-to-Dixon-Coles
+distance of 0.0785 in log loss:
+
+- current-season results (D0 → D1): **0.0650, 83%**
+- continuously updated rating state (D1 → D2 rescaled): 0.0036, **5%**
+- everything still between D2 rescaled and DC: 0.0099, 13%
+- static historical description (Blocks C and X): **nothing measurable**
+
+But the compact form beats the engineered one. **Elo v1 — a single K=20 rating —
+has a lower pooled log loss than every rung on the ladder, D4's 139 columns
+included**, and neither metric separates the two. Poisson and Dixon-Coles, also
+continuously updated but working from goals rather than results, beat everything
+here. The answer is not "a combination": recency-weighted strength is most of
+the signal, and 139 engineered columns are a less efficient way of writing it
+down than one rating is.
+
+### What this does not license
+
+**There is no clean holdout.** 2025-26 was scored during Phase 3's lambda sweep
+and its B0–B6 ablation. Every number in this entry is a walk-forward
+**development estimate**, optimistic by an unknown margin. None of it may be
+described as an out-of-sample holdout result.
+
+**The market's ~0.95 is out of reach by construction**, not by shortfall. This
+project has no lineup and no injury data. That is a scoping decision taken at
+Step 2, and it caps what any rung here can reach; the distance to the market is
+not evidence that the modelling is deficient.
+
+### Evidence
+
+`outputs/phase4_d34_{fold_summary,pooled,deltas,lambda_curves,block_coefficients,predictions,audit}.csv`,
+`outputs/phase4_etg_{redundancy,correlations}.csv`,
+`outputs/phase3_{features,feature_inventory}.csv`. All under
+`FROZEN_MANIFEST.txt`.
+
+44 checks, 0 failures: A1, A4a/b at three rungs, G6, G10, P1, X1a–X1d, and
+DS0–DS12 in full.
+
+**DS7's first live run.** It had been recorded "NOT EXERCISED" in every prior
+run because no C or X column entered D0–D2. Its implementation in the ladder
+module measured block *counts*, which is not the declared test, so it was
+rewritten to assert rather than measure, and run before D3 was read:
+
+- **DS7a** — 67 C and X design columns across D3 and D4 are byte-identical, NaN
+  for NaN, to a fresh re-read of `outputs/phase3_features.csv` from disk. Not to
+  the in-memory frame the design was built from. 0 offenders.
+- **DS7b** — 302 recorded statistics over 39 columns agree with
+  `phase3_feature_inventory.csv`, an independent description of the same bytes.
+  This is the check that would catch a regenerated feature file; a file compared
+  against itself never could. 0 drifted.
+- **DS7c** — both files are now under the frozen manifest. **Neither was
+  before**, so DS7's declared wording "byte-identical to the frozen Phase 3
+  artefacts" was unbacked, and the ladder module's own note that "DS10 verifies
+  the file's hash" was false. The manifest goes 55 → 70 files.
+
+### Still open
+
+- **D2-static restricted rung** — deferred. `PHASE4_AMENDMENT6_D2STATIC.txt`
+  records the defect, the framing error, and the only design that would make the
+  rung readable. **G10 stays failing** until it is rebuilt.
+- **G9** — failing at 2.220e-16, correctly and unsoftened. A 279×279 against a
+  267×267 Newton system is a real test of an over-strong claim.
+- **The burn-in question** — Elo is under-converged league-wide, so D2 − D1
+  stands as a lower bound on what dynamic state is worth.
+
+Step 2's exclusions hold: no xG, no market odds, no XGBoost, no random forests,
+no betting backtests.
+
+---
+
 ## Phase 4 — Amendment 4 (robust scaling) and Amendment 5 (D2-static)
 
 *Run 2026-09-02. `scripts/phase4_amendment4_ladder.py`, 35 checks, **2 failures**

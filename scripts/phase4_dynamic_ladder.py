@@ -921,7 +921,7 @@ def ds3_widths(audit, features, widths):
 
 def ds4_ds5_corruption(audit, features, frame, spec, labels, results, blocks,
                        dynamic, baseline_lambdas, baseline_proba,
-                       robust=None, rung="D2"):
+                       robust=None, rung="D2", feature_names=None):
     """
     DS4  corrupting an outer test season's FEATURES moves no selected lambda
          and no other fold's predictions - with the control that its own do.
@@ -931,12 +931,23 @@ def ds4_ds5_corruption(audit, features, frame, spec, labels, results, blocks,
     never a training season. Corrupting a season that is also training data
     for a later fold SHOULD move that fold, so the assertion would be false
     for a legitimate reason and would prove nothing.
+
+    feature_names IS THE RUNG'S OWN FEATURE LIST and defaults to D1's, which
+    with `dynamic` supplied is D2. It has to be a parameter: this function
+    REBUILDS the design in order to corrupt it, and a D3 or D4 caller passing
+    its own baseline lambdas and probabilities against a design rebuilt at D2
+    width would compare two different models and fail for a reason that has
+    nothing to do with leakage. The default reproduces every existing caller
+    exactly.
     """
 
     rng = np.random.default_rng(CORRUPTION_SEED)
 
     target = (frame["season"] == CORRUPTION_SEASON).to_numpy()
     target_rows = np.flatnonzero(target)
+
+    if feature_names is None:
+        feature_names = d1_features(features)
 
     # ---- DS4: corrupt the FEATURES of that season -------------------------
     # The corruption is applied to the BUILT design matrix, not to the source
@@ -945,7 +956,7 @@ def ds4_ds5_corruption(audit, features, frame, spec, labels, results, blocks,
     # standardisation - a spurious failure wearing the costume of a leak.
     # Corrupting the matrix hits exactly the values the fit actually sees.
     clean_matrix, _names, passthrough = build_design(
-        features, d1_features(features), dynamic)
+        features, feature_names, dynamic)
 
     matrix = clean_matrix.copy()
     matrix[target_rows, :] = rng.normal(
