@@ -522,3 +522,367 @@ A3.4  WHAT THIS DOES NOT DO
 ===============================================================================
 END OF AMENDMENT 3
 ===============================================================================
+
+
+===============================================================================
+AMENDMENT 4 - ROBUST SCALING FOR THE DIXON-COLES-DERIVED COLUMNS
+Written before the rescaled rung is fitted. Nothing else in this document moves.
+===============================================================================
+
+A4.0  DISCLOSURE, FIRST
+
+    THIS AMENDMENT IS WRITTEN HAVING SEEN THE CONTAMINATION TABLE that
+    section 3 of the D0/D1/D2 report produced. That is stated plainly here,
+    exactly as Amendments 2 and 3 stated their relationship to the numbers
+    that prompted them, because an amendment written after a result is the
+    pattern this project polices hardest.
+
+    The table:
+
+      fold  column                 SD used   SD (rows >=380)   SD test  inflation
+      -----------------------------------------------------------------------
+      2     rel_attack_diff          1.059            0.585      0.499     1.81x
+      2     rel_defence_diff         3.630            0.375      0.451     9.69x
+      2     expected_total_goals    21.161            0.642      0.594    32.97x
+      3     rel_defence_diff         2.976            0.414      0.430     7.18x
+      3     expected_total_goals    17.280            0.633      0.544    27.32x
+      4     rel_defence_diff         2.587            0.420      0.359     6.17x
+      4     expected_total_goals    14.967            0.605      0.483    24.73x
+
+    expected_total_goals is standardised by an SD 25-33 times larger than the
+    regime it operates in. The whole test season spans 0.14 to 0.25 of one
+    standardised unit. rel_defence_diff is 6-10x inflated. Those are exactly
+    the two columns whose fitted coefficients returned zero at every fold.
+
+    THE TEST THAT MAKES THIS LEGITIMATE, and it is a different test from the
+    one Amendments 2 and 3 had to pass:
+
+        This amendment does not change what is estimated. It changes the
+        ESTIMATOR of a quantity the pre-declaration already named.
+
+        Section 6 says continuous features are standardised to unit variance
+        on training statistics. It does not say by which estimator of the
+        scale. The sample standard deviation was the implicit choice and it
+        has a known, textbook failure mode - unbounded sensitivity to
+        outliers - which the table above shows firing at 33x.
+
+        The target quantity is unchanged: the training-set scale of the
+        column. The amendment replaces a broken estimator of it with a
+        robust one, calibrated so that on outlier-free Gaussian data the two
+        agree in expectation (A4.2). A column with no outliers is scaled
+        identically before and after.
+
+    WHAT WOULD MAKE IT ILLEGITIMATE, stated so it can be checked:
+
+        Selecting the columns by which ones scored badly. The inclusion rule
+        in A4.1 is a SOURCE criterion - determinable before any fit, from how
+        the column is produced - and it is applied to every column meeting
+        it whether or not that column's coefficient was zero.
+
+A4.1  WHICH COLUMNS, AND ON WHAT CRITERION
+
+    ROBUST SCALING APPLIES TO EXACTLY THE COLUMNS DERIVED FROM A DIXON-COLES
+    FIT ON A POINT-IN-TIME WINDOW:
+
+        rel_attack_diff
+        rel_defence_diff
+        expected_total_goals
+
+    EVERY OTHER COLUMN KEEPS SECTION 6 UNCHANGED - all 88 of D1's design
+    columns, and rel_elo_diff.
+
+    THE CRITERION IS THE SOURCE, NOT THE SYMPTOM. A column qualifies if its
+    value is read out of a Dixon-Coles fit whose window can be small enough
+    that the strengths are not identified. That is a property of how the
+    column is produced, fixed before anything is fitted, and it is why the
+    defect exists: Amendment 2 A2.1 established that DC strengths are not
+    identified below a full season, and lambda_home reaches 47.26 on a
+    19-match window against 4.64 across all 1,520 test rows.
+
+    rel_elo_diff DOES NOT QUALIFY, on that criterion. It is not read out of a
+    DC fit at all; Elo is a sequential update with no fitting window, so it
+    has no small-window regime to be undefined in.
+
+    That its measured inflation is 0.88-0.93x - that is, none - is a
+    SECOND, INDEPENDENT observation pointing the same way. It is recorded
+    because it corroborates the source criterion, and it is NOT the reason
+    for the exclusion. Had rel_elo_diff shown 30x inflation it would still
+    be excluded here, and would need its own amendment naming its own cause.
+
+    THE SAME THREE COLUMNS TAKE ROBUST SCALING IN EVERY RUNG THAT CARRIES
+    THEM, D2 and D2-static alike, so that a comparison between two rungs is
+    never a comparison between two scaling rules.
+
+A4.2  THE STATISTIC, DEFINED EXACTLY
+
+    For a qualifying column, on the training rows of the fit in question -
+    the outer training rows for an outer fit, and inside the inner CV that
+    inner fold's training rows only, exactly as section 6 already requires:
+
+        centre  =  median(x)
+
+        spread  =  ( Q3(x) - Q1(x) ) / 1.3489795003921634
+
+    where Q1 and Q3 are the 25th and 75th percentiles under numpy's default
+    linear interpolation (numpy.percentile, method="linear"), computed after
+    imputation and over the training rows only.
+
+    THE DIVISOR IS THE NORMAL-CONSISTENCY CONSTANT, 2 * PHI^-1(0.75) =
+    1.3489795003921634. It is what makes this a drop-in estimator of the same
+    quantity rather than a change of units: for a Gaussian sample the
+    interquartile range is 1.349 sigma in expectation, so dividing by that
+    constant returns an estimate of sigma. A clean column is therefore scaled
+    the same way it was before, and only an outlier-contaminated one moves.
+
+    Without the divisor the qualifying columns would enter the penalised fit
+    on a systematically different scale from every other column, and ridge
+    penalises all columns equally - so an uncalibrated robust scale would
+    silently change the effective penalty on those three columns and confound
+    the very comparison this amendment exists to make.
+
+    DEGENERATE CASE. If spread == 0 the column is treated as constant and the
+    scale is set to 1.0, which is the rule the existing pipeline already
+    applies when the standard deviation is zero. Unchanged in kind.
+
+    IMPUTATION. A missing value in a qualifying column is filled with the
+    training-row MEDIAN of that column rather than its mean, for the same
+    reason the scale moved: the mean of a column containing 47.26 is not a
+    typical value of it. Where the whole training column is missing the fill
+    is 0.0, which is the existing guard, unchanged.
+
+    MAD WAS THE ALTERNATIVE and IQR is chosen over it for one reason: the
+    contamination is one-sided - a handful of very large lambdas on short
+    windows, with no corresponding small tail - and the IQR uses both
+    quartiles rather than folding the distribution about its median. Either
+    would work. The choice is declared here and is not revisited after the
+    result.
+
+A4.3  THE ALTERNATIVE THAT WAS CONSIDERED AND REJECTED
+
+    FIT THE SCALER ON ROWS CLEARING THE 380 BURN-IN, WHILE TRAINING ON ALL
+    ROWS. Rejected, and not on grounds of taste:
+
+        FOLD 1 HAS ZERO QUALIFYING ROWS. Its training set is 2021-22 entire,
+        and every match of that season is fitted on a window below 380 -
+        that is A2.2's finding, re-measured on D2's own training rows and
+        reported as 380 of 380 in the contamination table.
+
+        So the rule is UNDEFINED at fold 1. Making it defined means dropping
+        fold 1 or redefining it, which changes the frozen fold structure -
+        precisely the step A2.2 refused for the ladder and section 9 called
+        serious.
+
+    ALSO REJECTED: propagating the burn-in gate to D2's training rows, i.e.
+    training only on rows clearing 380. Same defect, same reason: it costs
+    fold 1 its entire training set. A2.2 already ruled this does not
+    propagate, and this amendment does not reopen it.
+
+    THE DEFECT IS IN THE SCALE, NOT THE TRAINING SET. A median-based scale is
+    barely moved by a handful of 47.26s, so all four frozen folds stay in
+    scope and no row is discarded. That is the whole reason to prefer it.
+
+A4.4  WHAT THIS AMENDMENT IS NOT - AND THE DISTINCTION THAT MATTERS
+
+    IT IS NOT A CHANGE TO SECTION 6. Section 6's rule - continuous features
+    standardised on training statistics, booleans and indicators passing
+    through - is unchanged for every column, including the three qualifying
+    ones, which remain standardised continuous features. Only the estimator
+    of the scale changes, and only where the source criterion of A4.1 holds.
+
+    THE DISTINCTION FROM CHANGING SECTION 6 ITSELF, recorded here so the two
+    can never be conflated later:
+
+        The D0/D1/D2 sensitivity showed that standardising the boolean and
+        indicator columns - which section 6 forbids - scores BETTER, by
+        0.0035 at D1 and 0.0027 at D2, and that under it D2 reaches 0.9981
+        and beats Elo v1.
+
+        THAT CHANGE IS NOT MADE, and will not be made. There is a principled
+        argument for it - ridge's penalty should be scale-invariant, and an
+        unstandardised column has an arbitrary effective penalty - but the
+        argument existed before the numbers and was not made. Adopting it now
+        would be changing a declared rule because its alternative scored
+        better.
+
+        AMENDMENT 4 IS THE OPPOSITE CASE. It fixes a MEASURED DEFECT in how
+        one specific quantity was estimated, identified by a contamination
+        table rather than by a scoreboard, on columns selected by their
+        source rather than by their result. The two are different in kind and
+        section 6 stays as written through D3 and D4.
+
+A4.5  WHAT IS RE-RUN, AND WHAT IS NOT
+
+    D2 IS RE-FITTED under this amendment - same 88 features, same design
+    width 92, same four frozen folds, same 21-point grid, same inner CV, same
+    tie-break, same bootstrap seed. Only the scaling of three columns moves.
+
+    D1 IS NOT RE-FITTED and does not change. It carries no qualifying column,
+    so this amendment cannot touch it. The rescaled rung is compared against
+    the SAME D1 the first run produced, and that identity is asserted rather
+    than assumed.
+
+    D0 IS NOT RE-FITTED. It has no design matrix.
+
+    G6 AND THE FULL DS1-DS12 SUITE RE-RUN against the rescaled rung. A rung
+    with an inherited leakage suite is not a result.
+
+    THE ORIGINAL D2 ARTEFACTS ARE NOT OVERWRITTEN. The rescaled rung writes
+    to its own filenames, so both are on disk and under the manifest, and the
+    amendment can be given a size rather than replacing the thing it changed.
+
+A4.6  A PREDICTION, RECORDED NOW SO IT CANNOT BE RETROFITTED
+
+    If the compression is what silenced them, then under robust scaling
+    rel_defence_diff and expected_total_goals MOVE OFF ZERO and the rescaled
+    D2 improves on the original.
+
+    IF THEY STAY AT ZERO ON A SANE SCALE, THEY GENUINELY CARRY LITTLE, and
+    that is a clean finding rather than a failed amendment. It would mean the
+    dynamic-state block is a two-column block on its merits - rel_elo_diff
+    and rel_attack_diff - and that expected_total_goals does not do the job
+    section 2 argued was load-bearing for it.
+
+    Either outcome is reported. Neither licenses a further amendment to the
+    scaling.
+
+    rel_elo_diff's own coefficient may move even though its scaling does not,
+    because the joint fit and the selected lambda can both shift. That is
+    expected and is not evidence of anything.
+
+===============================================================================
+END OF AMENDMENT 4
+===============================================================================
+
+
+===============================================================================
+AMENDMENT 5 - D2-STATIC: THE IN-LADDER ANALOGUE OF TIER 2's STALE ARM
+Written before D2-static is fitted. A new rung, declared in full.
+===============================================================================
+
+A5.0  WHY THIS RUNG EXISTS
+
+    The D0/D1/D2 report set D2 - D1 against tier 2's Delta_recency of
+    +0.0356 and read a shortfall. THAT COMPARISON WAS MIS-SPECIFIED.
+
+    Tier 2 measured FRESH DC minus STALE DC. D1 is not the stale arm: its 84
+    features include season-to-date points per game, last-5 form and venue
+    form, every one of which updates match by match. D1 ALREADY CARRIES
+    RECENCY, expressed as form rather than as a rating, so D2 - D1 was never
+    the same quantity as A - C.
+
+    Placing D1 and D2 against arm A instead puts them at 63% and 71% of the
+    A-to-C gap. But that comparison crosses model families - a penalised
+    multinomial logistic against a Dixon-Coles score matrix - so the absolute
+    log losses are not strictly commensurable and it is recorded as an
+    order-of-magnitude reframing, NOT as a fourth arm of tier 2.
+
+    D2-STATIC REMOVES THE CAVEAT. Same features, same folds, same grid, same
+    model family, same scaling. The single difference is that the dynamic
+    state is frozen rather than refit. D2 - D2static is therefore the recency
+    contribution measured in the ladder's own units, and it is the rung that
+    should have answered the tier-2 question in the first place.
+
+A5.1  THE FREEZING RULE - INHERITED, NOT INVENTED
+
+    DIXON-COLES. One fit per SEASON, in place of one fit per distinct date.
+
+        For a season S:
+            cutoff  =  the maximum date in the window (Phase 2's own
+                       convention for a static fit, and the reference the
+                       107-day time decay is measured back from)
+            window  =  every match with date STRICTLY EARLIER than the
+                       first date of S
+            state   =  attack, defence, home_multiplier and rho from that
+                       single fit, used for EVERY match in S
+
+    This is read out of phase4_tier2_window.run_fold_arm() under ARM_STATIC,
+    which fits `train` at `window["date"].max()` and predicts the whole test
+    season from it - and out of Phase 2's dc_static variant, which is the
+    same rule. It is not a new cadence invented for this rung.
+
+    IT COINCIDES WITH ARM A ON EVERY TEST ROW BY CONSTRUCTION: a fold's test
+    season is preceded by exactly that fold's training seasons, so the window
+    above IS arm A's window and the cutoff IS arm A's cutoff. G8 asserts this
+    rather than claiming it - the generated static state must reproduce Phase
+    2's stored dc_static lambdas on all 1,520 test rows.
+
+    ELO. The rating each team carries at the START of its season.
+
+        continuing team          1500 + (r_end_previous - 1500) * 0.75
+        promoted, new to the
+        dataset, or returning
+        after an absence         1500 flat
+
+    This is Phase 2's season_start_ratings() verbatim, the same policy
+    section 6 already inherits, and it is READ from the frozen Elo artefact
+    as each team's elo_before at its first match of the season rather than
+    recomputed. Within a season the value never moves.
+
+    PROMOTED AND ABSENT TEAMS UNDER THE DC FIT are handled exactly as
+    match_rates() already handles them: a team absent from the window takes
+    NEUTRAL_STRENGTH = 1.0. Inherited, unchanged, and the affected rows are
+    counted and reported rather than absorbed.
+
+A5.2  2021-22 HAS NO FROZEN STATE AT ALL, AND FOLD 1 IS THEREFORE DEGENERATE
+
+    Stated in advance because it falls straight out of A5.1 and would
+    otherwise look like a defect discovered afterwards.
+
+    2021-22 is the first season in the dataset. Nothing precedes it, so its
+    DC window is EMPTY and there is no fit: all three DC-derived columns are
+    missing for all 380 of its matches. Every team in it is
+    first_season_in_dataset, so every season-start rating is 1500 flat and
+    rel_elo_diff_static is identically 0 across the whole season.
+
+    FOLD 1 TRAINS ON 2021-22 ALONE. So under D2-static all four dynamic
+    columns are constant in fold 1's training rows, the pipeline's existing
+    constant-column rule renders them inert, and the ridge penalty drives
+    their coefficients to zero.
+
+    THE PREDICTION THAT FOLLOWS, recorded now and asserted as G9:
+
+        D2-STATIC AT FOLD 1 MUST EQUAL D1 AT FOLD 1, BIT FOR BIT, and must
+        select the same lambda.
+
+    If it does not, something is wrong with the constant-column path and the
+    rung is not readable. This is not a caveat being pre-excused; it is a
+    checkable consequence being used as a test.
+
+    IT ALSO MEANS D2 - D2static AT FOLD 1 EQUALS D2 - D1 AT FOLD 1. That is
+    coherent rather than awkward: at fold 1 there is no frozen state to be
+    had, so the whole of the block's contribution is recency.
+
+    REPORTING RULE, DECLARED BEFORE THE RESULT: D2 - D2static is reported
+    pooled over all four folds AND over folds 2-4, where the DC block is
+    genuinely present in the training rows. Both are reported every time.
+    Neither is selected after the fact, and the four-fold figure is primary.
+
+A5.3  EVERYTHING ELSE IS HELD
+
+    Same 88 features and design width 92. Same four frozen outer folds and
+    1,520 outer test matches. Same 21-point grid, selected per fold. Same
+    5-segment, 4-fold inner CV with ties to the smallest. Same solver and
+    tolerance. Same bootstrap: 10,000 draws, seed 20260901. Same section 6
+    rule, and the same Amendment 4 robust scaling on the same three columns,
+    so D2 - D2static is never a comparison between two scaling rules.
+
+    G6 and the full DS1-DS12 suite run against this rung as against any
+    other.
+
+A5.4  WHAT D2 - D2static WILL AND WILL NOT LICENSE
+
+    It measures, within one model family and on one set of folds, what
+    refitting the dynamic state per calendar date buys over freezing it at
+    season start.
+
+    It is placed alongside tier 2's Delta_recency of +0.0356 as the
+    like-for-like measurement that comparison was reaching for. It does NOT
+    inherit tier 2's interval, it is not a re-run of tier 2, and agreement
+    between the two numbers would not make them the same experiment.
+
+    It does not license any causal claim, and a non-significant difference
+    does not prove that freezing costs nothing.
+
+===============================================================================
+END OF AMENDMENT 5
+===============================================================================

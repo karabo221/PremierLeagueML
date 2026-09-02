@@ -18,12 +18,12 @@ legitimately re-run. It means the artefact is no longer the one the
 pre-declaration was written against, and that has to be reconciled explicitly
 rather than noticed later.
 
-generated 2026-09-02T06:48:48Z
+generated 2026-09-02T06:52:27Z
 49 files
 
 c0ea0bce045af978c64aa3e209ea8b9f5fb1dde52f95c83c65e3e5e316c367f0  PHASE3_CEILING_PREDECLARATION.txt
 1de3af06af72634d91d1f0f07b50256785a5a1c16fda41de85138cf975524da4  PHASE3_REGULARISATION_PREDECLARATION.txt
-ed017c5bc6804dbe7a612c7f3df822835d1dfcb9a16a642ebcda965b767f037c  PHASE4_D2_PREDECLARATION.txt
+952652311366eaae152f9d10d08a7cf4ff1a9dfa443bfb2d28ea1c645d2bf0ad  PHASE4_D2_PREDECLARATION.txt
 4c38a173b26fb97d46f69da7146c3c7fc1c109fde35f2fe6096b056b5216c7f7  PHASE4_TIER2_WINDOW_PREDECLARATION.txt
 7feebd66c7effcab517070a2669e576e655b2e3283d82547e793a40c5cba82cd  outputs/phase0_evaluation_folds.csv
 907ddffa9afbe8db64566798d56c93428887dbc357fd41dad65e2c015156e0c8  outputs/phase0_evaluation_spec.csv
