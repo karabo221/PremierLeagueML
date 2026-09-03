@@ -9,6 +9,107 @@ and the same 1,520 outer-test matches unless it says otherwise.
 
 ---
 
+## Phase 6 — the source-integrity watch, and the report
+
+*Run 2026-09-03. `scripts/phase6_source_watch.py`, **24 checks, 2 failures, 6
+INFO** (`outputs/phase6_source_watch_2026-09-03.csv`). Fits nothing, scores
+nothing, and computes no result. Alongside it, `REPORT.md` at the repository
+root — an assembly of this file, with no new analysis.*
+
+### Why a watch exists at all
+
+The holdout is scored once, in May 2027. Between now and then the only thing
+that can go wrong quietly is the **source**: a renamed column, a dropped
+bookmaker, a promoted club spelled differently from the pin. Discovering any of
+those in May, with the season over, is discovering them too late to do anything
+about.
+
+**It found two on the first run**, and both were worth the instrument on their
+own.
+
+### PINNACLE CLOSING IS GONE FROM THE 2026-27 FILE
+
+`PSCH`, `PSCD`, `PSCA` are absent (SW5-PSC **FAIL**). So are 29 other columns
+that 2025-26 carried — `BMGM*`, `CL*`, `LB*`, and the whole Pinnacle block
+including the over/under and Asian handicap lines.
+
+**The holdout is unaffected**, and the reason is a decision taken before any
+score existed. H6.2(c) freezes **Bet365 closing**, chosen in
+`PHASE5_MARKET_PREDECLARATION.txt` on completeness alone — 380 of 380 in all
+five seasons — over Pinnacle, which even then covered only 1,350 of 1,520 with
+all 170 gaps in fold 4. The source was already withdrawing Pinnacle; it has now
+finished. `B365CH/D/A` and `AvgCH/D/A` are both present and complete.
+
+What is lost is the **sensitivity arm**: Phase 5B's per-fold Pinnacle
+comparison cannot be reproduced on 2026-27. That is a loss of scope, reported
+as one. It is not repaired by promoting another book into Pinnacle's place.
+
+### THE SOURCE SPELLS THE PROMOTED CLUBS "Coventry" AND "Hull"
+
+The pin's vocabulary says **Coventry City** and **Hull City** (SW6 **FAIL**,
+`2 outside: Coventry, Hull`). P4.5 anticipated this exact case in writing —
+*"IF THE 2026-27 SOURCE SPELLS COVENTRY OR HULL DIFFERENTLY … THE RUN FAILS,
+AND THAT IS THE CORRECT BEHAVIOUR"* — and it fails.
+
+**The fix P4.5 names is a dated amendment to the pin, not a normalisation
+inside a loader**, and it is left for a deliberate decision rather than taken
+here. Nothing is blocked in the meantime: no 2026-27 match is scored until May
+2027.
+
+The guard was checked against the thing it measures. Run against a vocabulary
+carrying the source's own spellings, SW6 **passes** on the same frame; run
+against the pin as it stands, it fails on exactly two names. Either half alone
+is consistent with a guard that never fires or one that always does.
+
+### A new column that is not an invitation
+
+`HxG` and `AxG` — match-level expected goals — are **new in the 2026-27 file**
+(SW9b, INFO). `PHASE5_XG_PREDECLARATION.txt` needed exactly this and never had
+it; the Understat season tables on disk are season aggregates and cannot serve
+the arm at any resolution.
+
+**H5.1 forbids any feature decision made because of something observed in
+2026-27, and a column that appears mid-holdout is one.** Recorded as a
+post-holdout research item and not acted on.
+
+### What the watch cannot do, stated
+
+**It cannot read a scoreline, and that is structural rather than promised.**
+Column presence is checked on the header alone; the only columns ever loaded as
+values are `Div`, `Date`, `HomeTeam`, `AwayTeam`, via `usecols`, with SW2b
+asserting that no result column reached memory. `FTHG`, `FTAG`, `FTR`, `HxG`
+and every price column are never in the frame.
+
+**It does not cover the whole dependency** (SW10, INFO). The scoring instrument
+reads `outputs/phase1_matches.csv`, built from an FBref fixture export, not from
+the E0 file. That export arrives at season end and cannot be checked before it
+exists. The gap in the watch's cover is recorded rather than implied.
+
+### The rest
+
+SW0a/SW0b (the freeze hash, and the pin parsed through the scoring instrument's
+own parser), SW1 (HTTP 200, 10,309 bytes), SW2 (114 columns), SW3 (all twelve
+match-detail columns present), SW4 (spine present), SW5-B365C and SW5-AvgC,
+SW6a (the project's two copies of `TEAM_MAP` agree), SW7a/SW7b, SW8a–SW8d — 20
+rows across 2 matchweek blocks, no club above 2 matches, no future date. Every
+2026-27 row so far is pre-cutoff warming history.
+
+Snapshots land in `data/watch/`, gitignored, read by no scoring code.
+`data/raw/` is untouched: acquiring the real `E0_2627.csv` is a separate,
+deliberate act at season end.
+
+### REPORT.md
+
+The research write-up, assembled from this file. No instrument was run for it
+and no number in it is new. Three claims that could not be traced to a
+committed artefact are corrected in its section 9 rather than repeated: the
+"superseded by D1" framing of Phase 3's Amendment 2, the "eleven odds columns"
+(they are the derived market artefact's eleven, not the source's — the project
+consumes nine raw book columns), and the 83/5/13 decomposition, which is
+against D2 rescaled and not the original D2.
+
+---
+
 ## Phase 6 — the 2026-27 holdout freeze, and the scoring instrument built early
 
 *Declared and pinned 2026-09-03. `PHASE6_HOLDOUT_FREEZE.txt`, sha256

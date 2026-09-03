@@ -18,8 +18,8 @@ legitimately re-run. It means the artefact is no longer the one the
 pre-declaration was written against, and that has to be reconciled explicitly
 rather than noticed later.
 
-generated 2026-09-03T10:37:03Z
-120 files
+generated 2026-09-03T17:55:47Z
+121 files
 
 c0ea0bce045af978c64aa3e209ea8b9f5fb1dde52f95c83c65e3e5e316c367f0  PHASE3_CEILING_PREDECLARATION.txt
 1de3af06af72634d91d1f0f07b50256785a5a1c16fda41de85138cf975524da4  PHASE3_REGULARISATION_PREDECLARATION.txt
@@ -141,6 +141,7 @@ e459f5db235fa3cfb6dd0b9df729c7cb33d60662764bfc3c14c6c46234d05abe  outputs/phase6
 2263e777e2b8013a68042120e6fb21c6f7faaaa23415200beb8098865ab43e25  outputs/phase6_persistence20_audit.csv
 a3597d677b0b288113499c01c7c996086550e41a6440444edffe9c83af7f5490  outputs/phase6_persistence20_feasibility.csv
 271e2f722b6cc5b5caa213b484a89bb0fed628f77beade3415437e7e05883028  outputs/phase6_scoring_audit.csv
+ed3e6333958c2c8fadf687f2400f00284639029d206277ea08b5b998938b1f1c  outputs/phase6_source_watch_2026-09-03.csv
 
 ===============================================================================
 END OF MANIFEST

@@ -158,3 +158,20 @@ data/league-chemp*.csv
 # pre-declarations are.
 !outputs/phase6_freeze_validation.csv
 !outputs/phase6_*.csv
+
+# ---------------------------------------------------------------------------
+# THE SOURCE WATCH'S SNAPSHOTS.
+#
+# scripts/phase6_source_watch.py fetches the live 2026-27 E0 file monthly to
+# check its SHAPE. Those snapshots are diagnostic, not evidence: they change
+# every month, they are mid-season, and no scoring code reads them. Keeping
+# them out of git is also what keeps the live season's scorelines out of the
+# repository until the holdout is deliberately acquired at season end.
+#
+# The real E0_2627.csv arrives in data/raw/Odds/ once, in May 2027, as a
+# separate act - and a re-download that moves a hash is a NEW SOURCE.
+# ---------------------------------------------------------------------------
+data/watch/
+
+# The watch's own dated audit trail is evidence, and is covered by the
+# outputs/phase6_*.csv exception above.
