@@ -189,15 +189,20 @@ P4.2  THE SEVENTEEN CONTINUING SIDES, SPELLED AS THE FROZEN DATASET SPELLS
       "Newcastle" not "Newcastle United"; "Brighton", "Bournemouth",
       "Tottenham", "Wolves" all short. H2.12 makes these specification.
 
-P4.3  THE THREE PROMOTED SIDES:
+P4.3  THE THREE PROMOTED SIDES.   AMENDED 2026-09-03 - SEE SECTION 6.
 
           Ipswich Town     present in the dataset, 2024-25 only
-          Coventry City    NO history in the five-season dataset
-          Hull City        NO history in the five-season dataset
+          Coventry         NO history in the five-season dataset
+          Hull             NO history in the five-season dataset
 
       "Ipswich Town" is the dataset's own spelling and needs no ruling.
-      "Coventry City" and "Hull City" are spelled as the published fixture
-      list spells them, because the dataset has no precedent to defer to.
+      "Coventry" and "Hull" ARE THE SOURCE FILE'S OWN SPELLINGS, adopted by
+      amendment on 2026-09-03 after the source-integrity watch read them off
+      the 2026-27 file. They were written here originally as "Coventry City"
+      and "Hull City", taken from the published fixture list, because the
+      dataset had no precedent to defer to. It has one now - the file the
+      scoring run will actually read. Section 6 records the change, its date,
+      and why the repair was made HERE and not inside a loader.
 
 P4.4  THE TWENTY-NAME VOCABULARY IS THEREFORE P4.2 + P4.3. West Ham,
       Burnley and Wolves were relegated from 2025-26 and are NOT in it,
@@ -216,9 +221,11 @@ P4.5  THE ASSERTION THE SCORING RUN MUST MAKE. Every team name appearing in
       loader. A loader that repairs names is a loader that can repair the
       wrong one.
 
-P4.6  THE ZERO-HISTORY SET, for H6.6's split:
+      THIS HAPPENED ON 2026-09-03. See section 6.
 
-          Coventry City, Hull City
+P4.6  THE ZERO-HISTORY SET, for H6.6's split.   AMENDED 2026-09-03:
+
+          Coventry, Hull
 
       Ipswich Town is NOT in it - it has 2024-25, which is thin rather than
       absent. The 107-day half-life renders one old season nearly weightless
@@ -252,6 +259,195 @@ P5.3  ZERO-HISTORY EXPOSURE, from the fixture arithmetic:
       because of them and H4.5 records that promotion churn and development
       optimism are not separable by this design - which is precisely why
       H6.6 requires the split reported.
+
+-------------------------------------------------------------------------------
+6.  AMENDMENT 1, DATED 2026-09-03 - THE SOURCE'S SPELLINGS
+-------------------------------------------------------------------------------
+
+P6.1  WHAT CHANGED.
+
+          P4.3   "Coventry City"  ->  "Coventry"
+                 "Hull City"      ->  "Hull"
+          P4.6   the zero-history set follows P4.3
+
+      The vocabulary is still twenty names. The zero-history set is still the
+      same two clubs. Only the spelling of two names has changed, and only
+      for the two clubs that had no dataset precedent to defer to.
+
+P6.2  HOW IT WAS FOUND, AND ON WHAT DATE.
+
+      scripts/phase6_source_watch.py, first run, 2026-09-03. Check SW6 read
+      the team names off the 2026-27 football-data.co.uk file, applied the
+      project's own TEAM_MAP whole, and compared the result to the twenty
+      names of section 4:
+
+          2 outside the vocabulary:  Coventry, Hull
+
+      Recorded in outputs/phase6_source_watch_2026-09-03.csv. The run that
+      found it is committed at d7bde51, BEFORE this amendment, so the finding
+      and the fix are separate objects in the history rather than one.
+
+P6.3  THE GUARD DISCRIMINATED. IT DID NOT SIMPLY FIRE.
+
+      A guard that always fires is not a guard, so the check was run as a
+      pair on the same frame:
+
+          against the pin as it stood        SW6 FAIL, exactly 2 names
+          against the source's own spellings SW6 PASS, 0 names
+
+      Either half alone is consistent with a guard that never fires or one
+      that always does. The pair is the test, and it is the same construction
+      the scoring instrument's own S5a/S5/S6 use.
+
+P6.4  NO NORMALISATION WAS ADDED TO ANY LOADER, AND THIS IS THE POINT OF THE
+      AMENDMENT RATHER THAN A DETAIL OF IT.
+
+      TEAM_MAP is unchanged. Neither "Coventry" nor "Hull" was mapped,
+      aliased, normalised, title-cased or fuzzy-matched anywhere in the code.
+      The repair is in this document, which is data the run reads, and it is
+      dated.
+
+      THE REASON. A loader that repairs a name repairs the NEXT one too, and
+      the next one may be the failure V6b demonstrated on the live
+      match_rates():
+
+          "Manchester Utd"  ->  home rate 1.1186
+          "Man United"      ->  home rate 0.8165        NO EXCEPTION RAISED
+
+      A misspelled KNOWN team does not error. It falls through to
+      NEUTRAL_STRENGTH and is scored as an exactly average side, and over a
+      season that corrupts the holdout invisibly. A normalisation rule
+      written today to absorb "Coventry" is a rule that would absorb
+      "Man United" in April, silently, and nothing would say so.
+
+      SO THE GUARD MUST KEEP RAISING. Every future mismatch must stop the run
+      and be resolved by another dated amendment here, deliberately, with the
+      source's actual spelling written down. That is slower. It is the only
+      version of this that stays checkable.
+
+P6.5  WHY THIS IS CONSISTENT WITH H2.12 RATHER THAN AN EXCEPTION TO IT.
+
+      H2.12 requires that every 2026-27 name either MATCHES A DATASET NAME
+      EXACTLY or is ONE OF THE THREE DECLARED PROMOTED SIDES. The seventeen
+      continuing sides keep the dataset's own spellings and are untouched -
+      "Manchester Utd", "Nottingham", "Newcastle", "Leeds United". Coventry
+      and Hull appear in no dataset season under any spelling, so there is no
+      dataset name for them to match and the freeze leaves their spelling to
+      this document. The amendment operates exactly where the freeze left the
+      choice open, and nowhere else.
+
+      IPSWICH NEEDS NO AMENDMENT, and the asymmetry is deliberate rather than
+      an oversight. The source spells it "Ipswich"; TEAM_MAP - the closed
+      dictionary declared at B2.2 of PHASE5_MARKET_PREDECLARATION.txt, in
+      place since Phase 5B and asserted closed at M3 - maps that to "Ipswich
+      Town", which IS the dataset's own spelling, because Ipswich has a
+      2024-25 season in the data. A club with history defers to the dataset;
+      a club with none defers to the source. That is the rule, stated so the
+      two cases are not read as an inconsistency.
+
+P6.6  THIS DOES NOT TRIGGER H5.3, AND HERE IS THE ARGUMENT RATHER THAN THE
+      ASSERTION.
+
+      H5.3 covers a change forced by a defect and made AFTER OBSERVING
+      2026-27 DATA. H5.4 covers the opposite case in terms: "fixing a defect
+      that would prevent the declared model from running at all - a crash, a
+      join that drops rows, A NAME THAT FAILS TO MATCH UNDER H2.12. Repairing
+      the implementation so that it does what this file already says is not
+      amending what this file says."
+
+      This is that case, named in the freeze in advance.
+
+      AND NO 2026-27 RESULT HAS BEEN OBSERVED. The watch loads four columns -
+      Div, Date, HomeTeam, AwayTeam - and SW2b asserts that no result column
+      reaches memory. What was read is a team name, which is schedule
+      information available from any fixture list and carries no outcome.
+
+      The date of the repair is logged here because H5.4 requires it, and the
+      distinction is argued rather than assumed.
+
+P6.7  THE FREEZE FILE IS UNTOUCHED. PHASE6_HOLDOUT_FREEZE.txt remains
+      b36befd3e13d5f7f5d9b0af83b7db819e86d7b13e6fdcab4c55db0599fd248f6, 397
+      lines. THIS FILE'S OWN HASH MOVES, which is correct: the pin is the
+      amendable half of the pair, and FROZEN_MANIFEST.txt records the move.
+
+-------------------------------------------------------------------------------
+7.  AMENDMENT 2, DATED 2026-09-03 - THE DECLARED SPINE
+-------------------------------------------------------------------------------
+
+P7.1  THE GAP THIS CLOSES. SW10 of the source watch recorded that the scoring
+      instrument reads outputs/phase1_matches.csv, which is built from an
+      FBref fixture export in data/raw/Fixtures/ - not from the file the
+      watch checks. That export arrives only at season end, so it was the one
+      input to the holdout with NO ADVANCE CHECK OF ANY KIND.
+
+P7.2  THE DECLARATION. THE 2026-27 SPINE IS THE FOOTBALL-DATA.CO.UK E0 FILE.
+
+          date        <-  Date        (%d/%m/%Y)
+          home_team   <-  HomeTeam    through TEAM_MAP
+          away_team   <-  AwayTeam    through TEAM_MAP
+          home_goals  <-  FTHG
+          away_goals  <-  FTAG
+          result      <-  FTR
+
+      matchweek is NOT required and is not carried. H3.4 makes the cutoff a
+      DATE rule explicitly - "the rule is about dates played, not about
+      matchweek labels" - and no other part of the scoring path reads it.
+
+P7.3  THE SUBSTITUTION IS CLEAN, AND IT IS DEMONSTRATED RATHER THAN ARGUED.
+      The two sources have already been reconciled on all 1,900 development
+      matches, by an instrument committed before this question was asked
+      (outputs/phase5_market_audit.csv):
+
+          M1b   every one of the project's 1,900 matches joins exactly one
+                odds row.  1900 matched, 0 unmatched
+          M2a   football-data.co.uk and the project's own FBref-derived
+                foundation agree on EVERY SCORELINE.  0 disagreements
+          M2b   and on the DATE of every match.  0 disagreements
+          M3    the team mapping is closed - 27 names a side, 0 unmapped
+
+      And each of the five E0 files carries exactly 380 rows, so the
+      correspondence is one-to-one and not merely a successful join.
+
+      Two independently sourced spines that agree on every date and every
+      scoreline over five seasons are the same spine. The substitution
+      changes no value the model would see.
+
+P7.4  THE SCORING INSTRUMENT'S BEHAVIOUR IS NOT CHANGED BY THIS AMENDMENT.
+      It still reads outputs/phase1_matches.csv and still asserts H2.12,
+      H3.3, H6.6 and H7 exactly as before. What this section declares is the
+      PROVENANCE of the 2026-27 rows in that file: they are built from the E0
+      file at season end, in the schema phase1_match_foundation.py already
+      produces, and not from an FBref export.
+
+P7.5  TEAM_MAP IS NOT A REPAIR AND ITS USE HERE IS NOT A NORMALISATION.
+      It is a closed, explicit dictionary declared at B2.2 before any score
+      existed, applied by whole-name lookup and never by partial match, and
+      asserted closed at M3. A name absent from it passes through UNCHANGED
+      so that the vocabulary assertion of section 4 can see it and fail on
+      it - which is exactly what happened to Coventry and Hull, and exactly
+      what section 6 says must keep happening.
+
+P7.6  WHAT IS LOST, STATED BECAUSE IT IS A REAL COST. On the five development
+      seasons, TWO INDEPENDENT SOURCES agreed on every scoreline and every
+      date, and that agreement is itself evidence about the data. A
+      single-source spine has no such cross-check.
+
+      THE MITIGATION IS NOT TO KEEP BOTH AS SPINES. If the FBref 2026-27
+      export exists at season end it should be reconciled against the E0
+      spine as a CHECK, reported like M2a and M2b, and never used as the
+      spine - because a run that can silently pick either source is a run
+      whose vocabulary and row count depend on which one it picked.
+
+P7.7  NOT A FREEZE AMENDMENT. PHASE6_HOLDOUT_FREEZE.txt names the model, its
+      constants, the cutoff rule and what is scored. IT NAMES NO SPINE FILE.
+      Declaring the input is what this document is for. Dated and reasoned
+      here anyway, because an input declaration made after the season starts
+      is exactly the kind of thing that should be checkable.
+
+P7.8  THE CONSEQUENCE. Every input the scoring run has is now the file the
+      watch checks monthly. SW10 is no longer a gap in the watch's cover, and
+      the watch is amended to assert this declaration rather than to report
+      the FBref dependency it replaces.
 
 ===============================================================================
 END

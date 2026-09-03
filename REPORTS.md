@@ -9,6 +9,125 @@ and the same 1,520 outer-test matches unless it says otherwise.
 
 ---
 
+## Phase 6 — the pin amended twice: the source's spellings, and the declared spine
+
+*2026-09-03, the same day the watch found both. `PHASE6_CUTOFF_PIN.txt` sha256
+`276c6fe0…566c` → `be9b1b08…6e15`, 258 → 454 lines. Freeze **untouched** at
+`b36befd3…248f6`. Validator 35 checks, 0 failures, 1 outstanding — unmoved.
+Watch 25 checks, 1 failure.*
+
+### Amendment 1 — "Coventry" and "Hull"
+
+P4.3 and P4.6 take the source file's spellings. The vocabulary is still twenty
+names and the zero-history set is still the same two clubs; only the spelling
+of the two clubs that had **no dataset precedent to defer to** has changed.
+
+**No normalisation was added to any loader, and that is the point of the
+amendment rather than a detail of it.** `TEAM_MAP` is unchanged; neither name
+was mapped, aliased or title-cased anywhere in the code. A loader that repairs
+a name repairs the *next* one too — and the next one may be V6b's
+`"Man United"` scoring 0.8165 where `"Manchester Utd"` scores 1.1186, with no
+exception raised. A rule written today to absorb "Coventry" is a rule that
+absorbs "Man United" in April, silently. **The guard must keep raising**, and
+every future mismatch is another dated amendment.
+
+**Consistent with H2.12 rather than an exception to it.** H2.12 requires every
+2026-27 name to match a dataset name exactly *or* be one of the three declared
+promoted sides. The seventeen continuing sides keep the dataset's spellings and
+are untouched. Coventry and Hull appear in no dataset season under any
+spelling, so the freeze left their spelling to the pin, and the amendment
+operates exactly there and nowhere else.
+
+**Ipswich needs no amendment**, and the asymmetry is deliberate: the source
+spells it "Ipswich", `TEAM_MAP` — closed, declared at B2.2, asserted at M3 —
+maps that to "Ipswich Town", which *is* the dataset's own spelling because
+Ipswich has a 2024-25 season. **A club with history defers to the dataset; a
+club with none defers to the source.**
+
+**H5.3 is not triggered, and the argument is given rather than asserted.** H5.4
+names this case in advance — "a name that fails to match under H2.12" — as a
+repair to the implementation rather than an amendment to what the freeze says.
+And no 2026-27 *result* has been observed: the watch loads four columns and
+SW2b asserts no result column reached memory. A team name is schedule
+information.
+
+### Amendment 2 — the E0 file is the declared spine
+
+SW10 had recorded the one input with no advance check: the scoring instrument
+reads a spine built from an FBref export that arrives only at season end.
+**Section 7 of the pin declares the football-data.co.uk E0 file instead**, and
+the substitution is demonstrated rather than argued, by an instrument committed
+before the question was asked (`outputs/phase5_market_audit.csv`):
+
+| | |
+|---|---|
+| M1b | all 1,900 project matches join exactly one odds row, **0 unmatched** |
+| M2a | the two sources agree on **every scoreline**, 0 disagreements |
+| M2b | and on the **date of every match**, 0 disagreements |
+| M3 | the mapping is closed — 27 names a side, **0 unmapped** |
+
+plus exactly 380 rows in each of the five E0 files, so the correspondence is
+one-to-one and not merely a successful join. `matchweek` is not required: H3.4
+makes the cutoff a date rule explicitly.
+
+**The scoring instrument's behaviour is unchanged.** It still reads
+`outputs/phase1_matches.csv` and still asserts H2.12, H3.3, H6.6 and H7. What
+changed is the declared *provenance* of the 2026-27 rows in that file.
+
+**What is lost, stated because it is a real cost.** The development seasons had
+two independent sources agreeing on every date and every scoreline, and that
+agreement is itself evidence. A single-source spine has none. P7.6 says the
+mitigation is *not* to keep both as spines: if the FBref export appears at
+season end it is reconciled as a **check** and never used as the spine, because
+a run that can silently pick either source is a run whose vocabulary and row
+count depend on which one it picked.
+
+SW10 now asserts the declaration and passes; SW10b keeps the FBref export as an
+INFO row so the cross-check it used to provide is not quietly forgotten.
+**Every input the scoring run has is now the file the watch checks monthly.**
+
+### SW5-PSC is left failing
+
+Pinnacle is gone and will stay gone, so the watch will report one failure every
+month. **It is not softened to INFO.** This project leaves C3a, C3b, G9 and G10
+standing failed where the claim was correct and the world did not oblige, and a
+monitor that is edited until it passes is not a monitor. The cost — a monthly
+failure that is already understood — is accepted and recorded here so the next
+session does not go looking for it.
+
+REPORT.md §7 records the reduced scope: the per-fold Pinnacle sensitivity
+cannot be reproduced on 2026-27, and **no other book is promoted into its
+place**, because choosing a sensitivity instrument after seeing which one
+survived is selection on the thing the sensitivity exists to test.
+
+### The xG recommendation, restated on a narrower base
+
+REPORT.md gains §8. The recommendation — xG is not worth acquiring and testing
+— **stands**, but two of its six supports have gone, and a conclusion carried
+forward after its supports change without saying so is the failure these
+documents exist to prevent.
+
+The four substantive lines are untouched: (a) SoT estimates strength ~40% more
+precisely with no accuracy gain; (b) E1a − DC's interval stops at −0.02177
+against the −0.02979 needed, so the mechanism is excluded at 95%; (c) E1c's
+isolated finishing residual adds nothing and does not persist; (d) the
+diagnostic found no pocket for a chance-quality signal to fill.
+
+**Both acquisition arguments are retired by `HxG`/`AxG` arriving in the E0
+file.** The data is free and joined on the existing key, so cost is gone; and
+it is recorded contemporaneously rather than retro-fitted, which is precisely
+the condition A4.2 said could not be met. **So: xG is not worth testing because
+the mechanism is shown not to pay, NOT because it is expensive or leaky.** That
+is a weaker position than before and §8.3 says so.
+
+Recorded as a post-holdout item: 2026-27 accumulates contemporaneous
+match-level xG, so a clean xG test becomes available for a future season with
+no acquisition at all. **It cannot be run on the frozen holdout and must not
+be** — H5.1 forbids exactly that, and the columns are not read, not joined and
+not fitted.
+
+---
+
 ## Phase 6 — the source-integrity watch, and the report
 
 *Run 2026-09-03. `scripts/phase6_source_watch.py`, **24 checks, 2 failures, 6
@@ -102,7 +221,7 @@ deliberate act at season end.
 
 The research write-up, assembled from this file. No instrument was run for it
 and no number in it is new. Three claims that could not be traced to a
-committed artefact are corrected in its section 9 rather than repeated: the
+committed artefact are corrected in its section 10 rather than repeated: the
 "superseded by D1" framing of Phase 3's Amendment 2, the "eleven odds columns"
 (they are the derived market artefact's eleven, not the source's — the project
 consumes nine raw book columns), and the 83/5/13 decomposition, which is

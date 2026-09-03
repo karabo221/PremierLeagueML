@@ -5,7 +5,7 @@
 *Assembled 2026-09-03 from the session record in `REPORTS.md`. No analysis was
 run for this document. Every figure below is read from a committed artefact and
 cited to it; where the record does not support a claim, that is said in
-section 9 rather than smoothed over.*
+section 10 rather than smoothed over.*
 
 ---
 
@@ -27,7 +27,7 @@ walk-forward design (`outputs/phase0_evaluation_folds.csv`).
 
 Three exclusions were taken as scoping decisions at the outset and held
 throughout: no lineup or injury data, no xG, no betting backtests. The first of
-these is the one that matters most for reading section 8.
+these is the one that matters most for reading section 9.
 
 ---
 
@@ -450,7 +450,7 @@ Stated plainly, and none of them is repaired by anything above.
 **There is no clean holdout in this report.** 2025-26 was scored during Phase 3's
 lambda sweep and its B0–B6 ablation. **Every figure in this document is a
 walk-forward development estimate, optimistic by an unknown margin.** None of it
-may be described as an out-of-sample result. Section 8 exists because of this
+may be described as an out-of-sample result. Section 9 exists because of this
 sentence.
 
 **Elo is under-converged league-wide**, so D2 − D1 stands as a **lower bound** on
@@ -471,6 +471,19 @@ in that category, and the 13% unexplained residual in the decomposition does
 too. A confidence interval covering zero is the resolution of the test, not a
 proof of equivalence.
 
+**The market sensitivity arm is reduced for 2026-27.** Pinnacle closing
+(`PSCH/PSCD/PSCA`) is absent from the 2026-27 source file, along with 29 other
+columns (`outputs/phase6_source_watch_2026-09-03.csv`, SW5-PSC). **The holdout
+itself is unaffected**, and the reason is a decision taken before any score
+existed: H6.2(c) freezes Bet365 closing, chosen in
+`PHASE5_MARKET_PREDECLARATION.txt` on completeness alone — 380 of 380 in all
+five seasons — over Pinnacle, which even then covered only 1,350 of 1,520 with
+all 170 gaps in fold 4. What is lost is the per-fold Pinnacle comparison Phase
+5B reported as a sensitivity; it cannot be reproduced on 2026-27. **No other
+book is promoted into its place.** Choosing a sensitivity instrument after
+seeing which one survived is selection on the very thing a sensitivity exists to
+test. The scope is reduced, and is reported as reduced.
+
 **The gap diagnostic has no multiplicity control** and cannot identify a cause. A
 gap that sits everywhere is consistent with many mechanisms.
 
@@ -485,7 +498,94 @@ different window.
 
 ---
 
-## 8. The pending holdout
+## 8. The xG recommendation, and how its basis has narrowed
+
+The standing recommendation is that **xG is not worth acquiring and testing**.
+It still stands. Two of the six arguments behind it have gone, and since both
+were arguments this report relied on, the position is stated again here with
+what remains.
+
+### 8.1 The four substantive lines, unchanged
+
+**(a) The third branch.** SoT estimates team strength roughly **40% more
+precisely** than goals do, and that precision does not convert into predictive
+accuracy (`outputs/phase5_e1a_parameter_stability.csv`,
+`outputs/phase5_e1a_pooled.csv`). The mechanism claimed in advance is real; its
+consequence is not.
+
+**(b) The 95% exclusion.** E1a − Dixon-Coles is
+−0.00912 [−0.02177, **+0.00391**] (`outputs/phase5_e1a_deltas.csv`). Closing the
+gap to the market requires −0.02979. The interval stops at −0.02177 — short of
+what is needed even at its most favourable end. xG's mechanism is the *same*
+mechanism as SoT's, a less noisy estimate of the same underlying rate, so the
+thing xG would do better is the thing already shown not to pay, at 95%.
+
+**(c) E1c.** The isolated finishing residual — 0.8% shot volume, against E1b's
+82% — adds nothing over D2 rescaled
+(−0.00072 [−0.00229, +0.00084], `outputs/phase5_e1c_deltas.csv`), and finishing
+does not predict its own next window
+(`outputs/phase5_e1c_persistence.csv`).
+
+**(d) The diagnostic.** The gap is uniform: no subset carries it, and the
+largest correlation with any of 128 numeric on-disk columns is 0.0785 where 6.4
+crossings of the naive threshold are expected by chance
+(`outputs/phase5_gap_correlations.csv`). There is no identified pocket for a
+chance-quality signal to fill.
+
+These four are the substantive case and **none of them has changed.**
+
+### 8.2 The two acquisition arguments are retired
+
+They were arguments about *getting* the data, not about what it would show.
+
+**Cost.** Acquisition was five FBref downloads of the wrong artefact — the files
+on disk are season-aggregate league tables, four seasons not five, 2024-25
+absent — against a per-match requirement of 1,900 rows. Match-level xG now
+arrives **free, in the file the project already reads**: `HxG` and `AxG` are new
+columns of the 2026-27 football-data.co.uk E0 file
+(`outputs/phase6_source_watch_2026-09-03.csv`, SW9b), joined on the existing
+key. The cost argument is gone.
+
+**A4.2's untestable retro-fit leak.** `PHASE5_XG_PREDECLARATION.txt` A4.2
+recorded that xG models are retro-fitted by their providers — the xG published
+today for a 2021 match may come from a model trained through 2026 — that nothing
+in this project can detect it, and that any xG advantage is therefore an upper
+bound on what was available in real time. **That argument does not apply to xG
+recorded contemporaneously, week by week, as a season is played.** From 2026-27
+forward this source produces exactly that. The leak argument is gone for future
+seasons, and it was named on the project's own "what would change my mind" list.
+
+### 8.3 The recommendation now stands on a narrower base
+
+**xG is not worth testing because the mechanism is shown not to pay — not
+because it is expensive or leaky.** Those were real supports and they have
+partly gone. A conclusion carried forward after its supports change, without
+saying so, is the failure this project's documents exist to prevent, so it is
+said here.
+
+What (a)–(d) do **not** establish is stated as plainly: that xG carries nothing
+SoT does not. Shot *quality* is exactly what shots-on-target throws away, and a
+chance-quality signal could differ **in kind** rather than in degree. The
+declared bound is an argument about information content, and it could be wrong.
+The expected value of an xG arm is low; it is not zero, and it is now cheap.
+
+### 8.4 Recorded as a post-holdout item
+
+2026-27 will accumulate **contemporaneous match-level xG** in the same file the
+source watch already checks monthly. A clean xG test — no acquisition, no
+retro-fit assumption, the one condition A4.2 said could not be met — becomes
+available for a future season.
+
+**It cannot be run on the frozen holdout and must not be.** H5.1 forbids any
+feature, hyperparameter, rating or evaluation decision changed because of
+anything observed in 2026-27, and a column that appeared mid-holdout is exactly
+that. The 2026-27 xG columns are not read, not joined and not fitted. This is a
+note for a season after the holdout is scored, and it requires its own
+pre-declaration written before any of it is looked at.
+
+---
+
+## 9. The pending holdout
 
 Every figure above is a development estimate. **One clean measurement of how
 optimistic they are is now frozen and pending.**
@@ -525,7 +625,7 @@ large one, and it is the only clean measurement this project will ever have.
 
 ---
 
-## 9. What is not fully traceable
+## 10. What is not fully traceable
 
 Three claims in the record could not be tied to a committed artefact as stated,
 and are corrected here rather than repeated.
@@ -570,8 +670,10 @@ Result artefacts cited above: `phase0_evaluation_folds.csv`,
 `phase4_tier2_decomposition.csv`, `phase4_tier2_pooled.csv`,
 `phase5_market_pooled.csv`, `phase5_market_deltas.csv`, `phase5_calibration.csv`,
 `phase5_gap_splits.csv`, `phase5_gap_correlations.csv`, `phase5_e1a_pooled.csv`,
-`phase5_e1a_deltas.csv`, `phase5_e1b_pooled.csv`, `phase5_e1b_deltas.csv`,
+`phase5_e1a_deltas.csv`, `phase5_e1a_parameter_stability.csv`,
+`phase5_e1b_pooled.csv`, `phase5_e1b_deltas.csv`,
 `phase5_e1c_pooled.csv`, `phase5_e1c_deltas.csv`, `phase5_e1c_audit.csv`,
+`phase5_e1c_persistence.csv`, `phase5_market_audit.csv`,
 `phase6_dryrun_summary.csv`, `phase6_scoring_audit.csv`,
 `phase6_freeze_validation.csv`, `phase6_persistence20.csv`,
 `phase6_persistence20_feasibility.csv`, `phase6_source_watch_2026-09-03.csv`.
@@ -599,5 +701,5 @@ directional prediction the data contradicts.
 That is a boundary, measured. It is not a claim that the gap is unclosable, and
 it is not a claim that this project succeeded or failed. Several of the nulls
 above are "not detected at a resolution of 0.005", and the whole ladder is a
-development estimate whose optimism has not yet been priced. Section 8 is where
+development estimate whose optimism has not yet been priced. Section 9 is where
 that changes, once.

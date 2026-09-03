@@ -89,9 +89,8 @@ SNAPSHOT_STEM = "E0_2627"
 # it is a fixed point to compare against rather than another moving file.
 REFERENCE_ODDS = RAW_ODDS_DIR / "E0_2526.csv"
 
-# The scoring instrument's ACTUAL match source. The E0 file carries the odds;
-# the spine comes from an FBref fixture export. Checked so that the second
-# dependency is visible rather than discovered in May.
+# The export the pin's section 7 REPLACED as the spine, kept as a row so the
+# cross-check it used to provide is not quietly forgotten. See SW10/SW10b.
 HOLDOUT_FIXTURES = FIXTURES_DIR / "2026-2027 PL Season.xls"
 
 FLOAT_FORMAT = "%.17g"
@@ -161,9 +160,10 @@ def fetch(stamp, audit):
         audit.record(
             "SW1", "the 2026-27 E0 file is obtainable from the source",
             "HTTP 200", "FETCH FAILED: {}".format(exc), False,
-            "the holdout's odds arm and its shot columns both come from this "
-            "file. Unobtainable in September is a problem with eight months "
-            "to solve it; unobtainable in May is not")
+            "the holdout's spine, its odds arm and its shot columns ALL come "
+            "from this file since the pin's section 7. Unobtainable in "
+            "September is a problem with eight months to solve it; "
+            "unobtainable in May is not")
         return None
 
     target.write_bytes(payload)
@@ -425,19 +425,39 @@ def check_drift(header, audit):
         "scored, and not acted on")
 
 
-def check_second_source(audit):
-    """SW10. The E0 file is not the whole dependency and should not be
-    reported as though it were."""
+def check_spine(audit):
+    """SW10. The pin declares which file the 2026-27 spine is built from, and
+    this watch is only complete if that file is the one it checks."""
+
+    text = H6.PIN.read_text(encoding="utf-8")
+
+    declared = "THE 2026-27 SPINE IS THE FOOTBALL-DATA.CO.UK E0 FILE" in text
+
+    audit.record(
+        "SW10", "the pin declares the E0 file as the 2026-27 spine",
+        "declared at P7.2",
+        "declared" if declared else "NOT DECLARED",
+        declared,
+        "AMENDED 2026-09-03. This row used to report a gap: the scoring "
+        "instrument read a spine built from an FBref export in "
+        "data/raw/Fixtures/, which arrives only at season end and could not "
+        "be checked in advance by anything. Section 7 of the pin declares the "
+        "E0 file instead, on the strength of M1b/M2a/M2b/M3 of "
+        "phase5_market_audit.csv - two independently sourced spines agreeing "
+        "on every date and every scoreline across all 1,900 development "
+        "matches. Every input the scoring run has is now the file this watch "
+        "checks monthly")
 
     audit.measure(
-        "SW10", "the FBref fixture export the match spine is built from",
-        "present" if HOLDOUT_FIXTURES.exists() else "NOT YET ON DISK",
-        "phase6_score_holdout.py reads outputs/phase1_matches.csv, which "
-        "phase1_match_foundation.py builds from data/raw/Fixtures/*.xls - NOT "
-        "from the E0 file. This watch checks the odds source over the "
-        "network; the fixture export arrives at season end and cannot be "
-        "checked before it exists. Recorded so the gap in this watch's cover "
-        "is stated rather than implied: {}".format(HOLDOUT_FIXTURES.name))
+        "SW10b", "the FBref export the declaration replaces",
+        "present" if HOLDOUT_FIXTURES.exists() else "not on disk",
+        "kept as a row because P7.6 says what is lost: the development "
+        "seasons had TWO sources agreeing, and a single-source spine has no "
+        "such cross-check. If {} appears at season end it is to be reconciled "
+        "against the E0 spine as a CHECK and never used as the spine - a run "
+        "that can silently pick either source is a run whose vocabulary and "
+        "row count depend on which one it picked".format(
+            HOLDOUT_FIXTURES.name))
 
 
 def check_cadence(audit, today):
@@ -564,7 +584,7 @@ def main(argv):
     # ---- drift and cover ---------------------------------------------------
     banner("4. DRIFT, COVER AND CADENCE")
     check_drift(header, audit)
-    check_second_source(audit)
+    check_spine(audit)
     check_cadence(audit, today)
 
     return finish(audit, stamp)

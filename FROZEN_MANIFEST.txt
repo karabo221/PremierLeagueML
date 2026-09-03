@@ -18,7 +18,7 @@ legitimately re-run. It means the artefact is no longer the one the
 pre-declaration was written against, and that has to be reconciled explicitly
 rather than noticed later.
 
-generated 2026-09-03T17:55:47Z
+generated 2026-09-03T18:15:47Z
 121 files
 
 c0ea0bce045af978c64aa3e209ea8b9f5fb1dde52f95c83c65e3e5e316c367f0  PHASE3_CEILING_PREDECLARATION.txt
@@ -30,7 +30,7 @@ c0ea0bce045af978c64aa3e209ea8b9f5fb1dde52f95c83c65e3e5e316c367f0  PHASE3_CEILING
 d385bfd4d081f40e4d88a96939fde005db9d539559d21b234ebcaca5eff6eca4  PHASE5_E1_SHOT_PREDECLARATION.txt
 aacaf1d003847e775205984c8454af58a579d32aadf1b9096ecb0b927f177fa9  PHASE5_MARKET_PREDECLARATION.txt
 6ea87f67bd856c298a6d0e64d638089f4aa83afcefd45a6e7def56b5b3036aa0  PHASE5_XG_PREDECLARATION.txt
-276c6fe0f46a3b40fc39922f0d3e5736ebb23eaeb73736fe90f99a269f69566c  PHASE6_CUTOFF_PIN.txt
+be9b1b084db57a3bef2e71f83a04c9d89299cbe1599b936f0615a69b1c266e15  PHASE6_CUTOFF_PIN.txt
 b36befd3e13d5f7f5d9b0af83b7db819e86d7b13e6fdcab4c55db0599fd248f6  PHASE6_HOLDOUT_FREEZE.txt
 335afcbabeb2939fa10ab39ba3e8215072d0b577cb8d0705c1e44c56e934e703  data/raw/Odds/E0_2122.csv
 8442792d3b614c94ea3cf381bd2736805889cc1713169035368fff19c3d02380  data/raw/Odds/E0_2223.csv
@@ -141,7 +141,7 @@ e459f5db235fa3cfb6dd0b9df729c7cb33d60662764bfc3c14c6c46234d05abe  outputs/phase6
 2263e777e2b8013a68042120e6fb21c6f7faaaa23415200beb8098865ab43e25  outputs/phase6_persistence20_audit.csv
 a3597d677b0b288113499c01c7c996086550e41a6440444edffe9c83af7f5490  outputs/phase6_persistence20_feasibility.csv
 271e2f722b6cc5b5caa213b484a89bb0fed628f77beade3415437e7e05883028  outputs/phase6_scoring_audit.csv
-ed3e6333958c2c8fadf687f2400f00284639029d206277ea08b5b998938b1f1c  outputs/phase6_source_watch_2026-09-03.csv
+d5e6e692f50d503d392e1f0b4fe88bf6969dc8add4b54f81865567c7a30ba02e  outputs/phase6_source_watch_2026-09-03.csv
 
 ===============================================================================
 END OF MANIFEST
