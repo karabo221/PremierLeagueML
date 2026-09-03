@@ -1,0 +1,44 @@
+# =============================================================================
+# LINE ENDINGS ARE PART OF THE EVIDENCE IN THIS REPOSITORY
+# =============================================================================
+#
+# core.autocrlf=true was set on the machine this project was built on, and
+# there was no .gitattributes. The consequence was found on 2026-09-03 by
+# cloning the repository and hashing what came out:
+#
+#     PHASE6_HOLDOUT_FREEZE.txt  in this working tree   b36befd3...248f6
+#     PHASE6_HOLDOUT_FREEZE.txt  in a fresh clone       8373973b...
+#
+# A clone converted every LF to CRLF on checkout, so on any second machine the
+# freeze failed its own sha256, frozen_manifest.py --verify failed on every
+# text file, the freeze validator's V1a failed, and phase6_score_holdout.py
+# REFUSED TO RUN because its S0a assertion did not match.
+#
+# THE FREEZE'S ENTIRE EVIDENTIAL VALUE IS ITS HASH. A hash that only holds in
+# one working tree is not evidence, and pushing the repository did not make it
+# portable - it made a second copy that disagreed with the first.
+#
+# So conversion is turned off for everything whose bytes are hashed, and the
+# artefacts pandas writes with CRLF on Windows - which is what the manifest
+# recorded - are pinned to CRLF explicitly rather than left to depend on each
+# machine's core.autocrlf.
+#
+# DO NOT REMOVE THESE RULES. Verify a change to them by cloning and hashing,
+# not by reading the diff: the diff is exactly what does not show it.
+# =============================================================================
+
+# Frozen documents, code and the report - byte-for-byte, no conversion.
+*.txt   -text
+*.md    -text
+*.py    -text
+*.json  -text
+
+# Audit and result artefacts. Written CRLF by pandas on Windows and hashed
+# that way in FROZEN_MANIFEST.txt, so they are checked out CRLF everywhere.
+*.csv   text eol=crlf
+
+# Sources.
+*.xls   binary
+
+# This file too.
+.gitattributes -text
