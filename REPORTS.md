@@ -9,6 +9,219 @@ and the same 1,520 outer-test matches unless it says otherwise.
 
 ---
 
+## Phase 5 — Instrument E1: shots on target as a rating input
+
+*Run 2026-09-02/03. `scripts/phase5_e1a_sot_ratings.py` (12 checks, **0 failures**)
+and `scripts/phase5_e1b_shot_residuals.py` (35 checks, **0 failures**).
+Pre-declaration `PHASE5_E1_SHOT_PREDECLARATION.txt`, sha256 `d385bfd4…6eca4`,
+signed off before fitting. The data was already on disk — the football-data.co.uk
+files frozen for the market benchmark carry the shot columns.*
+
+### E1a — the rating-versus-rating comparison
+
+Attack, defence and the home multiplier estimated from shots on target instead
+of goals. Everything else held identical: same 107-day half-life, same 460
+refits, same window rule, same MAX_GOALS, same score matrix. **ρ is the same
+number in both arms** — fitted once per window from the goals arm and handed to
+the SoT arm, asserted bit-identical, which is what isolates the rating input as
+the single difference.
+
+| model | log loss | RPS | Brier |
+|---|---|---|---|
+| market (Bet365 closing) | 0.96057 | 0.19469 | 0.5702 |
+| **E1a — SoT ratings** | **0.98124** | 0.20117 | 0.5834 |
+| Dixon-Coles walk-forward | 0.99036 | 0.20350 | 0.5897 |
+| Poisson walk-forward | 0.99042 | 0.20355 | 0.5900 |
+| E1b | 0.99758 | 0.20568 | 0.5950 |
+| Elo v1 | 0.99943 | 0.20667 | 0.5958 |
+| D4 | 0.99975 | 0.20619 | 0.5963 |
+| D2 rescaled | 1.00028 | 0.20646 | 0.5970 |
+| D0 base rate | 1.06889 | 0.23185 | 0.6467 |
+
+| comparison | Δ log loss | 95% CI | Δ RPS | verdict |
+|---|---|---|---|---|
+| **E1a − Dixon-Coles** | **−0.00912** | **[−0.02177, +0.00391]** | −0.00233 | **not significant** |
+| E1a − D2 rescaled | −0.01904 | [−0.03195, −0.00628] | −0.00529 | significant |
+| E1a − Elo v1 | −0.01819 | [−0.02992, −0.00628] | −0.00550 | significant |
+| E1a − D0 | −0.08764 | [−0.10543, −0.06969] | −0.03068 | significant |
+| E1a − market | +0.02067 | [+0.00990, +0.03176] | +0.00648 | significant |
+
+**The comparison the rung exists for does not clear the bar.** Signs agree, so
+this is *not significant* rather than inconclusive. Per fold: −0.01417,
+−0.00477, +0.00349, −0.02103 — three of four favour SoT, one does not.
+
+The point estimate closes **31% of the Dixon-Coles→market gap**, and it is 2.5×
+the largest effect Phase 4 ever found. It is also not distinguishable from zero
+on 1,520 matches. Both of those are true and neither cancels the other.
+
+**What the interval does rule out.** To close the 0.02979 to the market, E1a −
+DC would need to reach −0.02979. The 95% interval stops at **−0.02177**. Closing
+the gap with SoT-based ratings is excluded at 95% — the rung is underpowered to
+confirm a small effect but not underpowered to refute the large one it was
+sized against.
+
+### The conversion constant
+
+Candidate (i) rests on c being estimable, and E2.3 predicted it would be.
+
+| scope | refits | mean c | sd | min | max |
+|---|---|---|---|---|---|
+| all | 460 | 0.32680 | 0.00703 | 0.30865 | 0.34026 |
+| fold 1 | 117 | 0.32055 | 0.00688 | — | — |
+| fold 2 | 120 | 0.33136 | 0.00499 | — | — |
+| fold 3 | 109 | 0.32455 | 0.00498 | — | — |
+| fold 4 | 114 | 0.33055 | 0.00454 | — | — |
+
+Within-season drift is at most **±0.011 across a whole season** (−0.005, +0.011,
++0.009, −0.005 by fold) — smaller than the between-fold spread, so c is not
+sliding underneath the ratings within a season. The declared home/away
+sensitivity is a null: `c_home` 0.32896, `c_away` 0.32424, and the split model
+differs from the pooled one by **+0.00004 [−0.00243, +0.00243]**, not
+significant. One constant is enough.
+
+### The third branch fired
+
+E5.2 declared two consequences of the mechanism and E5.3 named the case where
+only the second holds. That is what happened.
+
+| parameter | arm | mean \|step\| | mean level | relative |
+|---|---|---|---|---|
+| attack | goals | 0.016764 | 1.060532 | 0.01587 |
+| attack | **SoT** | 0.009454 | 1.025999 | **0.00924** |
+| defence | goals | 0.019817 | 1.282353 | 0.01645 |
+| defence | **SoT** | 0.038585 | 4.022815 | **0.00987** |
+
+Mean absolute change in a team's parameter between successive refits, within
+fold, relative to the level it moves around. **SoT-based parameters move 0.58×
+(attack) and 0.60× (defence) as much as goal-based ones.** The raw step is
+reported alongside because the two arms' parameters need not share a scale —
+SoT defence sits at a level of 4.02 against goals' 1.28 — so the relative figure
+is the comparable one.
+
+**SoT estimates team strength roughly 40% more precisely, and that precision
+does not convert into predictive accuracy.** The mechanism claimed in E5.1 is
+real. Its consequence is not.
+
+### E1b — rolling shot residuals
+
+Base: **D2 rescaled**, fixed by E7.1 before E1a ran. E1a − DC came back not
+significant, so the pre-committed rule put E1b on D2 rescaled. Six columns,
+design width 92 → 98, λ 1000/1000/300/300, EPV 0.90–3.57, **G6 PASS at every
+fold**.
+
+| comparison | Δ log loss | 95% CI | Δ RPS | verdict |
+|---|---|---|---|---|
+| E1b − D2 rescaled | −0.00270 | [−0.00536, **+0.00001**] | −0.00078 | not significant |
+| E1b − E1a | +0.01634 | [+0.00397, +0.02848] | +0.00451 | significant |
+| E1b − Dixon-Coles | +0.00722 | [−0.00621, +0.02054] | +0.00218 | not significant |
+| E1b − Elo v1 | −0.00185 | [−0.01044, +0.00665] | −0.00099 | not significant |
+| E1b − D0 | −0.07131 | [−0.08825, −0.05528] | −0.02617 | significant |
+| E1b − market | +0.03701 | [+0.02603, +0.04791] | +0.01099 | significant |
+
+**The interval's upper bound is +0.00001.** It does not exclude zero and the
+result is not significant — that is the rule, and a bound one part in a hundred
+thousand from clearing it is still not clearing it. Recorded exactly as it came
+out rather than rounded into a win.
+
+The effect is −0.00270, against −0.00365 for D2 − D1, the largest thing Phase 4
+found. The block's coefficients grow with training data — `rel_sot_residual_diff`
+runs 0.0158, 0.0232, 0.0686, 0.0728 across folds — the same pattern Block X
+showed, and here it converts into rather more.
+
+**E1a beats E1b significantly.** Putting shot information into the rating is
+worth more than putting it beside the rating as a feature, by 0.0163
+[+0.0040, +0.0285].
+
+**One limitation of the declared quantity, stated because it is not obvious.**
+The residual is SoT differential minus goal differential, both per match. Since
+goals ≈ 0.327 × SoT, its expectation is roughly 0.67 × SoT differential — so the
+column is substantially a restatement of shot differential rather than a pure
+finishing measure. A `goal_diff − c·SoT_diff` version would isolate finishing
+properly. That was not what was declared, and it was not swapped in after seeing
+this result; it is named here as the obvious follow-up, requiring its own
+declaration.
+
+### What was caught
+
+**The base rung was contaminated on the first run, by the control arm's own
+construction.** `block_of()` returns `phase1_backbone` for any name it does not
+recognise, and `d1_features()` selects the backbone *by exclusion* — so the six
+new columns, attached to the feature frame before the base was read, were swept
+into D2 rescaled itself. D2 came out 98 columns wide, stopped reproducing the
+committed Amendment 4 artefact (7.906e-03 against a 1e-12 tolerance), and E1b
+"added" nothing because there was nothing left to add.
+
+Four gates caught it at once — E10, E10c, E1b-A1 and DS3a — and E10e now asserts
+the base directly. **The comparison would still have run.** It would have
+compared a rung against itself and reported a null, and the null would have been
+an artefact of feature-frame ordering.
+
+### Gates
+
+**E1a, 12 checks.** E1 (goals arm reproduces committed `dc_walkforward` at
+0.000e+00), E2 (one configuration, so the arms cannot drift apart), E3 (ρ
+bit-identical, 0.000e+00), E4a/E4b (join and the source's known defect counts),
+E5 and E6 (**both 0.000e+00** — corrupting goals, shots and SoT from six cutoffs
+forward moves neither the fitted state nor the conversion constants), E7, E8,
+E9a/E9b (no odds column reaches a rating window), E10a.
+
+**E1b, 35 checks.** E10/E10b/E10c/E10e, A4a at both rungs (the robust mask still
+finds exactly its three DC-derived columns, so the residuals did not drift into
+Amendment 4's rule), G6, E1b-A1 (5.551e-17), and DS0–DS12 in full.
+
+**DS7 could not apply as written and was replaced rather than skipped.** DS7a
+asserts byte-identity against the frozen Phase 3 feature file; the six residual
+columns are *built* here, so that claim is not available for them. What is
+asserted instead is that adding the block disturbed no column it sits beside,
+checked against a fresh re-read from disk. Zero disturbed.
+
+### The read on A, per the declared branches
+
+**E9.2 — the null branch.** E1a − Dixon-Coles is not significant, so on the
+declared reading shot information adds little over goals at this resolution and
+**A is scoped accordingly: not abandoned, not expected to move much.**
+
+The third branch sharpens that considerably, and E5.3 said in advance that it
+would be the outcome that most changed how A is read:
+
+**The remaining 0.02979 to the market is not a rating-precision problem.** SoT
+estimates team strength ~40% more stably than goals do, and the accuracy did not
+follow. xG's mechanism is the same mechanism — a less noisy estimate of the same
+underlying rate — so the thing xG would do better is the thing that has just
+been shown not to pay. Closing the gap from a better shot-derived estimate of
+team strength is excluded at 95% for SoT, and xG is an improvement in degree
+along that axis, not a different axis.
+
+**The asymmetry matters and it points the same way.** Shot counts were recorded
+contemporaneously by a scorer; nobody's model produced them. The xG arm carries
+the untestable retro-fit leak of A4.2 — today's xG for a 2021 match may come from
+a model trained through 2026 — so any xG advantage is an upper bound on what was
+available in real time. **E1 is the cleaner measurement, and it came back null.**
+
+What this does *not* establish: that xG carries nothing SoT does not. Shot
+*quality* is exactly what SoT throws away, and a chance-quality signal could
+differ in kind rather than degree. The declared bound is an argument about
+information content and it could be wrong. But the expected value of the five
+FBref downloads is now materially lower than it was before E1 ran.
+
+### On the xG files
+
+Five CSVs were supplied. They are **season-aggregate league tables** — 20 rows
+each, team totals of xG/xGA/xPTS — not per-match xG. They cannot serve the arm:
+§5.1 needs per-match home and away xG for 1,900 matches, a season total for a
+team includes the very matches being predicted, and there is no per-match
+resolution for a walk-forward window. Two of the five are byte-identical
+duplicates of 2021-22 (sha256 `865b7313…`), so they cover four seasons, not five,
+and **2024-25 is absent**. They are left in `data/` untracked and unused.
+
+### Evidence
+
+`outputs/phase5_e1a_{fold_summary,pooled,deltas,windows,parameter_stability,predictions,audit}.csv`,
+`outputs/phase5_e1b_{fold_summary,pooled,deltas,coefficients,lambda_curves,residual_features,audit}.csv`.
+All under `FROZEN_MANIFEST.txt`.
+
+---
+
 ## Phase 5 — Instrument B: the market benchmark, measured
 
 *Run 2026-09-02. `scripts/phase5_market_benchmark.py`, 19 checks, **0 failures**.

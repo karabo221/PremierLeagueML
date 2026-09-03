@@ -133,3 +133,7 @@ desktop.ini
 # stands on, so it is tracked rather than re-downloaded: a re-download that
 # moves a hash is a NEW SOURCE, not a refresh.
 !outputs/phase5_*.csv
+
+# Phase 5 E1 - SoT ratings and the rolling shot-residual block.
+!outputs/phase5_e1a_*.csv
+!outputs/phase5_e1b_*.csv
