@@ -1,0 +1,406 @@
+===============================================================================
+PHASE 5 - INSTRUMENT E1c:  THE ISOLATED FINISHING RESIDUAL
+PRE-DECLARATION, WRITTEN BEFORE ANY FIT
+===============================================================================
+
+STATUS      Declared 2026-09-03. NOT RUN. Awaiting sign-off.
+
+            No model has been fitted. No log loss exists. Nothing in this
+            file was written after seeing an E1c number, because there is
+            no E1c number.
+
+            It is written BEFORE the section 3 gap diagnostic of the same
+            brief, deliberately. That diagnostic looks at where the
+            model-market gap sits on the outer-test rows, and a rung
+            declared afterwards would be declared by someone who had seen
+            it. The sha256 of this file is taken first.
+
+-------------------------------------------------------------------------------
+0.  WHY THIS RUNG EXISTS, AND WHY IT IS NOT A SECOND ATTEMPT AT E1b
+-------------------------------------------------------------------------------
+
+F0.1  E1b's REPORTED LIMITATION, RESTATED. E1b's declared quantity was
+
+          residual = SoT differential  -  goal differential
+
+      per match, over a five-match window. Goals run at roughly 0.327 per
+      shot on target (E2.3, and E1a's 460 fitted windows put it at 0.32680
+      with sd 0.00703). So
+
+          E[residual]  =  SoT_diff - 0.327 x SoT_diff  =  0.673 x SoT_diff
+
+      The column is SUBSTANTIALLY A RESTATEMENT OF SHOT DIFFERENTIAL, at
+      about two thirds weight, with the finishing part riding on top. It is
+      not a finishing measure, and the E1 report says so in the same entry
+      that reported its null.
+
+F0.2  THE ISOLATING VERSION SUBTRACTS THE CONVERSION, RATHER THAN UNITY:
+
+          finishing  =  goal differential  -  c x SoT differential
+
+      whose expectation is ZERO by construction. What is left is the part
+      of the scoreline the shots did not imply - who has been finishing
+      above or below their chances - with the shot-volume component
+      removed rather than inverted.
+
+F0.3  THIS WAS NAMED IN THE E1 REPORT AS THE OBVIOUS FOLLOW-UP, BEFORE ANY
+      E1c NUMBER EXISTED, AND IT IS BEING RUN AS NAMED. It was not swapped
+      in after seeing E1b's result: E1b was reported as it came out
+      (-0.00270, interval upper bound +0.00001, not significant) and the
+      limitation was recorded beside it. This declaration changes the
+      quantity, not the verdict on E1b.
+
+F0.4  THIS IS THE LAST SHOT-DERIVED RUNG. Declared here so that a null
+      cannot be followed by a fourth variant of the same column. If E1c is
+      null, shot information is exhausted at this resolution and the phase
+      closes on that. If E1c is significant, E1b's null is reread as a
+      construction artefact and that is said plainly.
+
+-------------------------------------------------------------------------------
+1.  THE CONVERSION CONSTANT c
+-------------------------------------------------------------------------------
+
+F1.1  c IS E1a's OWN FITTED PER-WINDOW CONSTANT. No second estimator is
+      written. E1a fits, at every refit cutoff,
+
+          c  =  ( sum of weights x total goals in window )
+                / ( sum of weights x total SoT in window )
+
+      over the same 107-day half-life decayed window as the ratings, from
+      matches with date STRICTLY EARLIER than the cutoff. That is E4.3 of
+      PHASE5_E1_SHOT_PREDECLARATION.txt, unchanged.
+
+F1.2  ONE c PER FOLD, TAKEN AT THE FOLD'S FIRST CUTOFF, AND THE REASON IS
+      THAT THIS IS THE ONLY WINDOW THAT IS TRAINING ROWS ONLY.
+
+      E1a's later cutoffs walk forward INSIDE the test season, so their
+      windows contain outer-test rows. A feature built from those would
+      carry test information into a design matrix, which is a different
+      standard from the one E1a is held to as a standalone probability
+      model.
+
+      The FIRST cutoff of each fold has a window that ends exactly where
+      the test season begins. Its window size is the fold's training set:
+
+          fold 1   2022-08-05    380 training matches
+          fold 2   2023-08-11    760
+          fold 3   2024-08-16   1140
+          fold 4   2025-08-15   1520
+
+      Those four counts are 380 x fold. F4 asserts them rather than
+      trusting them, because that identity is the whole argument that the
+      window IS the training set.
+
+F1.3  SO c IS PER-FOLD, NOT GLOBAL, AND NEVER SEES A TEST ROW. Four
+      constants, read from outputs/phase5_e1a_windows.csv, which is frozen
+      under FROZEN_MANIFEST.txt at
+      bf180dd1687a103e01b13923f92cc27bf89197ab5f1c08dba96489da4f24546e.
+
+F1.4  THE CONSEQUENCE FOR THE INSTRUMENT, STATED BECAUSE IT IS UNUSUAL
+      HERE. The feature column is FOLD-DEPENDENT, so E1c builds four
+      design matrices where every previous rung built one. This is in the
+      project's grain - standardisation, imputation and Amendment 4's
+      robust scale are all already fitted per fold on training rows - but
+      it happens one stage earlier than usual, and it is declared rather
+      than discovered later in a diff.
+
+      The D2 rescaled control arm is IDENTICAL across the four matrices.
+      F2 asserts it reproduces the committed Amendment 4 fold summary, so
+      a fold-varying column cannot quietly move the base.
+
+F1.5  THE WALK-FORWARD ALTERNATIVE IS REJECTED, AND IS NAMED HERE SO IT
+      CANNOT BE ADOPTED LATER IF THE PRIMARY COMES BACK NULL: extending
+      E1a's window rule to every match date in the dataset, giving one c
+      per match. It is more faithful to the phrase "per window" and it is
+      worse on two counts. It puts test-season rows into c for
+      test-season matches, and it needs a burn-in ruling for 2021-22,
+      where the window is thin and where imputation-to-median at 50% of
+      training rows already produced G10's degenerate-scale failure. Not
+      run.
+
+F1.6  DECLARED SENSITIVITY, REPORTED WHATEVER IT SAYS. c re-estimated per
+      fold on the SAME training rows with NO decay weighting - plain total
+      goals over total SoT. Same rows, different weighting, no leak. If
+      the verdict moves between the two, c's estimator matters and that is
+      reportable; if it does not, c's precision is irrelevant to the
+      finding. THE PRIMARY IS THE DECAY-WEIGHTED ONE AND DOES NOT CHANGE.
+
+F1.7  ALSO REPORTED, AND NOT A SENSITIVITY: the four c values, and the
+      range the column takes at min-c against max-c. c spans 0.3222 to
+      0.3313 across the folds, about 3%, so this is expected to be small.
+      It is reported so that "small" is a measurement rather than an
+      assumption.
+
+-------------------------------------------------------------------------------
+2.  THE COLUMNS
+-------------------------------------------------------------------------------
+
+F2.1  SIX COLUMNS, on E1b's naming convention:
+
+          home_finishing_last5        away_finishing_last5
+          rel_finishing_diff
+          home_finishing_available    away_finishing_available
+          rel_finishing_available
+
+      where a team's finishing is
+
+          (its goal differential over the window, per match)
+          -  c  x  (its SoT differential over the window, per match)
+
+      and rel_finishing_diff is home minus away, matching every other
+      rel_*_diff in the project.
+
+F2.2  WINDOW: THE LAST FIVE MATCHES, WITHIN SEASON. Identical to E6.2 and
+      to D1's last5_pts_before. Not a chosen parameter - choosing a new
+      one would be tuning on these outer-test rows, and holding E1b's
+      window is also what makes E1c - D2rescaled comparable with E1b -
+      D2rescaled.
+
+F2.3  SEASON BOUNDARIES: THE WINDOW NEVER CROSSES ONE. Phase 1's T2 rule,
+      inherited exactly as E6.3 inherits it. Nothing is back-filled from
+      the prior season.
+
+F2.4  INSUFFICIENT HISTORY: fewer than five prior matches in the current
+      season gives NaN, imputed to the TRAINING MEDIAN by the pipeline's
+      declared rule, with an availability indicator on the project's
+      existing *_available convention. Identical to E6.4.
+
+F2.5  c IS APPLIED AT THE FOLD LEVEL, NOT PER MATCH INSIDE THE WINDOW. One
+      constant multiplies the whole five-match SoT differential mean. A
+      per-match c would require F1.5's rejected walk-forward series.
+
+F2.6  E1c IS NOT A SIGN FLIP OF E1b. E1b carried coefficient 1 on goal
+      differential; E1c carries c, about 0.327. The two columns are
+      different quantities and the two rungs are not related by a sign.
+
+-------------------------------------------------------------------------------
+3.  SCALING
+-------------------------------------------------------------------------------
+
+F3.1  AMENDMENT 4's ROBUST SCALING APPLIES TO THE THREE E1c CONTINUOUS
+      COLUMNS. This is a DEPARTURE FROM E1b, which took section 6's
+      standard treatment under E6.6, and the reason for the departure is
+      that the quantities differ: E1b's residual came from a rolling
+      arithmetic window and no fitted model, whereas E1c's subtracts a
+      FITTED constant. It is a derived-from-a-fit column and takes the
+      rule this project applies to derived-from-a-fit columns.
+
+F3.2  THE THREE INDICATORS PASS THROUGH UNSTANDARDISED under section 6, as
+      every indicator in this project does.
+
+F3.3  A4a IS AMENDED FOR THIS RUNG, AND THE AMENDMENT IS PART OF THE GATE
+      RATHER THAN A RELAXATION OF IT. A4a has asserted that the robust
+      mask selects exactly three columns - the three DC-derived ones. At
+      E1c it must select exactly SIX, and at the D2 rescaled control arm
+      still exactly THREE. Both halves are asserted (F7). A mask that
+      selected six at BOTH rungs would mean the rule had drifted into the
+      base, which is the failure A4a exists to catch and which the amended
+      form still catches.
+
+F3.4  DECLARED SENSITIVITY, REPORTED WHATEVER IT SAYS: E1c under section
+      6's standard treatment instead, which is E1b's rule. THE PRIMARY IS
+      THE ROBUST ONE AND DOES NOT CHANGE. This is declared now, in
+      advance, precisely because F3.1 is a departure, and a departure must
+      not be the thing that produces the result.
+
+-------------------------------------------------------------------------------
+4.  THE FALSIFIABLE PREDICTION
+-------------------------------------------------------------------------------
+
+F4.1  THE MECHANISM CLAIMED: five-match finishing is substantially its own
+      sampling noise, not a persistent team property.
+
+      A team takes roughly 4.5 shots on target a match, so about 22 over
+      the window. At a conversion rate near 0.327 the binomial standard
+      error on a five-match finishing rate is roughly
+
+          sqrt(0.327 x 0.673 / 22)  ~  0.10
+
+      against a league-wide conversion rate that moved 0.013 across five
+      whole seasons. THE SAMPLING ERROR IS ABOUT EIGHT TIMES THE ENTIRE
+      OBSERVED DRIFT IN THE QUANTITY, so a five-match window is expected
+      to be dominated by noise.
+
+F4.2  IF THE MECHANISM IS REAL, BOTH OF THESE FOLLOW:
+
+      (a) E1c - D2rescaled is NOT significant.
+      (b) The correlation between a team's finishing residual over one
+          five-match window and its residual over the NEXT,
+          NON-OVERLAPPING five-match window is near zero. DECLARED
+          THRESHOLD: |r| < 0.10, computed on TRAINING ROWS ONLY, pooled
+          over teams and seasons, windows within season.
+
+      (b) is measurable without fitting the rung at all, which is the
+      point: the mechanism can be checked independently of the result it
+      is supposed to explain.
+
+F4.3  IF (a) NULL AND (b) NEAR ZERO. The column is noise, the mechanism is
+      confirmed, shot information is exhausted at this resolution and the
+      phase closes on that. This is the outcome the mechanism predicts,
+      and saying so here is what stops it being presented afterwards as a
+      discovery.
+
+F4.4  IF (a) NULL AND (b) MATERIALLY NON-ZERO, |r| >= 0.10. Finishing IS
+      persistent at this horizon and the ladder cannot use it. That is a
+      more interesting finding than F4.3, and it says the limit is the
+      model class rather than the information.
+
+F4.5  IF (a) SIGNIFICANT. Finishing carries information beyond the rating,
+      E1b's null is reread as an artefact of its construction - its column
+      was two thirds shot differential - and the shot arm is NOT
+      exhausted. Reported as a positive result for E1c and as a correction
+      to how E1b is read, not as a retraction of E1b's number.
+
+F4.6  IF (a) SIGNIFICANT AND (b) NEAR ZERO. A column that does not predict
+      its own next window, predicting match outcomes. THAT IS TREATED AS A
+      DEFECT TO BE FOUND, NOT AS A RESULT, and it is written here so that
+      it cannot be reported as a win. The first place to look is whether c
+      or the window has admitted a test row.
+
+F4.7  ALL FOUR BRANCHES ARE WRITTEN HERE SO THAT NONE CAN BE PRESENTED AS
+      THE ONE THAT WAS EXPECTED.
+
+-------------------------------------------------------------------------------
+5.  THE RUNG, AND THE GATE IT IS HELD TO
+-------------------------------------------------------------------------------
+
+F5.1  BASE: D2 RESCALED. Exactly as E1b, and for the same reason - E7.1
+      fixed it before E1a ran, and E1a came back not significant. The base
+      is not rechosen here.
+
+F5.2  E1c IS A LADDER BLOCK, so per-rung per-fold lambda, blocked inner CV
+      on training rows only, and G6 all apply.
+
+F5.3  DESIGN WIDTH: 92 + 6 = 98. Asserted, along with the identity of the
+      six added columns, by F3.
+
+F5.4  DELTAS, paired per-match bootstrap, 10,000 draws, seed 20260901, per
+      fold and pooled, with 95% intervals:
+
+          E1c - D2rescaled     the gate this rung exists for
+          E1c - E1b            does isolating the finishing part help
+          E1c - E1a            against shot information inside the rating
+          E1c - Dixon-Coles
+          E1c - Elo v1
+          E1c - D0
+          E1c - market         the 0.02979 this phase competes for
+
+F5.5  RPS MUST AGREE IN SIGN WITH LOG LOSS or the comparison is
+      INCONCLUSIVE and is reported as such.
+
+F5.6  NO BLOCK IS DECLARED USEFUL ON ACCURACY. A NON-SIGNIFICANT
+      DIFFERENCE IS NOT EQUALITY.
+
+F5.7  NO NUMBER IN PHASES 0 TO 5 MOVES BECAUSE OF THIS INSTRUMENT. E1a's
+      and E1b's figures stand as reported.
+
+-------------------------------------------------------------------------------
+6.  GATES
+-------------------------------------------------------------------------------
+
+      F1   THE BASE IS CLEAN. The D1 backbone the base is built from is 84
+           feature names, none of them among E1c's six. E10e's successor,
+           kept even though d1_features() now selects by inclusion and
+           block_of() now raises - a fix and its gate are not substitutes
+           (PROJECT_GOTCHAS.md, top).
+
+      F2   D2 rescaled reproduces the committed
+           outputs/phase4_a4_fold_summary.csv to 1e-12, per fold, on log
+           loss and RPS. This is what would catch a fold-dependent column
+           leaking into the control arm.
+
+      F3   design width is exactly 92 + 6 = 98, and the six added design
+           columns are exactly the six named in F2.1
+
+      F4   the four c values are bit-identical to c_pooled at each fold's
+           first cutoff in outputs/phase5_e1a_windows.csv, and those four
+           windows hold exactly 380, 760, 1140 and 1520 matches
+
+      F5   NO OUTER-TEST ROW REACHES c. Asserted by corrupting every
+           outer-test row's goals and shots and checking all four c values
+           are unchanged at 0.000e+00 - E1a's E6 test, on the new use
+
+      F6   the block is missing exactly where a team has fewer than five
+           prior matches in the season, and nowhere else, in both
+           directions; and no window crosses a season boundary
+
+      F7   the robust mask selects exactly THREE columns at D2 rescaled
+           and exactly SIX at E1c, both by name (F3.3)
+
+      F8   pooled log loss equals the unweighted mean of the four fold
+           values to 1e-12, at every rung
+
+      F9   NO ODDS COLUMN APPEARS IN ANY DESIGN MATRIX OR FEATURE -
+           asserted by name over the built designs, not by intention
+
+      F10  G6 at every fold; boundary lambda selection FAILs and stops the
+           rung
+
+      F11  every probability array passes validate_probabilities()
+
+      F12  ALL SIX COLUMNS ARE DECLARED THROUGH declare_block() BEFORE THE
+           FRAME IS TOUCHED, and block_of() raises on an undeclared name.
+           Asserted POSITIVELY - a name deliberately withheld from the
+           registry must raise - not merely relied on
+
+      F13  full DS suite. DS7 takes E1b's replacement form: adding the
+           block disturbs no column it sits beside, checked against a
+           fresh re-read from disk. Byte-identity against the frozen Phase
+           3 file is not available for columns built here
+
+      F14  the autocorrelation of F4.2(b) is computed on TRAINING ROWS
+           ONLY, and the row count it is computed over is reported
+
+-------------------------------------------------------------------------------
+7.  A CHECK ON THE CONSTRUCTION, DECLARED AS ORDINAL RATHER THAN NUMERIC
+-------------------------------------------------------------------------------
+
+F7.1  THE CLAIM THIS RUNG RESTS ON is that E1c isolates finishing where
+      E1b restated shot differential. That is checkable directly:
+
+          corr( rel_finishing_diff,     rel SoT differential )   E1c
+          corr( rel_sot_residual_diff,  rel SoT differential )   E1b
+
+      over the same rows and the same windows.
+
+F7.2  THE ASSERTION IS ORDINAL: E1c's squared correlation must be STRICTLY
+      LESS than E1b's. A numeric threshold is not declared because there
+      is no principled value to declare in advance, and a threshold picked
+      to be passed is not a gate.
+
+F7.3  IF IT FAILS - if E1c is no less a restatement of shot volume than
+      E1b was - then F0.2's premise is wrong, and E1c's result is reported
+      as UNINTERPRETABLE AS A FINISHING MEASURE whatever its delta says.
+      That is the honest outcome, and it is declared before the number
+      exists.
+
+-------------------------------------------------------------------------------
+8.  WHAT THIS CANNOT ESTABLISH
+-------------------------------------------------------------------------------
+
+      It cannot establish that finishing skill does not exist. It measures
+      a five-match window, which F4.1 argues in advance is noise-dominated.
+      A longer window might carry a persistent signal and this instrument
+      would not see it. A longer window is not run, because choosing one
+      after seeing this result is the contaminated move, and choosing one
+      before is a tuned parameter selected on these outer-test rows.
+
+      It cannot establish what xG would do. E1a already bounds that from
+      below and E1a came back null; this rung is about a different
+      quantity, not a better version of the same estimate.
+
+      It cannot make the project's numbers out-of-sample. 2025-26 was
+      scored during Phase 3's lambda sweep and its B0-B6 ablation. Every
+      figure remains a walk-forward development estimate, optimistic by an
+      unknown margin, and the market benchmark it is measured against is
+      not.
+
+      It cannot, on 1,520 matches, distinguish a small real effect from
+      zero. Resolution is roughly 0.005 on log loss. E1b came back at
+      -0.00270 with an upper bound of +0.00001 and that was reported as
+      not significant; an E1c of similar size would be reported the same
+      way.
+
+===============================================================================
+END
+===============================================================================

@@ -38,7 +38,8 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from phase0_evaluation_harness import CLASS_INDEX, CLASSES, evaluate  # noqa: E402
-from phase3_feature_builder import Audit, banner, configure_stdout  # noqa: E402
+from phase3_feature_builder import (Audit, banner,  # noqa: E402
+                                    configure_stdout, declare_block)
 
 import phase3_ablation_ladder as L3              # noqa: E402
 import phase3_regularisation_sensitivity as I4   # noqa: E402
@@ -75,7 +76,11 @@ AVAILABILITY_COLUMNS = ["home_sot_residual_available",
                         "away_sot_residual_available",
                         "rel_sot_residual_available"]
 
-NEW_COLUMNS = RESIDUAL_COLUMNS + AVAILABILITY_COLUMNS
+# DECLARED, so block_of() classifies them instead of defaulting them into the
+# Phase 1 backbone. That default, plus d1_features() selecting by exclusion,
+# is what put these six columns inside the control arm on the first run.
+NEW_COLUMNS = declare_block("E_shot_residual",
+                            RESIDUAL_COLUMNS + AVAILABILITY_COLUMNS)
 
 RUNGS = ("D2_rescaled", "E1b")
 

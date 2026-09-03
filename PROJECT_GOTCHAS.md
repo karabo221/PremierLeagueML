@@ -217,3 +217,205 @@ on another laptop at `C:\Users\karab\PremierLeagueML`.
 - **`venv/` (no dot) is the one to use.** `./venv/Scripts/python.exe`,
   pandas 3.0.5 + numpy 2.5.2, **no scipy** — nothing needs it, the Phase 3 solver
   is hand-written Newton on numpy. Bare `python` on PATH has no pandas.
+
+---
+
+## 7. A default-to-known classifier plus select-by-exclusion silently absorbs anything new into the control arm
+
+**Neither half is wrong on its own.** Together they mean that adding a column
+changes the thing you are measuring *against* — and the run completes, all
+metrics are finite, and it reports a null.
+
+**The two halves, as they stood:**
+
+```python
+def block_of(column):            # phase3_feature_builder.py
+    ...
+    return "phase1_backbone"     # anything unrecognised
+
+def d1_features(features):       # phase4_dynamic_ladder.py
+    return [c for c in features.columns if block_of(c) == "phase1_backbone"]
+```
+
+`block_of()` defaulted an unknown name to the *known* class. `d1_features()`
+then selected that class **by exclusion** — "the backbone is whatever is left".
+So the base rung was defined as *everything the classifier failed to recognise*.
+
+**The failure:** E1b attached its six shot-residual columns to the feature frame
+**before** reading the base. `block_of()` called all six `phase1_backbone`;
+`d1_features()` swept all six into D2 rescaled. D2 came out **98 columns wide
+instead of 92**, stopped reproducing its own committed Amendment 4 artefact
+(7.906e-03 against a 1e-12 tolerance), and E1b "added" nothing because there was
+nothing left to add.
+
+**The comparison would still have run.** It would have compared a rung against
+itself, returned a small null, and the null would have been an artefact of
+feature-frame ordering. Four gates fired at once — E10, E10c, E1b-A1, DS3a — but
+every one of them is a *width* or *reproduction* check downstream of the defect.
+Nothing in the selection itself objected.
+
+**The general shape, which is what to watch for:**
+
+> A classifier whose default is a real category, consumed by a selector that
+> defines a set as *the complement* of the other categories. The default makes
+> new things look old; the complement makes old things a catch-all. The set you
+> think is fixed is now a function of what else happens to be in scope.
+
+It is the same family as the λ-label defect at the top of this file: the fix
+looks right, reads right, and is wrong in a way no eyeball catches.
+
+### What was done about it
+
+Both halves are closed, and the gate is kept as well as the fix.
+
+* **`block_of()` RAISES on an unrecognised name.** There is no default. Phase
+  3's six blocks are declared as before; later phases register their own
+  columns through **`declare_block(block, columns)`** at import time —
+  `D_dynamic_state` for Phase 4's four state columns, `E_shot_residual` for
+  E1b's six. Re-declaring a name under a *different* block is fatal; an
+  identical re-declaration is idempotent, because one process may import a
+  module twice.
+* **`d1_features()` selects BY INCLUSION** against `PHASE1_BACKBONE_COLUMNS`, an
+  explicit 86-name list in `phase3_feature_builder.py`. A column attached to the
+  frame cannot get in whatever it is called and whenever it was attached. A
+  *missing* backbone column is a different failure and still raises.
+* **`E10e` still asserts the base directly**, and is not removed on the strength
+  of the fix. A fix and its gate are not substitutes — see the λ-label case.
+
+`B5` continues to assert the backbone count against the *built* frame, so the
+declared list is checked against reality rather than trusted.
+
+### The two vocabularies, recorded once so the next gate is written against the right one
+
+`E10e`'s own first version asserted **88** and had to be corrected. The numbers
+are both right and they count different things:
+
+| quantity | count | what it is | asserted by |
+|---|---|---|---|
+| D1 **feature names** | **84** | 86 Phase 1 backbone columns − 2 held out as metadata (`home_prev_season_source`, `away_prev_season_source`) | `E10e` |
+| D1 **design columns** | **88** | the same 84 after the categoricals expand through `L3.CATEGORICAL_LEVELS` | `DS3`, `DS3a` |
+
+The expansion is +4: `home_prev_season_status` and `away_prev_season_status`
+each carry three declared levels. Everything else is one name, one column.
+
+**Write a width gate against the design; write a membership gate against the
+names.** A gate written against the wrong vocabulary fails by 4 and looks like a
+pipeline defect.
+
+---
+
+## 8. A third machine, and `venv/` does not run on it
+
+`venv/pyvenv.cfg` records `home = C:\Users\karab\AppData\Local\Programs\Python\
+Python312`. On a machine without that user, `./venv/Scripts/python.exe` exits
+with
+
+```
+No Python at '"C:\Users\karab\AppData\Local\Programs\Python\Python312\python.exe'
+```
+
+which reads like a corrupt venv and is not one. **The `Lib/site-packages` tree
+is intact and machine-independent** — pandas 3.0.5, numpy 2.5.2, both cp312
+win_amd64 wheels.
+
+**Do this, and do not edit `pyvenv.cfg`:** point any Python 3.12 on PATH at the
+venv's packages.
+
+```bash
+PYTHONPATH='D:\PremierLeagueML\venv\Lib\site-packages' python -B scripts/whatever.py
+```
+
+Rewriting `pyvenv.cfg` would fix this machine and break the other one — the
+config is per-machine state living in a directory that travels. The environment
+variable is per-invocation and leaves nothing behind.
+
+Section 1 still applies in full: **run scripts as FILES**, `-c` dies on anything
+that reaches the harness.
+
+---
+
+## 9. Frozen output hashes are MACHINE-DEPENDENT. The manifest FAIL is not always drift
+
+**Symptom:** re-running an instrument that changes nothing, on a machine that has
+never run it before, and getting
+
+```
+hashes that MOVED    6
+FAIL - a frozen artefact is not the one the pre-declarations were written against.
+```
+
+while the instrument itself reports **0 failures** and every printed number is
+the committed one.
+
+**Measured, on `phase5_e1b_shot_residuals.py`:**
+
+| | |
+|---|---|
+| log loss | `1.0060002752144963` → `1.0060002752144961` |
+| pooled RPS | `0.20762578612240679` → `...676` |
+| Newton residual | `9.1325613738035827e-11` → `9.1323837381196427e-11` |
+| λ, EPV, G6, design width, accuracy | **unchanged** |
+
+Last-ULP on the solutions; the 5th significant figure of a *residual that is
+itself 1e-11*. Nothing that any gate is written against moved.
+
+**Cause: numpy dispatches its kernels on CPU features, so the summation order
+inside a reduction differs between machines.** The laptop this was found on is a
+Tiger Lake with AVX-512 live (`X86_V4: True`, `AVX512_ICL: True`); numpy reports
+`{'baseline': ['X86_V2'], 'found': ['X86_V3']}` and uses the widest kernels the
+CPU offers. A machine without AVX-512 accumulates in a different order and lands
+one ULP away. Seven or eight Newton iterations amplify that into the residual
+while leaving the solution at 1e-16.
+
+**The tell that separates this from real drift:**
+`phase5_e1b_residual_features.csv` did **not** move. It is pure pandas
+arithmetic with no BLAS in it. Every file that moved is downstream of the
+solver. *If a non-BLAS artefact moves too, it is not this — it is a real change.*
+
+### How to tell whether a code change caused it, and do not skip this
+
+Comparing a modified run against the *committed* artefact cannot separate "my
+change" from "this machine", because both are confounded in the same diff. **Run
+the unmodified code on the same machine and compare against that.**
+
+```bash
+git stash push scripts/            # park the change
+<run the instrument>               # this is the control
+sha256sum outputs/<the artefacts>
+git checkout -- outputs && git stash pop
+```
+
+Done for the `block_of` / `d1_features` hardening of section 7: the control on
+unmodified code produced hashes **identical to the hardened run** and different
+from committed — so the hardening is bit-transparent and the movement is the
+machine. Six of seven artefacts were byte-identical between the two runs. The
+seventh was `audit.csv`, differing only in the *stdout text* DS10 captures from
+its own nested `frozen_manifest.py --verify` call, which was reporting on an
+untracked file in the working tree. Its verdict was PASS in both.
+
+This is the same principle as the top of this file: the verification must not
+share an assumption with the thing it is verifying. A committed artefact is not
+a control when the machine is one of the variables.
+
+### What to do about it
+
+**Restore the committed artefacts. Do not re-freeze.** The evidence set is the
+one the pre-declarations were written against; adopting this machine's bytes
+would rebase it onto this machine's arithmetic and buy nothing. The internal
+gates that compare at a declared tolerance — `E1b-A1` at 1e-12, `DS13`, the
+pooled-equals-fold-mean identity — are the checks that actually mean something
+here, and they all pass.
+
+### And one thing this exposed about the committed set
+
+`E1b-A1` re-fits the D2 rescaled base and compares it against the committed
+`phase4_a4_fold_summary.csv`. The committed E1b audit records **5.551e-17**. On
+this machine it reads **0.000e+00** — the refit lands on the Amendment 4 numbers
+exactly.
+
+**So the two committed artefacts were not produced under the same arithmetic.**
+This machine reproduces the Amendment 4 one bit for bit and the E1b one not
+quite. Both pass at 1e-12 and no reported number is affected. It is recorded
+because "bit for bit" appears in the wording of that gate, and across two
+machines that phrase means bit for bit *at the declared tolerance*, not
+literally.

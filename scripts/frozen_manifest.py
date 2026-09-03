@@ -60,6 +60,11 @@ FROZEN_PATTERNS = [
     # section 2 records source-error COUNTS that gate E4 - so a hash that
     # moves is either a rewritten declaration or a changed source.
     "PHASE5_E1_SHOT_PREDECLARATION.txt",
+    # E1c is the isolated finishing residual, and it is declared BEFORE the
+    # section 3 gap diagnostic runs on the outer-test rows. That ordering is
+    # the only thing that makes it a pre-declaration, and a hash is what makes
+    # the ordering checkable.
+    "PHASE5_E1C_FINISHING_PREDECLARATION.txt",
     # THE ODDS SOURCE ITSELF. data/raw is immutable by project rule, but that
     # rule is prose and this is the first source that arrived over the network
     # rather than on the stick. A re-download that moves a hash is a NEW

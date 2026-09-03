@@ -137,3 +137,17 @@ desktop.ini
 # Phase 5 E1 - SoT ratings and the rolling shot-residual block.
 !outputs/phase5_e1a_*.csv
 !outputs/phase5_e1b_*.csv
+
+# ---------------------------------------------------------------------------
+# THE UNDERSTAT SEASON TABLES, WHICH ARE THE WRONG ARTEFACT FOR THE xG ARM
+#
+# data/league-chemp*.csv are season-aggregate league tables - 20 team rows of
+# totals, four distinct files for five seasons, two of them byte-identical,
+# 2024-25 absent. A SEASON TOTAL CONTAINS THE MATCHES BEING PREDICTED, so they
+# cannot serve the arm at any resolution. PHASE5_XG_PREDECLARATION.txt needs
+# MATCH-LEVEL xG.
+#
+# Ignored rather than merely untracked, so that a `git add -A` cannot sweep
+# them into the repo and make them look like an accepted source.
+# ---------------------------------------------------------------------------
+data/league-chemp*.csv

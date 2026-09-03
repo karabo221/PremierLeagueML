@@ -343,6 +343,136 @@ NEW_COLUMNS = (
 
 
 # ============================================================
+# PHASE 1'S BACKBONE, DECLARED RATHER THAN INFERRED
+# ============================================================
+#
+# These 86 names used to be whatever block_of() did not recognise. That
+# default is what let six Phase 5 columns be swept into the control arm - see
+# PROJECT_GOTCHAS.md "A default-to-known classifier plus select-by-exclusion".
+# They are now written down, so a name that is not on this list is not a
+# backbone column, it is an unclassified one, and block_of() says so.
+#
+# THE ORDER IS THE FROZEN FEATURE FILE'S ORDER and is not meaningful; the
+# membership is. B5 continues to assert the count against the built frame,
+# which is the independent check that this list still describes reality.
+
+PHASE1_BACKBONE_COLUMNS = [
+    # season-to-date, home
+    "home_mp_before", "home_pts_before", "home_gf_before", "home_ga_before",
+    "home_gd_before", "home_last5_pts_before", "home_last5_mp_before",
+    "home_prev_match_pts_before",
+    # venue form, home
+    "home_venue_mp_before", "home_venue_pts_before", "home_venue_gf_before",
+    "home_venue_ga_before", "home_venue_gd_before",
+    # prior season, home
+    "home_prev_season_available", "home_prev_season_pts",
+    "home_prev_season_pts_raw", "home_prev_season_sanction",
+    "home_prev_season_gf", "home_prev_season_ga", "home_prev_season_gd",
+    "home_prev_season_mp", "home_prev_season_source",
+    "home_prev_season_status",
+    # season-to-date, away
+    "away_mp_before", "away_pts_before", "away_gf_before", "away_ga_before",
+    "away_gd_before", "away_last5_pts_before", "away_last5_mp_before",
+    "away_prev_match_pts_before",
+    # venue form, away
+    "away_venue_mp_before", "away_venue_pts_before", "away_venue_gf_before",
+    "away_venue_ga_before", "away_venue_gd_before",
+    # prior season, away
+    "away_prev_season_available", "away_prev_season_pts",
+    "away_prev_season_pts_raw", "away_prev_season_sanction",
+    "away_prev_season_gf", "away_prev_season_ga", "away_prev_season_gd",
+    "away_prev_season_mp", "away_prev_season_source",
+    "away_prev_season_status",
+    # per-match rates, home
+    "home_ppm_before", "home_gfpm_before", "home_gapm_before",
+    "home_gdpm_before", "home_last5_ppm_before", "home_form_delta_ppm",
+    "home_venue_ppm_before", "home_venue_gfpm_before",
+    "home_venue_gapm_before", "home_venue_gdpm_before",
+    "home_prev_season_ppm", "home_prev_season_gdpm",
+    # per-match rates, away
+    "away_ppm_before", "away_gfpm_before", "away_gapm_before",
+    "away_gdpm_before", "away_last5_ppm_before", "away_form_delta_ppm",
+    "away_venue_ppm_before", "away_venue_gfpm_before",
+    "away_venue_gapm_before", "away_venue_gdpm_before",
+    "away_prev_season_ppm", "away_prev_season_gdpm",
+    # relative differences
+    "rel_ppm_diff", "rel_gfpm_diff", "rel_gapm_diff", "rel_gdpm_diff",
+    "rel_last5_ppm_diff", "rel_prev_match_pts_diff", "rel_mp_diff",
+    "rel_venue_ppm_diff", "rel_venue_gfpm_diff", "rel_venue_gapm_diff",
+    "rel_venue_gdpm_diff", "rel_prev_season_ppm_diff",
+    "rel_prev_season_gdpm_diff",
+    # availability indicators
+    "rel_form_available", "rel_venue_form_available",
+    "rel_prev_season_available",
+]
+
+if len(PHASE1_BACKBONE_COLUMNS) != EXPECTED_PHASE1_FEATURES:
+    raise SystemExit(
+        "FATAL: PHASE1_BACKBONE_COLUMNS holds {} names, "
+        "EXPECTED_PHASE1_FEATURES is {}".format(
+            len(PHASE1_BACKBONE_COLUMNS), EXPECTED_PHASE1_FEATURES))
+
+if len(set(PHASE1_BACKBONE_COLUMNS)) != len(PHASE1_BACKBONE_COLUMNS):
+    raise SystemExit("FATAL: PHASE1_BACKBONE_COLUMNS contains a duplicate")
+
+
+# ============================================================
+# THE BLOCK REGISTRY
+# ============================================================
+#
+# Phase 3 knows its own six blocks. It cannot know Phase 4's dynamic state or
+# Phase 5's shot residuals without importing forwards, so those phases DECLARE
+# their columns here at import time. Declaring is the whole point: an
+# undeclared column is a FATAL error rather than a backbone column.
+
+_BUILT_IN_BLOCKS = {
+    "identity": IDENTITY_COLUMNS,
+    "C_context": BLOCK_C_COLUMNS,
+    "X_prior_composite": BLOCK_X_COLUMNS,
+    "X_availability": BLOCK_X_AVAILABILITY,
+    "X_metadata": BLOCK_X_METADATA,
+    "phase1_backbone": PHASE1_BACKBONE_COLUMNS,
+}
+
+_BLOCK_OF = {}
+
+for _block, _columns in _BUILT_IN_BLOCKS.items():
+    for _column in _columns:
+        if _column in _BLOCK_OF:
+            raise SystemExit(
+                "FATAL: {} is declared in two blocks, {} and {}".format(
+                    _column, _BLOCK_OF[_column], _block))
+        _BLOCK_OF[_column] = _block
+
+del _block, _columns, _column
+
+
+def declare_block(block, columns):
+    """
+    Register a later phase's columns so block_of() can classify them.
+
+    Idempotent for an identical re-declaration, because a module can be
+    imported by several instruments in one process. A DIFFERENT declaration
+    for a name already spoken for is fatal.
+    """
+
+    for column in columns:
+
+        existing = _BLOCK_OF.get(column)
+
+        if existing is not None and existing != block:
+            raise SystemExit(
+                "FATAL: {} is already declared as {}, cannot redeclare as "
+                "{}".format(column, existing, block))
+
+        _BLOCK_OF[column] = block
+
+    return list(columns)
+
+
+
+
+# ============================================================
 # OUTPUT ENCODING
 # ============================================================
 
@@ -938,19 +1068,31 @@ def build_everything():
 # ============================================================
 
 def block_of(column):
+    """
+    The block a column belongs to. RAISES on a name it does not know.
 
-    if column in IDENTITY_COLUMNS:
-        return "identity"
-    if column in BLOCK_C_COLUMNS:
-        return "C_context"
-    if column in BLOCK_X_COLUMNS:
-        return "X_prior_composite"
-    if column in BLOCK_X_AVAILABILITY:
-        return "X_availability"
-    if column in BLOCK_X_METADATA:
-        return "X_metadata"
+    IT USED TO DEFAULT TO "phase1_backbone", AND THAT DEFAULT WAS A DEFECT.
+    Paired with d1_features() selecting the backbone by exclusion, it meant
+    any column attached to the feature frame before the base was read became
+    part of the control arm - silently, with the run completing and reporting
+    a null. See PROJECT_GOTCHAS.md, "A default-to-known classifier plus
+    select-by-exclusion silently absorbs anything new into the control arm".
 
-    return "phase1_backbone"
+    A later phase's columns are not unknown, they are DECLARED, through
+    declare_block(). Anything else is an error and is raised as one.
+    """
+
+    block = _BLOCK_OF.get(column)
+
+    if block is None:
+        raise SystemExit(
+            "FATAL: block_of() does not recognise {!r}. A column must be "
+            "declared before it can be classified - add it to one of Phase "
+            "3's block lists, or call declare_block() from the phase that "
+            "builds it. It is NOT a Phase 1 backbone column by default; that "
+            "default is the base-contamination bug.".format(column))
+
+    return block
 
 
 def build_inventory(frame):

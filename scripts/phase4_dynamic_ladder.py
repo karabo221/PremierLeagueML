@@ -32,7 +32,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from phase0_evaluation_harness import (CLASS_INDEX, CLASSES,  # noqa: E402
                                        evaluate, validate_probabilities)
-from phase3_feature_builder import Audit, banner, configure_stdout, block_of  # noqa: E402
+from phase3_feature_builder import (Audit, banner,  # noqa: E402
+                                    configure_stdout, block_of,
+                                    declare_block,
+                                    PHASE1_BACKBONE_COLUMNS)
 
 import phase2_poisson_dixon_coles as DC          # noqa: E402
 import phase3_ablation_ladder as L3              # noqa: E402
@@ -103,22 +106,50 @@ POISSON_VARIANT = "poisson_walkforward"
 CORRUPTION_SEASON = "2025-2026"
 CORRUPTION_SEED = 20260902
 
-DYNAMIC_COLUMNS = STATE.DYNAMIC_COLUMNS
+# The four point-in-time state columns are NOT Phase 1 backbone columns and
+# must not be classifiable as such. Declaring them here is what lets
+# block_of() raise on everything genuinely unknown.
+DYNAMIC_COLUMNS = declare_block("D_dynamic_state", STATE.DYNAMIC_COLUMNS)
 
 
 # ============================================================
 # DESIGN
 # ============================================================
 
+# Phase 1's backbone minus the two season-identifier columns Phase 3 holds out
+# as metadata. Fixed at import time from the DECLARED list, so it cannot vary
+# with what happens to be attached to a feature frame.
+D1_FEATURE_NAMES = [c for c in PHASE1_BACKBONE_COLUMNS
+                    if c not in L3.HELD_OUT_AS_METADATA]
+
+
 def d1_features(features):
     """
-    Phase 1's backbone minus the two season-identifier columns Phase 3 holds
-    out as metadata. 86 - 2 = 84 features; the width is asserted by DS3.
+    D1's 84 feature names, SELECTED BY INCLUSION against the declared
+    backbone. It used to select by exclusion - everything block_of() did not
+    recognise - and that is half of the base-contamination bug recorded in
+    PROJECT_GOTCHAS.md. Six columns attached to the frame before this was
+    called ended up inside the control arm.
+
+    Selecting by inclusion means an unknown column cannot get in no matter
+    when it was attached. The frame is still checked, because a MISSING
+    backbone column is a different failure and must not pass quietly.
+
+    TWO VOCABULARIES, AND THEY ARE DIFFERENT NUMBERS. This returns 84 FEATURE
+    NAMES. They expand to 88 DESIGN COLUMNS through the categorical levels in
+    L3.CATEGORICAL_LEVELS. DS3 asserts the design width; E10e asserts the name
+    count. A gate written against the wrong one of those looks like a defect
+    in the pipeline and is not.
     """
 
-    backbone = [c for c in features.columns if block_of(c) == "phase1_backbone"]
+    missing = [c for c in D1_FEATURE_NAMES if c not in features.columns]
 
-    return [c for c in backbone if c not in L3.HELD_OUT_AS_METADATA]
+    if missing:
+        raise SystemExit(
+            "FATAL: the feature frame is missing {} declared Phase 1 backbone "
+            "columns: {}".format(len(missing), missing))
+
+    return list(D1_FEATURE_NAMES)
 
 
 def build_design(features, feature_names, dynamic=None):
