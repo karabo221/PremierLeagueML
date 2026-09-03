@@ -9,6 +9,203 @@ and the same 1,520 outer-test matches unless it says otherwise.
 
 ---
 
+## Phase 6 — the 2026-27 holdout freeze, and the scoring instrument built early
+
+*Declared and pinned 2026-09-03. `PHASE6_HOLDOUT_FREEZE.txt`, sha256
+`b36befd3…248f6`, 397 lines, **byte-unmodified**. `PHASE6_CUTOFF_PIN.txt`,
+sha256 `276c6fe0…566c`. Validated by `scripts/phase6_freeze_validator.py`
+(34 checks, 0 failures, 6 outstanding) and `scripts/phase6_score_holdout.py`
+(11 checks, 0 failures, 1 outstanding). Manifest 117 files.*
+
+### What it is for
+
+Every figure this project has produced is a walk-forward **development**
+estimate. 2025-26 was scored during Phase 3's λ sweep and its B0–B6 ablation,
+so all of them are optimistic by an unknown margin, and the market benchmark
+they are measured against is not. 2026-27 prices that optimism once.
+
+The frozen model is **Dixon-Coles walk-forward**. Not E1a, whose point estimate
+is lower at 0.98124: E1a − DC is −0.00912 [−0.02177, +0.00391], **not
+significant**, so freezing it would select on an unresolved difference using
+the very 1,520 matches whose optimism the holdout exists to measure. DC also
+needs only the scoreline where E1a needs a weekly external shot feed, and DC is
+the reference every rung D0–D4 and all of Phase 5 reports against — so freezing
+it prices the whole reported ladder rather than one arm.
+
+### The cutoff: 2026-09-04
+
+H3.1's rule — first fixture on or after the commit — was evaluated on
+2026-09-03. **The cutoff is 2026-09-04, Ipswich Town v Liverpool**, and it is
+**absolute from that evaluation**: it does not re-fire on a later commit,
+because a holdout whose boundary moves with when someone typed `git commit` is
+not a holdout.
+
+Matchweeks 1 (21–24 Aug) and 2 (28–31 Aug) warm the state. **360 matches
+remain**, 94.7% of a season.
+
+**H3.2's expectation of "around 12 September" was wrong**, and the pin records
+it as wrong rather than dropping it. The reason is now known: 2026-27 cuts five
+international breaks to four, with a three-week block in **late September**, so
+nothing pushes matchweek 3 back. H3.2 said in advance that the rule beats the
+expectation. It did, and the error cost the holdout nothing — had the guess
+been used as the date, ten matchweek-3 matches would have been lost.
+
+### Why the pin is a separate file
+
+H3.2 says to record the date in the freeze file's own amendment block. **It is
+recorded separately instead, and the deviation is logged and dated in the pin.**
+
+Writing the date into the freeze would move its sha256 off `b36befd3…248f6`,
+and that hash is the freeze's entire evidential value — it is what makes "this
+specification predates the data it will be scored against" checkable rather
+than asserted. A hash created *after* a fixture list was consulted cannot carry
+that claim, however honest the edit.
+
+The pin cites the freeze hash explicitly, so it records not only what the
+cutoff is but **which freeze text it was pinned against** — a fact the in-place
+edit would have destroyed in the act of recording it.
+
+This does not trigger H5.3. No 2026-27 *result* has been observed; what was
+consulted is a published fixture list, which H3.2 itself instructs.
+
+### The name assertion, and why it needed a frozen vocabulary
+
+The validator's **V6b demonstrated the failure rather than arguing it**, on the
+live `match_rates()`:
+
+```
+"Manchester Utd"  ->  home rate 1.1186
+"Man United"      ->  home rate 0.8165        NO EXCEPTION RAISED
+```
+
+A misspelled *known* team falls through `.fillna(NEUTRAL_STRENGTH)` and is
+silently scored as an exactly average side. Over a season that corrupts the
+holdout invisibly, and the corruption is indistinguishable from a result.
+
+So the pin carries the **twenty-name 2026-27 vocabulary**, derived two
+independent ways that agree: from the matchweek-3 fixture list (ten fixtures,
+twenty distinct clubs), and from the 2025-26 relegations — West Ham, Burnley,
+Wolves — applied to the frozen squad list. Neither route alone would be a
+check; the agreement is.
+
+The dataset's spellings are specification and are **not tidied**: `Manchester
+Utd`, `Nottingham`, `Newcastle`, `Ipswich Town`. **P4.5: if the 2026-27 source
+spells Coventry or Hull differently the run FAILS, and that is correct
+behaviour.** The fix is a dated amendment to the pin, never a normalisation
+inside a loader — a loader that repairs names is a loader that can repair the
+wrong one.
+
+### The scoring instrument, built now rather than in May 2027
+
+Five of the validator's six outstanding items were requirements on code that
+did not exist. Written at season end, that code would run **once, against the
+holdout, with nothing to check it against**. Written now it can be validated
+where every answer is already frozen.
+
+**The dry run reproduces the frozen figures exactly, at 0.00e+00 throughout.**
+Two targets, and they are different numbers:
+
+| | this instrument | frozen | difference |
+|---|---|---|---|
+| 2025-26 log loss | 1.0453634800 | 1.0453634800 | **0.00e+00** |
+| 2025-26 RPS | 0.2128065688 | 0.2128065688 | **0.00e+00** |
+| pooled log loss | 0.9903635065 | 0.9903635065 | **0.00e+00** |
+| pooled RPS | 0.2034988326 | 0.2034988326 | **0.00e+00** |
+
+All four folds reproduce individually at 0.00e+00. **0.99036 / 0.20350 is the
+POOLED figure over 1,520 matches, not 2025-26's** — 2025-26 alone is 1.04536.
+The 2025-26 run is the structural analogue of the holdout (one cutoff, one
+contiguous scored block, a window over every earlier season); the four-fold run
+checks the metric aggregation the season run cannot.
+
+`--score-holdout` is refused unless `--season-complete` is given too, so
+scoring the live season is a deliberate two-key act and cannot happen by
+running the file.
+
+### Two defects found, both in the checks rather than the code
+
+**The frozen target was invented.** The first version hard-coded 2025-26 as
+`1.0453634084335335` — digits fabricated from a six-decimal console display of
+`1.045363`. The dry run duly reported a 7.16e-08 discrepancy in an instrument
+that was exact. Targets are now **read from the artefact**, with a separate
+assertion that the artefact still agrees with the figure REPORTS.md publishes.
+
+**The name test fired on ten names, nine of them innocent.** It poisoned the
+whole five-season frame, so Burnley, Leicester, Luton, Norwich, Sheffield
+United, Southampton, Watford, West Ham and Wolves — legitimately historical
+sides simply absent from the 2026-27 twenty — were flagged alongside the
+misspelling. **It would have fired identically with no misspelling at all.** It
+now runs on 2025-26 with the three relegated sides declared, a control *before*
+the poisoning that passes, and an assertion that **exactly one** name is
+flagged. The pair is the test; either half alone is consistent with a guard
+that never fires or one that always does.
+
+That is the third and fourth time in this project that a verifier failed to
+implement the rule it was verifying.
+
+### Still outstanding
+
+**H6.6's zero-history split is implemented but untested**, and is recorded as
+INFO rather than PASS. Coventry City and Hull City appear in no dataset season,
+so the split has no rows to separate until 2026-27 arrives. The code path is
+honestly unexercised and is reported as such.
+
+**Zero-history exposure will be ~19.5%** — 74 of 380 matches involve Coventry
+or Hull, roughly 70 of the 360 scored. H4.5 states in advance that this is
+*higher* than the development folds carried, so a worse holdout figure is partly
+promotion churn and partly development optimism, and **this design cannot
+separate them.** That is why H6.6 requires the split.
+
+---
+
+## Phase 6 — twenty-match finishing persistence: unrunnable, not null
+
+*Run 2026-09-03. `scripts/phase6_persistence20.py`. No fit, no gate, no model.*
+
+E1c's F8 left the longer horizon open: a five-match window is noise-dominated
+by construction, and a longer one might carry signal this project would not
+see. This was meant to discharge that caveat.
+
+**It cannot. The rung is not underpowered — it is structurally impossible.**
+
+Two non-overlapping twenty-match windows need **forty** matches. A Premier
+League season has **thirty-eight**. Within-season non-overlapping windows of
+length 20 therefore yield **zero pairs at every fold**, at any sample size.
+
+Declared in advance: threshold |r| < 0.10, reused from E1c rather than
+re-chosen; power reported before the estimate. To resolve |r| = 0.10 from zero
+at 95% needs roughly `1.96/√(n−3) < 0.10`, i.e. **n > 388**.
+
+**Whether any longer window could ever work — pure combinatorics, no
+correlation computed, so it cannot be fishing:**
+
+| window | anchors | pairs / team-season | max pairs (fold 4) | powered |
+|---|---|---|---|---|
+| 5 | 7 | 6 | 480 | **yes** |
+| 6 | 6 | 5 | 400 | **yes** |
+| 8 | 4 | 3 | 240 | no |
+| 10 | 3 | 2 | 160 | no |
+| 15 | 2 | 1 | 80 | no |
+| 18 | 2 | 1 | 80 | no |
+| 19–25 | 1 | 0 | **0** | no |
+
+**Only w ∈ {5, 6} clears n > 388 on this dataset.** The longest window that
+yields any pair at all is 18, and it gives 80 — a fifth of the threshold's
+requirement.
+
+So the five-match horizon E1c already reported is very nearly **the only
+within-season horizon this dataset can power at all**. F8's caveat is not
+discharged and cannot be discharged here; it would need more seasons, not a
+different window.
+
+For the record, E1c's five-match arm, recomputed unchanged: r = +0.0481
+(n=120), +0.0857 (240), −0.0060 (360), +0.0313 (480).
+
+**Read neither way**, per the declared third branch. This is not evidence that
+finishing is unpersistent at twenty matches, and it is not evidence that it is.
+
+---
+
 ## Phase 5 — Instrument E1c: the isolated finishing residual, and where the market gap lives
 
 *Run 2026-09-03. `scripts/phase5_e1c_finishing.py`, **59 checks, 56 PASS, 2 INFO,
