@@ -151,3 +151,10 @@ desktop.ini
 # them into the repo and make them look like an accepted source.
 # ---------------------------------------------------------------------------
 data/league-chemp*.csv
+
+# Phase 6 - the holdout freeze. The validation artefact is EVIDENCE of the
+# sign-off, not a regenerable output: it records which constants were checked
+# against which freeze text on which day. Versioned for the same reason the
+# pre-declarations are.
+!outputs/phase6_freeze_validation.csv
+!outputs/phase6_*.csv

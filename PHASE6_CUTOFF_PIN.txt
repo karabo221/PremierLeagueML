@@ -1,0 +1,258 @@
+===============================================================================
+PHASE 6 - THE CUTOFF PIN
+THE DATE H3.1's RULE SELECTED, AND THE VOCABULARY IT IS SCORED OVER
+===============================================================================
+
+PINNED       2026-09-03.
+GOVERNS      PHASE6_HOLDOUT_FREEZE.txt
+             sha256 b36befd3e13d5f7f5d9b0af83b7db819e86d7b13e6fdcab4c55db0599fd248f6
+             397 lines, unmodified by this document.
+
+THIS FILE EXISTS SO THAT THE FREEZE FILE DOES NOT HAVE TO CHANGE. Everything
+below was written AFTER a published fixture list was consulted. The freeze
+text was written BEFORE, and it stays byte-identical so that the distinction
+survives.
+
+-------------------------------------------------------------------------------
+0.  AMENDMENT TO H3.2, DATED AND REASONED
+-------------------------------------------------------------------------------
+
+P0.1  H3.2 SAYS THE DATE IS RECORDED IN THE FREEZE FILE'S OWN AMENDMENT
+      BLOCK. It is recorded here instead. That is a deviation from H3.2's
+      letter and it is logged as one rather than performed quietly.
+
+P0.2  DATE OF DEVIATION: 2026-09-03.
+
+P0.3  THE REASON. Writing the date into PHASE6_HOLDOUT_FREEZE.txt would move
+      its sha256 off b36befd3...248f6. That hash is the freeze's entire
+      evidential value: it is what makes "this specification predates the
+      data it will be scored against" a checkable claim rather than an
+      assertion. A hash created AFTER a fixture list was consulted cannot
+      carry that claim, however honest the edit.
+
+      Recording the pin separately, citing the freeze hash explicitly, is
+      strictly stronger. It proves not only what the cutoff is but WHICH
+      FREEZE TEXT it was pinned against - a fact the in-place edit would
+      have destroyed in the act of recording it.
+
+P0.4  THIS DEVIATION DOES NOT TRIGGER H5.3. H5.3 covers a change forced by a
+      defect, made after observing 2026-27 data. No 2026-27 RESULT has been
+      observed. What was consulted is a published FIXTURE LIST - schedule
+      information, available to anyone, containing no scoreline, no odds and
+      no outcome. H3.2 itself instructs that the fixture list be consulted
+      at sign-off, so consulting it is compliance rather than contamination.
+
+P0.5  H7's slot in the freeze file therefore stays as printed:
+      "cutoff date pinned: __________". IT IS NOT AN OVERSIGHT. This file is
+      its content, and this paragraph is the pointer from one to the other.
+
+-------------------------------------------------------------------------------
+1.  THE CUTOFF DATE
+-------------------------------------------------------------------------------
+
+P1.1  THE PINNED CUTOFF IS
+
+          2026-09-04     (Friday 4 September 2026)
+
+      First fixture on or after it: IPSWICH TOWN v LIVERPOOL.
+
+P1.2  HOW H3.1's RULE WAS EVALUATED. H3.1 defines the cutoff as the first
+      2026-27 fixture date on or after the date the freeze is committed. The
+      rule was evaluated on 2026-09-03. The first 2026-27 fixture date on or
+      after 2026-09-03 is 2026-09-04.
+
+P1.3  THE DATE IS ABSOLUTE FROM THAT EVALUATION. THE RULE SELECTED IT; THE
+      RULE DOES NOT RE-FIRE.
+
+      Stated explicitly because the alternative is worse. If the cutoff
+      tracked the commit timestamp, then a commit delayed to 5 September
+      would silently move Ipswich Town v Liverpool from the holdout into
+      warming history - and the holdout's size would depend on when someone
+      got round to typing `git commit`. A holdout whose boundary moves with
+      operator convenience is not a holdout.
+
+      So: 2026-09-04, regardless of when this is committed, and any later
+      commit does NOT re-evaluate H3.1.
+
+P1.4  THE RULE IS DATE-BASED, NOT MATCHWEEK-LABEL-BASED, per H3.4.
+
+          date >= 2026-09-04    SCORED (holdout)
+          date <  2026-09-04    WARMS THE STATE, not scored
+
+      A fixture postponed from before the cutoff to after it is SCORED,
+      because it is played after the cutoff. A fixture postponed from after
+      the cutoff to before it - which requires bringing a match forward -
+      would be warming history. The direction of the rule does not change
+      with the direction of the postponement.
+
+P1.5  THE STRICT WINDOW RULE IS UNAFFECTED. H2.5's `date < cutoff` continues
+      to govern which matches enter each REFIT WINDOW. A match played on
+      2026-09-04 is scored, and is not in the window that predicts it. The
+      two rules are different things and both hold.
+
+-------------------------------------------------------------------------------
+2.  H3.2's EXPECTATION WAS WRONG, AND HERE IS WHY
+-------------------------------------------------------------------------------
+
+P2.1  H3.2 EXPECTED "around 12 September 2026", reasoning that matchweeks 1
+      and 2 were complete and an international break followed. THE BREAK
+      REASONING WAS WRONG.
+
+P2.2  THE 2026-27 CALENDAR REDUCES FIVE INTERNATIONAL BREAKS TO FOUR, with a
+      three-week break between LATE SEPTEMBER AND EARLY OCTOBER - the first
+      time such a block has been used. THERE IS NO EARLY-SEPTEMBER BREAK
+      THIS SEASON, so nothing pushes matchweek 3 back and it follows
+      matchweek 2 at the normal weekly interval.
+
+          matchweek 1     21-24 August 2026
+          matchweek 2     28-31 August 2026
+          matchweek 3      4-6  September 2026
+
+P2.3  H3.2 ANTICIPATED BEING WRONG AND SAID WHICH WAY TO RESOLVE IT: "IF THE
+      ACTUAL FIXTURE LIST DISAGREES, THE RULE WINS, NOT THIS EXPECTATION."
+      The rule won. The expectation is recorded here as wrong rather than
+      quietly dropped, because a pre-declaration whose failed guesses are
+      deleted is not a pre-declaration.
+
+P2.4  THE ERROR COST NOTHING. The expectation was never load-bearing - H3.1
+      is a rule over a fixture list, not over a guess. Had the expectation
+      been used as the date, the holdout would have LOST the ten matchweek-3
+      matches it is now entitled to.
+
+-------------------------------------------------------------------------------
+3.  SOURCES, NAMED SO THE PIN IS CHECKABLE
+-------------------------------------------------------------------------------
+
+P3.1  Consulted 2026-09-03. The 2026-27 fixture list is not in this
+      repository - data/raw holds 2021-22 to 2025-26 only - so it was
+      obtained externally, which is what H3.2 instructs.
+
+          NBC Sports, "Premier League schedule for 2026-27 season"
+          https://www.nbcsports.com/soccer/news/premier-league-schedule-for-2026-27-season-released
+              matchweek 1  21-24 Aug, matchweek 2  28-31 Aug,
+              matchweek 3   4-6  Sep; earliest MW3 fixture Friday 4 Sep,
+              Ipswich Town v Liverpool
+
+          Premier League, 2026-27 matchweek 3
+          https://www.premierleague.com/en/matches/premier-league/2026-27/matchweek-3
+              same dates and the same ten fixtures. NOTE: a direct fetch of
+              this page returned only its navigation shell; the fixture
+              content was read through the search index. Recorded as a
+              PARTIAL confirmation rather than a clean second source.
+
+          Wikipedia, 2026-27 Premier League
+          https://en.wikipedia.org/wiki/2026%E2%80%9327_Premier_League
+              season 21 Aug 2026 to 30 May 2027; opening fixtures postponed
+              one week for the 2026 FIFA World Cup; promoted clubs; and the
+              four-break calendar of P2.2
+
+          Premier League / NBC Connecticut, 2025-26 relegation
+              relegated: West Ham United, Burnley, Wolverhampton Wanderers
+              promoted:  Coventry City, Ipswich Town, Hull City
+
+P3.2  THE TWO INDEPENDENT LINES AGREE. The twenty-team vocabulary of section
+      4 was derived from the matchweek-3 fixture list (ten fixtures, twenty
+      distinct clubs, each appearing once) AND arrived at separately from
+      the 2025-26 relegation result applied to the frozen 2025-26 squad
+      list. Both give the same twenty. That agreement is the check; neither
+      route alone would be one.
+
+-------------------------------------------------------------------------------
+4.  THE 2026-27 VOCABULARY.  TWENTY NAMES, DECLARED.
+-------------------------------------------------------------------------------
+
+P4.1  WHY THIS IS IN A FROZEN DOCUMENT AND NOT IN CODE. V6b of the freeze
+      validator demonstrated the failure it prevents, on the live
+      match_rates():
+
+          "Manchester Utd"  ->  home rate 1.1186
+          "Man United"      ->  home rate 0.8165        NO EXCEPTION RAISED
+
+      A misspelled KNOWN team does not error. It falls through
+      .fillna(NEUTRAL_STRENGTH) and is silently scored as an exactly average
+      side. Over a season that would corrupt the holdout invisibly and the
+      corruption would be indistinguishable from a genuine result.
+
+P4.2  THE SEVENTEEN CONTINUING SIDES, SPELLED AS THE FROZEN DATASET SPELLS
+      THEM. These are verified against outputs/phase1_matches.csv and are
+      the names the estimator will actually hold:
+
+          Arsenal              Aston Villa          Bournemouth
+          Brentford            Brighton             Chelsea
+          Crystal Palace       Everton              Fulham
+          Leeds United         Liverpool            Manchester City
+          Manchester Utd       Newcastle            Nottingham
+          Sunderland           Tottenham
+
+      The dataset's vocabulary is its own and is NOT tidied: "Manchester
+      Utd" not "Manchester United"; "Nottingham" not "Nottingham Forest";
+      "Newcastle" not "Newcastle United"; "Brighton", "Bournemouth",
+      "Tottenham", "Wolves" all short. H2.12 makes these specification.
+
+P4.3  THE THREE PROMOTED SIDES:
+
+          Ipswich Town     present in the dataset, 2024-25 only
+          Coventry City    NO history in the five-season dataset
+          Hull City        NO history in the five-season dataset
+
+      "Ipswich Town" is the dataset's own spelling and needs no ruling.
+      "Coventry City" and "Hull City" are spelled as the published fixture
+      list spells them, because the dataset has no precedent to defer to.
+
+P4.4  THE TWENTY-NAME VOCABULARY IS THEREFORE P4.2 + P4.3. West Ham,
+      Burnley and Wolves were relegated from 2025-26 and are NOT in it,
+      though they remain in the historical dataset and continue to
+      contribute to warming windows through the decay.
+
+P4.5  THE ASSERTION THE SCORING RUN MUST MAKE. Every team name appearing in
+      2026-27 data must be in the twenty above. A name that is not must
+      RAISE AND STOP THE RUN. It must not be repaired, mapped, normalised or
+      guessed at.
+
+      IF THE 2026-27 SOURCE SPELLS COVENTRY OR HULL DIFFERENTLY - "Coventry"
+      or "Hull", say - THE RUN FAILS, AND THAT IS THE CORRECT BEHAVIOUR. The
+      fix is a dated amendment to this file recording the source's actual
+      spelling, made deliberately, and NOT a silent normalisation inside a
+      loader. A loader that repairs names is a loader that can repair the
+      wrong one.
+
+P4.6  THE ZERO-HISTORY SET, for H6.6's split:
+
+          Coventry City, Hull City
+
+      Ipswich Town is NOT in it - it has 2024-25, which is thin rather than
+      absent. The 107-day half-life renders one old season nearly weightless
+      by September 2026, but "nearly weightless" and "absent" are different
+      claims and only the second one belongs in a set called zero-history.
+
+-------------------------------------------------------------------------------
+5.  THE EXPECTED COUNTS
+-------------------------------------------------------------------------------
+
+P5.1  EXPECTED SCORED MATCHES: 360.
+
+          full season                                        380
+          matchweeks 1 and 2, played 21-31 August, warming    -20
+          ----------------------------------------------------------
+          expected scored                                    360
+
+P5.2  ASSERTED, NOT ASSUMED, per H3.3. The scoring run must report the
+      actual count and state the difference from 360, and must assert that
+      every EXCLUDED match has a date strictly before 2026-09-04. A count
+      that differs is reported, not absorbed.
+
+P5.3  ZERO-HISTORY EXPOSURE, from the fixture arithmetic:
+
+          matches involving Coventry City or Hull City, full season
+              38 + 38 - 2 (they meet twice)              =  74
+          as a share of 380                              =  19.5%
+          scaled to the 360 scored                       ~  70
+
+      These are DOCUMENTATION, not targets. H4.4 forbids adjusting the model
+      because of them and H4.5 records that promotion churn and development
+      optimism are not separable by this design - which is precisely why
+      H6.6 requires the split reported.
+
+===============================================================================
+END
+===============================================================================

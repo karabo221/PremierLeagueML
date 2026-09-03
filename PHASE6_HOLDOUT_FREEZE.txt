@@ -1,0 +1,397 @@
+===============================================================================
+PHASE 6 - THE 2026-27 HOLDOUT FREEZE
+WRITTEN BEFORE ANY 2026-27 MATCH IS SCORED
+===============================================================================
+
+STATUS      Declared 2026-09-03. AWAITING SIGN-OFF. Nothing in this file has
+            been run against a 2026-27 result and no 2026-27 result has been
+            looked at.
+
+WHY IT EXISTS, AND WHY IT IS URGENT
+
+    Every figure this project has produced is a WALK-FORWARD DEVELOPMENT
+    ESTIMATE. 2025-26 was scored during Phase 3's lambda sweep and its B0-B6
+    ablation, so every number is optimistic by an unknown margin. The market
+    benchmark it is measured against is not.
+
+    A genuine holdout was supposed to come from a pre-season freeze. The
+    2026-27 season started 21 August 2026, a week later than usual because of
+    the World Cup, and that freeze was missed. This is the replacement:
+    freeze now, declare a cutoff date, score forward from it.
+
+    Matchweeks 1 and 2 are played, about 20 matches. Those matches WARM THE
+    RATING STATE and are NOT SCORED. About 360 remain, within 5% of a full
+    season.
+
+    EVERY WEEK OF DELAY COSTS ABOUT TEN MATCHES OFF THE HOLDOUT. That is why
+    this file is written before the twenty-match persistence question, before
+    any xG decision, and before anything else.
+
+-------------------------------------------------------------------------------
+1.  THE MODEL.  EXACTLY ONE.
+-------------------------------------------------------------------------------
+
+H1.1  DIXON-COLES WALK-FORWARD IS THE FROZEN MODEL.
+
+          scripts/phase2_poisson_dixon_coles.py
+          variant  dc_walkforward   (PRIMARY_VARIANT)
+
+H1.2  WHY, AND THE ARGUMENT IS NOT "IT HAS THE BEST NUMBER".
+
+      E1a's SoT ratings have a LOWER point estimate - 0.98124 against DC's
+      0.99036 - and it would be easy to freeze E1a on that. It is the wrong
+      choice, for the reason the brief gives and one more.
+
+      E1a - Dixon-Coles = -0.00912, 95% CI [-0.02177, +0.00391], NOT
+      SIGNIFICANT. Freezing E1a would be SELECTING ON AN UNRESOLVED
+      DIFFERENCE - picking the arm that happened to land lower on the very
+      1,520 matches whose optimism this holdout exists to measure. That is
+      the contaminated move in its purest form: the holdout would be
+      measuring a choice the holdout was supposed to test.
+
+      THE SECOND REASON IS DEPENDENCE. E1a needs shot-on-target counts for
+      every match, from football-data.co.uk, in-season, on a weekly cadence.
+      Dixon-Coles needs the scoreline. A holdout that can fail because a
+      shot column arrives late or changes definition mid-season is a worse
+      instrument than one that cannot, and E2.2 already recorded a season
+      (2023-24) sitting high on every shot column at once.
+
+      THE THIRD IS THAT DC IS THE PROJECT'S OWN REFERENCE. Every ladder rung
+      from D0 to D4, every Phase 5 rung, and the tier-2 recency
+      decomposition are all reported against it. A holdout on DC prices the
+      optimism of the whole reported set, not of one arm.
+
+H1.3  WHAT IS NOT FROZEN, STATED SO IT CANNOT BE ADDED LATER. No ladder
+      rung, no penalised logistic, no ensemble, no blend of DC with Elo or
+      with the market. ONE MODEL. If a second is wanted, it needed declaring
+      here and it was not.
+
+H1.4  D0 AND THE MARKET ARE SCORED ALONGSIDE AS BENCHMARKS, not as
+      candidates. Section 6. Odds never enter a design matrix or a rating
+      window; that prohibition is unchanged and unconditional.
+
+-------------------------------------------------------------------------------
+2.  EVERYTHING THAT MAKES IT REPRODUCIBLE
+-------------------------------------------------------------------------------
+
+      Anything a future session could tune is a NUMBER here. If a value is
+      not in this section it may not be chosen later; it must be read from
+      the named source file at the named symbol.
+
+H2.1  THE RATING AND ITS CONSTANTS, all from
+      scripts/phase2_poisson_dixon_coles.py, "THE LOCKED SPECIFICATION":
+
+          MAX_GOALS                     25
+          TIME_DECAY_HALF_LIFE_DAYS     107.0
+          RHO_LOWER                     -0.5
+          RHO_UPPER                     +0.5
+          RHO_GRID_POINTS               60
+          RHO_GOLDEN_ITERATIONS         60
+          SCALING_MAX_ITERATIONS        200
+          SCALING_TOLERANCE             1e-10
+          NEUTRAL_STRENGTH              1.0
+          MIN_RATE                      1e-6
+
+      The half-life is ln(2)/0.0065 = 106.6 days from Dixon & Coles (1997),
+      rounded to 107.0. IT WAS TAKEN FROM THE LITERATURE AND HAS NEVER BEEN
+      FITTED IN THIS PROJECT. It is not fitted now and may not be.
+
+H2.2  THE ESTIMATOR. Multiplicative iterative scaling - the closed-form
+      coordinate solution of the weighted Poisson likelihood. Deterministic,
+      no solver dependency, no random seed.
+
+      INITIALISATION: attack = 1.0 for every team, defence = 1.0 for every
+      team, home_multiplier = 1.0. Not a tuned start; the objective is
+      strictly convex in the transformed parameters and the fixed point is
+      unique.
+
+      SCALE PINNING: attack has a free multiplicative scale (A -> cA,
+      D -> D/c leaves both rates unchanged). It is pinned by setting the
+      GEOMETRIC MEAN of attack to 1 at the end of every iteration.
+
+      CONVERGENCE: max absolute change across the concatenated
+      (attack, defence, home_multiplier) vector below SCALING_TOLERANCE, or
+      SCALING_MAX_ITERATIONS reached.
+
+      DEGENERATE BOUNDARY MLE: a team that scored no goals in the window
+      gets attack exactly 0, one that conceded none gets defence exactly 0;
+      both are replaced by NEUTRAL_STRENGTH. Unchanged.
+
+H2.3  THE TIME DECAY. weight = 0.5 ** (age_in_days / 107.0), where age is
+      measured from the CUTOFF, not from the season start.
+
+H2.4  REFIT CADENCE: ONE REFIT PER DISTINCT MATCH DATE. For each date on
+      which at least one scored fixture is played, the model is refit on the
+      window and every fixture on that date is predicted from that one fit.
+
+H2.5  THE WINDOW RULE: STRICT. date < cutoff. A match played on the same day
+      as the match being predicted is NEVER in the window. This is the rule
+      the frozen folds use and it is not relaxed for a live season.
+
+H2.6  THE WINDOW'S SCOPE, AND THIS IS THE ONE GENUINELY NEW DECISION.
+
+      The frozen folds scoped each window to (train_seasons + test_season).
+      For the holdout the equivalent is ALL FIVE DATASET SEASONS PLUS
+      2026-27 TO DATE:
+
+          2021-22, 2022-23, 2023-24, 2024-25, 2025-26, and every 2026-27
+          match with date strictly before the cutoff
+
+      DECLARED NOW because it is the only structural choice the holdout
+      forces, and it must not be picked later. Note that the 107-day
+      half-life makes seasons before 2025-26 nearly weightless in practice -
+      a match two years old carries 0.5 ** (730/107) = 0.9% of a match on
+      the cutoff - so this choice is declared for reproducibility rather
+      than because it is expected to matter.
+
+H2.7  RHO. Fitted per window by deterministic bracketed golden section on
+      the profile likelihood, on ACTUAL GOALS, over matches where both sides
+      scored at most one. Bracket and iteration counts as H2.1. Where no
+      such match exists in the window, rho = 0.0.
+
+H2.8  FROM RATES TO PROBABILITIES. Score matrix to MAX_GOALS = 25 with the
+      Dixon-Coles tau correction on the four cells 0-0, 1-0, 0-1, 1-1;
+      P(H) = lower triangle, P(D) = trace, P(A) = upper triangle, each
+      divided by the matrix mass. outcome_probabilities(), unchanged.
+
+      NO TRANSFORMATION IS APPLIED AFTERWARDS. No shrinkage toward the base
+      rate, no calibration, no temperature, no clipping beyond what the
+      score matrix produces. A calibrated holdout is not a holdout.
+
+H2.9  THE METRICS - the full Phase 0 set, in this order:
+
+          accuracy, balanced_accuracy, macro_f1, log_loss, brier_score, rps
+
+      LOG LOSS AND RPS ARE PRIMARY. RPS must agree in sign with log loss on
+      any comparison or that comparison is INCONCLUSIVE.
+
+H2.10 THE MARKET BENCHMARK. Bet365 closing prices, PROPORTIONAL de-vig:
+
+          p_i = (1/o_i) / sum_j (1/o_j)
+
+      That is B4.1 of PHASE5_MARKET_PREDECLARATION.txt, the declared
+      primary, unchanged. Shin remains the declared sensitivity and is
+      reported alongside. No blending of bookmakers, no per-season
+      recalibration.
+
+H2.11 THE PAIRED BOOTSTRAP. 10,000 draws, seed 20260901, per-match paired,
+      95% percentile intervals. Every delta reported carries one.
+
+H2.12 TEAM NAMES ARE PART OF THE SPECIFICATION, AND THIS IS NOT
+      PEDANTRY. The dataset's vocabulary is its own: "Manchester Utd", not
+      "Man United"; "Nottingham", not "Nott'm Forest"; "Ipswich Town", not
+      "Ipswich". A name that fails to match does not raise - it makes a
+      known team look like a team with no history and silently hands it
+      NEUTRAL_STRENGTH (section 4). The scoring run MUST assert that every
+      2026-27 team name either matches a dataset name exactly or is one of
+      the three declared promoted sides, and FAIL otherwise.
+
+-------------------------------------------------------------------------------
+3.  THE CUTOFF DATE
+-------------------------------------------------------------------------------
+
+H3.1  THE RULE: the cutoff is THE FIRST 2026-27 FIXTURE DATE ON OR AFTER THE
+      DATE THIS FILE IS COMMITTED. Every 2026-27 match with a date strictly
+      earlier than the cutoff WARMS THE STATE and is NOT SCORED. Every match
+      on or after the cutoff is scored.
+
+H3.2  THE DATE IS PINNED AT SIGN-OFF, NOT BY THIS FILE, and the reason is
+      stated rather than glossed: THE 2026-27 FIXTURE LIST IS NOT IN THIS
+      REPOSITORY. data/raw holds 2021-22 to 2025-26 only. Writing a date
+      here from memory would be exactly the class of unverifiable claim this
+      project has already been bitten by three times.
+
+      So the rule above is the declaration, and the SIGN-OFF COMMIT PINS THE
+      DATE by recording it in this file's amendment block below, from the
+      published fixture list, before any 2026-27 result is scored.
+
+      EXPECTED, from the calendar as described: matchweeks 1 and 2 are
+      complete as of 2026-09-03 and an international break follows, so the
+      cutoff is expected to be the first matchweek-3 date, around 12
+      September 2026. IF THE ACTUAL FIXTURE LIST DISAGREES, THE RULE WINS,
+      NOT THIS EXPECTATION.
+
+H3.3  THE EXPECTED SCORED-MATCH COUNT.
+
+          full season                        380
+          matchweeks 1-2, warming only       -20
+          -------------------------------------
+          EXPECTED SCORED                    360
+
+      360 / 380 = 94.7% of a season, within the 5% the brief allows.
+
+      THE COUNT IS ASSERTED, NOT ASSUMED. The scoring run must report the
+      actual number of scored matches and state the difference from 360.
+      Postponements, and any matchweek-2 fixture moved beyond the cutoff,
+      change it, and a changed count is reported rather than absorbed.
+
+H3.4  NO MATCH IS EVER MOVED ACROSS THE CUTOFF. A fixture postponed from
+      before the cutoff to after it is scored, because the cutoff is a DATE
+      and the rule is about dates played, not about matchweek labels. Stated
+      now so it cannot be decided later in whichever direction helps.
+
+-------------------------------------------------------------------------------
+4.  THE PROMOTED-TEAM EXPOSURE
+-------------------------------------------------------------------------------
+
+H4.1  WHAT THE DATASET ACTUALLY CONTAINS, checked rather than assumed:
+
+          Coventry        NOT IN THE DATASET under any spelling tried
+          Hull            NOT IN THE DATASET under any spelling tried
+          Ipswich Town    PRESENT, 2024-25 ONLY - one season, 38 matches
+
+      So TWO of the three promoted sides have ZERO Premier League history in
+      the five-season window, and the third has one season which the 107-day
+      half-life renders nearly weightless by September 2026.
+
+H4.2  THE EXPOSURE, as arithmetic rather than an impression:
+
+          matches involving Coventry or Hull, full season
+              38 + 38 - 2 (they meet twice)              =  74
+          matches involving any of the three promoted
+              38 x 3 - 6 (three pairs, twice each)       = 108
+
+          74 / 380  = 19.5% of a season involves a ZERO-HISTORY side
+          108 / 380 = 28.4% involves a promoted side
+
+      Scaled to the 360 scored, roughly 70 and 102 respectively. THESE ARE
+      ESTIMATES FROM THE FIXTURE ARITHMETIC. The scoring run reports the
+      actual counts and a metric breakdown split by them.
+
+H4.3  THE INITIALISATION APPLIES WITHOUT AMENDMENT, and here is exactly what
+      it does. A team absent from the fitting window is absent from the
+      estimator's team list entirely. At prediction, match_rates() maps the
+      team name to the fitted attack and defence and calls
+      .fillna(NEUTRAL_STRENGTH):
+
+          attack  = 1.0
+          defence = 1.0
+
+      A zero-history side is therefore predicted as an EXACTLY AVERAGE team,
+      with the home multiplier and rho still doing their work. Elo v1's
+      equivalent - INITIAL_RATING = 1500.0 flat, K_FACTOR = 20.0,
+      HOME_ADVANTAGE = 60.0 - is recorded here for completeness; Elo is not
+      the frozen model and is not scored.
+
+H4.4  THIS IS DECLARED NOW AND MAY NOT BE ADJUSTED MID-SEASON. If Coventry
+      and Hull are, say, relegation-bound and the flat prior costs the model
+      badly through September, THAT IS A RESULT AND NOT A DEFECT. Every
+      development figure this holdout is measured against was produced under
+      the same rule, so changing it would break the comparison the holdout
+      exists to make.
+
+H4.5  WHAT THIS EXPOSURE MEANS FOR THE READ, STATED IN ADVANCE. 19.5% of
+      matches carrying a flat-prior side is HIGHER than the development
+      folds typically saw, so a holdout figure worse than 0.99036 is
+      partially explained by promotion churn rather than by development
+      optimism, and the two are NOT SEPARABLE by this design. The split in
+      H4.2 is reported precisely so the size of that confound is visible
+      rather than argued about afterwards.
+
+-------------------------------------------------------------------------------
+5.  THE PROHIBITION
+-------------------------------------------------------------------------------
+
+H5.1  NO FEATURE, HYPERPARAMETER, RATING, INITIALISATION, WINDOW RULE,
+      TRANSFORMATION OR EVALUATION DECISION MAY BE CHANGED BECAUSE OF
+      ANYTHING OBSERVED IN 2026-27.
+
+      Not the half-life. Not MAX_GOALS. Not the rho bracket. Not the
+      promoted-team prior. Not the metric set. Not the de-vig. Not the model
+      choice in section 1.
+
+H5.2  THE PROHIBITION COVERS LOOKING, NOT ONLY CHANGING. Scoring is run
+      ONCE, at season end (section 6). Interim scoring is not forbidden
+      because it is dangerous in itself but because a number seen in
+      November cannot be unseen in December, and every decision after it is
+      taken by someone who has seen it.
+
+H5.3  IF A DEFECT IS FOUND THAT FORCES A CHANGE, it is disclosed as a dated
+      amendment in this file, stating what was changed, why, and what had
+      already been observed at the time. AND THE HOLDOUT IS REPORTED AS
+      COMPROMISED - explicitly, in REPORTS.md, in the same entry as any
+      figure it produces.
+
+      A compromised holdout is still worth reporting. A compromised holdout
+      reported as a clean one is worth less than nothing, because it would
+      retire the question while getting it wrong.
+
+H5.4  THE ONE THING THAT IS NOT A CHANGE: fixing a defect that would prevent
+      the declared model from running at all - a crash, a join that drops
+      rows, a name that fails to match under H2.12. Repairing the
+      implementation so that it does what this file already says is not
+      amending what this file says. Any such repair is still logged with its
+      date, and the distinction is argued in the log rather than assumed.
+
+-------------------------------------------------------------------------------
+6.  THE SCORING PROCEDURE
+-------------------------------------------------------------------------------
+
+H6.1  RUN ONCE, AT SEASON END, after the final 2026-27 fixture is played.
+
+H6.2  WHAT IS SCORED, on the scored matches only:
+
+      (a) Dixon-Coles walk-forward, the frozen model, full Phase 0 metric set
+      (b) D0, the base rate, computed on the SAME rule Phase 2 used
+      (c) the market, Bet365 closing, proportional de-vig, on the same
+          matches, with Shin reported as the declared sensitivity
+
+H6.3  THE DELTAS, paired bootstrap, 10,000 draws, seed 20260901:
+
+          DC - market       the gap this project has been competing with
+          DC - D0           that the model beats the base rate out of sample
+          market - D0       how hard this particular season was to predict
+
+H6.4  AGAINST THE DEVELOPMENT ESTIMATES. The 1,520-match figures this
+      holdout is pricing, recorded here so they cannot be misremembered:
+
+          model             acc     bal_acc  macro_f1  log_loss  brier    rps
+          ---------------------------------------------------------------------
+          Dixon-Coles      0.5263   0.4511   0.3917    0.99036  0.58969  0.20350
+          market           0.5513   0.4724   0.4095    0.96057  0.57019  0.19469
+          D0 base rate     0.4447   0.3333   0.2052    1.06889  0.64667  0.23185
+
+          DC - market, development                    +0.02979
+
+H6.5  THE QUESTION THE HOLDOUT ANSWERS: did the development estimates hold?
+      Reported as the difference between the holdout figure and the
+      development figure for each of DC, market and D0, WITH THE MARKET AS
+      THE CONTROL. If DC degrades and the market degrades by a similar
+      amount, the season was harder and the development estimate largely
+      held. If DC degrades and the market does not, the development estimate
+      was optimistic and the size of the optimism is the difference.
+
+      THAT CONTROL IS THE POINT OF SCORING THE MARKET ON THE SAME MATCHES,
+      and it is why the market is scored even though its verdict is already
+      known from Phase 5B.
+
+H6.6  ALSO REPORTED, because H4.5 says the confound must be visible: every
+      metric split by whether the match involved a zero-history side.
+
+H6.7  WHAT THE HOLDOUT STILL CANNOT ESTABLISH. One season, ~360 matches,
+      resolution on a log-loss delta of roughly 0.01 - WORSE than the 0.005
+      the 1,520 development matches gave. It cannot resolve a small
+      optimism. It can resolve a large one, and it is the only clean
+      measurement this project will ever have of that.
+
+      It also cannot generalise beyond 2026-27. A single season carries its
+      own promotion churn, its own injury luck and its own scoring
+      environment, and a holdout on one season prices the development
+      estimate against THAT season, not against football.
+
+-------------------------------------------------------------------------------
+7.  AMENDMENTS
+-------------------------------------------------------------------------------
+
+      None. The cutoff date under H3.2 is pinned here at sign-off, from the
+      published fixture list, before any 2026-27 result is scored.
+
+          cutoff date pinned:  __________  (to be filled at sign-off)
+          pinned by commit:    __________
+
+      Any later entry states the date, what changed, why, and what had
+      already been observed - and triggers H5.3.
+
+===============================================================================
+END
+===============================================================================

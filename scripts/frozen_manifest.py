@@ -65,6 +65,18 @@ FROZEN_PATTERNS = [
     # the only thing that makes it a pre-declaration, and a hash is what makes
     # the ordering checkable.
     "PHASE5_E1C_FINISHING_PREDECLARATION.txt",
+    # PHASE 6. The holdout freeze is the one declaration in this project
+    # whose value depends entirely on predating the data it will be scored
+    # against. Its hash is what makes "written before any 2026-27 match was
+    # scored" checkable rather than asserted.
+    "PHASE6_HOLDOUT_FREEZE.txt",
+    # The cutoff pin. It exists so the freeze file need not change: it cites
+    # the freeze hash, so it records not only WHAT the cutoff is but WHICH
+    # freeze text it was pinned against. It also carries the twenty-name
+    # 2026-27 vocabulary the scoring run asserts on, so a name quietly added
+    # to that list would move this hash.
+    "PHASE6_CUTOFF_PIN.txt",
+    "outputs/phase6_freeze_validation.csv",
     # THE ODDS SOURCE ITSELF. data/raw is immutable by project rule, but that
     # rule is prose and this is the first source that arrived over the network
     # rather than on the stick. A re-download that moves a hash is a NEW
