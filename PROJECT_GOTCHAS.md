@@ -334,6 +334,67 @@ that reaches the harness.
 
 ---
 
+## 8b. A CLONE OF THIS REPOSITORY DISAGREED WITH THE DISK, AND THE FREEZE LOST ITS HASH
+
+Found 2026-09-03, immediately after the first push, by cloning what had just
+been pushed and hashing it.
+
+```
+PHASE6_HOLDOUT_FREEZE.txt   in the E: working tree    b36befd3...248f6
+PHASE6_HOLDOUT_FREEZE.txt   in a fresh clone          8373973b...
+```
+
+**Cause: `core.autocrlf=true` and no `.gitattributes`.** Git stores LF and
+converts to CRLF on checkout. Nothing on the machine the files were written on
+ever showed it, because that working tree was never checked out again.
+
+**What it would have cost.** On the D: laptop, or any clone:
+
+* `frozen_manifest.py --verify` fails on every `.txt` and `.md`
+* the freeze validator's V1a fails
+* `phase6_score_holdout.py` **refuses to run**, because its S0a assertion does
+  not match — and it is designed to refuse, and would have been right to
+
+The freeze's entire evidential value is its hash. A hash that holds in one
+working tree only is not evidence. **Pushing did not make the evidence
+portable; it made a second copy that disagreed with the first, silently.**
+
+**The fix is `.gitattributes`, and it is not optional.** Documents, code and
+the report are `-text` (no conversion, ever). The CSV artefacts and the two
+frozen JSON specs are `text eol=crlf`, because that is how pandas wrote them
+on Windows and how the manifest hashed them — pinned explicitly rather than
+left to depend on each machine's `core.autocrlf`.
+
+**Two more defects surfaced only in the SECOND clone**, which is the point:
+
+* `*.json` as `-text` was wrong — those two files are CRLF on disk, so a clone
+  reported both as MOVED
+* `outputs/phase2_elo_metrics_full.csv` was **listed in the manifest and never
+  tracked by git at all**, because `.gitignore`'s blanket `outputs/*` had no
+  exception for it. The manifest called it frozen; it existed on one laptop.
+  Same defect as DS7c: what the manifest freezes must be what `.gitignore`
+  lets through, in both directions.
+
+### How to check this, and it is the only way
+
+Reading the diff cannot show it — the diff is exactly what does not change.
+
+```bash
+git clone file://E:/PremierLeagueML /tmp/clonetest
+cd /tmp/clonetest
+python -B scripts/frozen_manifest.py --verify        # must PASS *here*
+python -B scripts/phase1_match_foundation.py          # rebuild the spine
+python -B scripts/phase6_freeze_validator.py          # must PASS *here*
+```
+
+Verified 2026-09-03: manifest 121 files PASS in the clone, the rebuilt
+`phase1_matches.csv` is byte-identical to E:'s, and the freeze validator
+returns 35 checks / 0 failures inside the clone. `outputs/phase1_matches.csv`
+is not tracked and does not need to be — it is regenerated from `data/raw`,
+which is — so a fresh clone runs Phase 1 first.
+
+---
+
 ## 9. Frozen output hashes are MACHINE-DEPENDENT. The manifest FAIL is not always drift
 
 **Symptom:** re-running an instrument that changes nothing, on a machine that has
