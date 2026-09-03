@@ -51,6 +51,8 @@ OUTPUTS_DIR = PROJECT_ROOT / "outputs"
 FREEZE = PROJECT_ROOT / "PHASE6_HOLDOUT_FREEZE.txt"
 MANIFEST = PROJECT_ROOT / "FROZEN_MANIFEST.txt"
 MATCHES_CSV = OUTPUTS_DIR / "phase1_matches.csv"
+PIN = PROJECT_ROOT / "PHASE6_CUTOFF_PIN.txt"
+SCORING_AUDIT = OUTPUTS_DIR / "phase6_scoring_audit.csv"
 
 AUDIT_OUTPUT = OUTPUTS_DIR / "phase6_freeze_validation.csv"
 
@@ -134,7 +136,19 @@ def main():
         "FROZEN_PATTERNS is what sweeps it into the manifest; the manifest "
         "entry is what detects a later edit. Both are needed")
 
-    print("  sha256 {}".format(actual_sha))
+    pin_text = PIN.read_text(encoding="utf-8") if PIN.exists() else ""
+    cites = FREEZE_SHA in pin_text
+
+    audit.record(
+        "V1d", "PHASE6_CUTOFF_PIN.txt exists and cites THIS freeze",
+        "cites {}...".format(FREEZE_SHA[:12]),
+        "cites it" if cites else "ABSENT OR CITES ANOTHER", cites,
+        "the pin carries the cutoff and the twenty-name vocabulary. Its whole "
+        "design is to record WHICH freeze text it was pinned against, and "
+        "this is that claim checked rather than trusted")
+
+    print("  freeze sha256 {}".format(actual_sha))
+    print("  pin    sha256 {}".format(sha256_of(PIN) if PIN.exists() else "-"))
     print("  lines  {}".format(lines))
 
     # ============================================================
@@ -384,31 +398,58 @@ def main():
         "IMPLEMENTED ANYWHERE YET - see section 7")
 
     # ============================================================
-    banner("7. REQUIREMENTS OUTSTANDING - THE SCORING RUN DOES NOT EXIST")
+    banner("7. THE FREEZE'S REQUIREMENTS ON THE SCORING RUN")
 
-    scoring = sorted(PROJECT_ROOT.glob("scripts/phase6_*score*.py"))
+    # These were INFO - "outstanding" - while no scoring instrument existed.
+    # It does now, and it was validated on the development seasons, so each
+    # requirement is checked against ITS OWN AUDIT rather than against the
+    # mere presence of a file. Code existing is not code working.
+
+    scoring = PROJECT_ROOT / "scripts" / "phase6_score_holdout.py"
+
+    audit.record(
+        "V7a", "a Phase 6 scoring instrument is on disk",
+        "present", "present" if scoring.exists() else "ABSENT",
+        scoring.exists(),
+        "built in September 2026 rather than May 2027 so that it could be "
+        "validated where the answers are frozen. Code that runs once against "
+        "a holdout with nothing to check it against is untested code")
+
+    dry = {}
+
+    if SCORING_AUDIT.exists():
+        table = pd.read_csv(SCORING_AUDIT)
+        dry = dict(zip(table["test_id"], table["status"]))
+
+    for check, requirement, source, detail in (
+            ("V7b", "H2.12 - a team name outside the declared vocabulary "
+                    "RAISES", "S5",
+             "verified by the scoring instrument's own dry run, which poisons "
+             "'Manchester Utd' to 'Man United' against a control on the same "
+             "frame that passes, and asserts EXACTLY ONE name is flagged"),
+            ("V7c", "H3.3 - the scored-match count is asserted", "S2",
+             "exercised in the dry run as the 380-match assertion on 2025-26; "
+             "the holdout path asserts against the pin's expected 360"),
+            ("V7e", "H3.1 - the pinned cutoff is READ FROM THE PIN and "
+                    "applied", "S0b",
+             "the instrument parses PHASE6_CUTOFF_PIN.txt and checks the pin "
+             "cites this exact freeze. Nothing about the cutoff is "
+             "hard-coded")):
+
+        status = dry.get(source)
+
+        audit.record(
+            check, requirement, "PASS in the scoring dry run",
+            "{} = {}".format(source, status or "NOT RUN"), status == "PASS",
+            detail)
 
     audit.measure(
-        "V7a", "no Phase 6 scoring instrument is on disk",
-        "{} found".format(len(scoring)),
-        "H6.1 runs ONCE at season end and that code is deliberately not "
-        "written yet. Recorded as INFO because a requirement on code that "
-        "does not exist has not been met by anything - it is outstanding, "
-        "not passing and not failing")
-
-    for check, requirement in (
-            ("V7b", "H2.12 - assert every 2026-27 team name matches the "
-                    "dataset exactly or is a declared promoted side, and FAIL "
-                    "otherwise"),
-            ("V7c", "H3.3 - assert the ACTUAL scored-match count and state "
-                    "its difference from the expected 360"),
-            ("V7d", "H6.6 - report every metric split by whether the match "
-                    "involved a zero-history side"),
-            ("V7e", "H3.1 - apply the pinned cutoff date, scoring only "
-                    "matches on or after it")):
-        audit.measure(check, requirement, "OUTSTANDING",
-                      "declared in the freeze, to be implemented by the "
-                      "scoring instrument at season end")
+        "V7d", "H6.6 - metrics split by zero-history involvement",
+        "IMPLEMENTED BUT UNEXERCISED",
+        "Coventry City and Hull City appear in no dataset season, so the "
+        "split has no rows to separate until 2026-27 arrives. The code path "
+        "is written and is honestly untested. It stays INFO rather than "
+        "being counted as a pass, because running is not the same as working")
 
     # ============================================================
     banner("8. H3 - THE CUTOFF, AND WHAT IS MISSING")
@@ -426,12 +467,22 @@ def main():
     pinned = re.search(r"cutoff date pinned:\s*(\S+)", text)
     placeholder = pinned and set(pinned.group(1)) <= set("_")
 
-    audit.measure(
-        "V8b", "H7's cutoff-date slot",
-        "UNPINNED (placeholder)" if placeholder else (
-            pinned.group(1) if pinned else "NOT FOUND"),
-        "the freeze is signed off with the RULE declared; the DATE is pinned "
-        "from the published fixture list before any 2026-27 match is scored")
+    pin_date = re.search(r"THE PINNED CUTOFF IS.{0,60}?(\d{4}-\d{2}-\d{2})",
+                         pin_text, re.DOTALL)
+
+    audit.record(
+        "V8b", "the cutoff is pinned - in the PIN, not in the freeze's own H7 "
+               "slot, which stays a placeholder ON PURPOSE",
+        "H7 placeholder + a dated pin",
+        "H7 {} / pin {}".format(
+            "placeholder" if placeholder else "FILLED",
+            pin_date.group(1) if pin_date else "NOT FOUND"),
+        bool(placeholder) and bool(pin_date),
+        "H3.2 says to fill H7. Doing so would move this file's sha256 off the "
+        "hash that makes 'written before the data' checkable, so the date is "
+        "recorded in PHASE6_CUTOFF_PIN.txt with the deviation logged and "
+        "dated there. BOTH halves are asserted: H7 must still be blank AND "
+        "the pin must carry a date")
 
     # ============================================================
     banner("9. WRITING")
