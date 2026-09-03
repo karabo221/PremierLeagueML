@@ -65,6 +65,11 @@ outputs/*
 # Phase 2 reference values carried forward into Phase 4
 !outputs/phase2_base_rate_fold_summary.csv
 !outputs/phase2_elo_fold_summary.csv
+# Elo v1's per-match probabilities, which its RPS is derived from. FROZEN
+# MANIFEST LISTED IT AND GIT NEVER CARRIED IT - a clone on 2026-09-03 reported
+# it MISSING while the manifest called it frozen. A frozen artefact that
+# exists on one laptop only is not frozen, it is local.
+!outputs/phase2_elo_metrics_full.csv
 !outputs/phase2_poisson_dc_fold_summary.csv
 
 # Phase 3: THE FEATURE FILE every rung is built from, and the inventory that

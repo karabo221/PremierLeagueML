@@ -31,14 +31,19 @@
 *.txt   -text
 *.md    -text
 *.py    -text
-*.json  -text
 
-# Audit and result artefacts. Written CRLF by pandas on Windows and hashed
-# that way in FROZEN_MANIFEST.txt, so they are checked out CRLF everywhere.
+# Audit and result artefacts, and the two frozen JSON specs. Written CRLF on
+# Windows and hashed that way in FROZEN_MANIFEST.txt, so they are checked out
+# CRLF everywhere rather than depending on each machine's core.autocrlf.
+#
+# The first version of this file had *.json as -text and a clone came back
+# with two MOVED hashes. Verified by cloning, not by reading.
 *.csv   text eol=crlf
+*.json  text eol=crlf
 
 # Sources.
 *.xls   binary
 
-# This file too.
+# These two as well.
 .gitattributes -text
+.gitignore -text
