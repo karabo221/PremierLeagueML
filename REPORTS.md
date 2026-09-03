@@ -9,6 +9,222 @@ and the same 1,520 outer-test matches unless it says otherwise.
 
 ---
 
+## Phase 5 — Instrument E1c: the isolated finishing residual, and where the market gap lives
+
+*Run 2026-09-03. `scripts/phase5_e1c_finishing.py`, **59 checks, 56 PASS, 2 INFO,
+1 deliberate FAIL**. Pre-declaration `PHASE5_E1C_FINISHING_PREDECLARATION.txt`,
+sha256 `416a6816…0ff2`, signed off unamended before the instrument was written
+and before the gap diagnostic below was run. Alongside it, an exploratory
+diagnostic with no gate: `scripts/phase5_gap_diagnostic.py`.*
+
+### The rung, and what it settles
+
+E1b's declared column was SoT differential minus goal differential. Since goals
+run at ≈0.327 per shot on target, its expectation is ≈0.673 × SoT differential —
+**substantially a restatement of shot volume**, which the E1 report said in
+advance was its limitation. E1c subtracts the conversion instead of unity:
+`goal_diff − c·SoT_diff`, whose expectation is zero by construction.
+
+**It worked, and F7 measures how well.** Correlation with the same five-match
+SoT differential:
+
+| column | r | r² |
+|---|---|---|
+| E1b `rel_sot_residual_diff` | +0.9031 | **0.8155** |
+| E1c `rel_finishing_diff` | +0.0876 | **0.0077** |
+
+E1b's column was 82% shot differential. E1c's is 0.8%.
+
+**E1c − D2 rescaled = −0.00072 [−0.00229, +0.00084], not significant.**
+Per fold: +0.00086, +0.00011, −0.00152, −0.00233.
+
+| model | log loss | RPS | Brier |
+|---|---|---|---|
+| market (Bet365 closing) | 0.96057 | 0.19469 | 0.5702 |
+| E1a — SoT ratings | 0.98124 | 0.20117 | 0.5834 |
+| Dixon-Coles | 0.99036 | 0.20350 | 0.5897 |
+| E1b | 0.99758 | 0.20568 | 0.5950 |
+| Elo v1 | 0.99943 | 0.20667 | 0.5958 |
+| **E1c** | **0.99956** | **0.20637** | 0.5964 |
+| D2 rescaled | 1.00028 | 0.20646 | 0.5970 |
+
+| comparison | Δ log loss | 95% CI | Δ RPS | verdict |
+|---|---|---|---|---|
+| **E1c − D2rescaled** | **−0.00072** | **[−0.00229, +0.00084]** | −0.00009 | **not significant** |
+| E1c − E1b | +0.00198 | [+0.00007, +0.00389] | +0.00069 | significant |
+| E1c − E1a | +0.01832 | [+0.00552, +0.03111] | +0.00520 | significant |
+| E1c − Dixon-Coles | +0.00920 | [−0.00412, +0.02236] | +0.00287 | not significant |
+| E1c − Elo v1 | +0.00013 | [−0.00831, +0.00838] | −0.00030 | **INCONCLUSIVE** (signs disagree) |
+| E1c − D0 | −0.06933 | [−0.08621, −0.05341] | −0.02549 | significant |
+| E1c − market | +0.03899 | [+0.02770, +0.05030] | +0.01167 | significant |
+
+### The prediction resolved on branch F4.3, as declared
+
+F4.2 named two consequences of "five-match finishing is substantially its own
+sampling noise". Both hold.
+
+**(a) is null**, above. **(b) is near zero.** The correlation between a team's
+finishing over one five-match window and its finishing over the next,
+non-overlapping five — training rows only, each fold with its own c:
+
+| fold | training seasons | n pairs | r |
+|---|---|---|---|
+| 1 | 2021-22 | 120 | +0.0481 |
+| 2 | + 2022-23 | 240 | +0.0857 |
+| 3 | + 2023-24 | 360 | −0.0060 |
+| 4 | + 2024-25 | 480 | +0.0313 |
+
+Largest |r| **0.0857 against the declared threshold of 0.10**. The mechanism's
+second consequence holds and the column does not predict its own next window.
+
+**So F4.3 fires: the column is noise, the mechanism is confirmed, and shot
+information is exhausted at this resolution.** F0.4 declared E1c the last
+shot-derived rung so that a null could not be followed by a fourth variant.
+**The phase closes on that.**
+
+### The decomposition this makes possible
+
+E1b and E1c are the same block with and without its shot-volume component.
+
+| | r² with SoT differential | Δ vs D2 rescaled |
+|---|---|---|
+| E1b — volume included | 0.8155 | −0.00270 |
+| E1c — volume removed | 0.0077 | −0.00072 |
+
+**Roughly three quarters of E1b's effect went with the volume.** E1b was
+measuring shot differential, not finishing — which the E1 report named in
+advance as the obvious reading and which is now measured rather than argued.
+E1c − E1b = +0.00198 [+0.00007, +0.00389] says the same thing from the other
+side: the volume version is significantly better than the finishing version.
+
+The whole shot arm is monotone — **E1a 0.98124 < E1b 0.99758 < E1c 0.99956 <
+D2 rescaled 1.00028**. The useful part of shot information is volume, and it is
+worth most *inside* the rating rather than beside it.
+
+### Both declared sensitivities are immaterial
+
+| variant | log loss | RPS | vs primary |
+|---|---|---|---|
+| E1c primary — robust scaling, decayed c | 0.99956 | 0.20637 | — |
+| F3.4 — section 6 scaling instead | 0.99958 | 0.20636 | +0.00002 |
+| F1.6 — c with no decay weighting | 0.99960 | 0.20638 | +0.00003 |
+
+Both move the fifth decimal. F3.1's departure from E1b's scaling rule was
+declared in advance *because* it was a departure; it turns out not to be
+load-bearing, which is the cleanest way for a declared departure to end.
+
+### F5 FAILS, and the wording was ours
+
+F5 declared: corrupt **every** outer-test row and no fold's c may move. It moves
+by 0.698. **That is not a leak — the claim was too strong.**
+
+The folds are nested walk-forward. Fold 2 trains on 2021-22 + 2022-23, and
+2022-23 is fold 1's *test* season. An earlier fold's test season is a later
+fold's training data by the design of the frozen folds, so **D1, D2, E1a and
+E1b would every one of them fail F5 as worded.**
+
+| fold | seasons in its c window | own test season present |
+|---|---|---|
+| 1 | 2021-22 | **False** |
+| 2 | 2021-22, 2022-23 | **False** |
+| 3 | 2021-22 … 2023-24 | **False** |
+| 4 | 2021-22 … 2024-25 | **False** |
+
+**F5 is left failing rather than softened**, exactly as G9 was when its "bit for
+bit" wording proved too strong for a design that solves a larger Newton system.
+`F5b` tests the claim the design actually makes — corrupt a fold's *own* test
+season, that fold's c must not move — and passes at **0.000e+00**. F5b carries a
+G10-style disclosure in its own detail: written after seeing F5 fail, carrying
+no threshold, and reading identically had F5 passed. An INFO row records the
+diagnosis beside the failing gate so the audit CSV is not misleading alone.
+
+### One checker bug, ours again
+
+**F9 flagged all six of E1c's own columns**, because it tested whether a design
+column *contained* `"shin"` and "fini**shin**g" does. Six false positives, zero
+odds columns. It now matches the eleven exact names the odds artefact carries —
+`overround`, `shin_z`, `price_*`, `prop_p_*`, `shin_p_*` — plus an anchored
+bookmaker-code pattern, and was verified to still catch `B365CH` and `prop_p_H`.
+**A verifier that does not implement the declared rule cannot verify it**, for
+the third time in this project.
+
+### The instrument's one structural novelty
+
+c is per fold, so **the design matrix is per fold** — four of them, where every
+previous rung built one. `run_rung_folds()` is the fold loop that picks the
+right matrix; it calls LADDER's own `select_lambda` and `fit_pipeline`, so the
+estimator is not duplicated. **F15 asserts that handed the same matrix at every
+fold it reproduces `LADDER.run_rung` at 0.000e+00** — the stand-in is verified
+against the thing it stands in for rather than believed to match it. F3c
+asserts the four matrices genuinely differ, so the per-fold construction is not
+decorative.
+
+λ 1000/1000/300/300, EPV 0.90–3.57, **G6 PASS at every fold**. F2: the D2
+rescaled base reproduces the committed Amendment 4 artefact, which is what would
+catch a fold-dependent column leaking into the control arm.
+
+---
+
+## Phase 5 — the gap diagnostic: the 0.02979 is uniform
+
+*Run 2026-09-03. `scripts/phase5_gap_diagnostic.py`. **EXPLORATORY. No gate, no
+KEEP/DROP, nothing here enters a model.** Run only after E1c's declaration was
+hashed and committed, which is the only reason E1c is unaffected by it.*
+
+Three declared rungs have failed to close the Dixon-Coles→market gap, and E1a's
+third branch said it is not a rating-precision problem. So: where does it live?
+
+**DC − market +0.02979 [+0.01759, +0.04229]; E1a − market +0.02067 [+0.00992,
++0.03147].** Under the Shin sensitivity the DC gap is +0.03025, so nothing below
+rests on the de-vig choice. The per-match gap has sd 0.24897 against a mean of
+0.0298 — its spread dwarfs its mean, which is why every subset carries an
+interval.
+
+**Every split looked at is reported, including the null ones.**
+
+| split | levels | read |
+|---|---|---|
+| favourite probability | .00–.40 +0.02617 · .40–.50 +0.03893 · .50–.60 +0.02057 · .60–.70 +0.01267 · .70–1.0 +0.05157 | non-monotonic, every CI contains the pooled figure — **null** |
+| matchweek | 1-6 +0.04255 · 7-19 +0.02976 · 20-31 +0.02412 · 32-38 +0.02863 | **null** |
+| season | 2022-23 +0.03627 · 2023-24 +0.04176 · **2024-25 +0.00889** · 2025-26 +0.03224 | one season nearly matched; the only split with any separation |
+| promoted involved | neither +0.03022 · promoted +0.02871 | **dead null on DC**; E1a disagrees (+0.01344 vs +0.03888) |
+| promoted detail | home +0.00696 · away +0.03722 · both +0.14117 (n=24) | the n=24 cell is uninterpretable, CI [−0.10, +0.47] |
+| actual outcome | **A +0.00270 [−0.02074, +0.02617]** · H +0.03869 · **D +0.04874** | the sharpest split; E1a's draw gap is +0.00735, so **the two models disagree about draws** |
+| market pick | H (958) +0.03622 · A (562) +0.01883 | mild |
+| favourite delivered | DC +0.03866 vs +0.01889 · **E1a +0.07818 vs −0.05000** | conditions on the outcome; describes only |
+| strong favourite ≥0.60 | DC +0.03393 vs +0.01726 · E1a +0.12322 vs −0.16795 | see below |
+| correlation, 128 numeric columns | largest \|r\| **0.0785**; 20 clear the naive 0.0503 where **6.4** are expected by chance | nothing on disk explains >0.6% of the variance |
+
+**The hypothesis is not supported.** The lineup story predicts the model loses
+most where a strong side underperforms its rating. For Dixon-Coles the gap is
+**larger when the favourite delivers** (+0.03866) than when it does not
+(+0.01889) — the opposite sign to the prediction.
+
+**A sharpness measurement, added because the reading above is inferable and
+confidence is directly measurable.** It corrected the first reading:
+
+| | mean max p | p on market's pick | mean p(D) |
+|---|---|---|---|
+| market | 0.5391 | 0.5391 | 0.2366 |
+| Dixon-Coles | **0.5489** | 0.5316 | 0.2296 |
+| E1a | 0.5175 | 0.5047 | 0.2358 |
+
+**Dixon-Coles is *more* confident than the market, not less.** It is simply
+confident about a different outcome. E1a genuinely is underconfident. So the
+market's edge over DC is not sharpness — it is direction.
+
+**The read: the gap is uniform.** That is the branch the brief called "different
+and more interesting". It does not sit in any identifiable subset, no variable
+on disk tracks it, and the one split that conditions on the outcome points
+against the lineup hypothesis rather than for it.
+
+**What this cannot establish.** It cannot identify a cause; a gap that sits
+everywhere is consistent with many mechanisms. It has no multiplicity control.
+The favourite-delivered split conditions on the outcome and can never be a
+feature. **No rung may be designed from any of it.**
+
+---
+
 ## Phase 5 — Instrument E1: shots on target as a rating input
 
 *Run 2026-09-02/03. `scripts/phase5_e1a_sot_ratings.py` (12 checks, **0 failures**)
