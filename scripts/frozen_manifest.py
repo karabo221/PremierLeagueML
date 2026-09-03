@@ -76,7 +76,10 @@ FROZEN_PATTERNS = [
     # 2026-27 vocabulary the scoring run asserts on, so a name quietly added
     # to that list would move this hash.
     "PHASE6_CUTOFF_PIN.txt",
-    "outputs/phase6_freeze_validation.csv",
+    # The freeze validator's and the scoring instrument's own artefacts.
+    # A glob, matching the .gitignore exception, so a Phase 6 output cannot
+    # be produced and then quietly left out of the manifest.
+    "outputs/phase6_*.csv",
     # THE ODDS SOURCE ITSELF. data/raw is immutable by project rule, but that
     # rule is prose and this is the first source that arrived over the network
     # rather than on the stick. A re-download that moves a hash is a NEW

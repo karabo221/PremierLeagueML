@@ -18,8 +18,8 @@ legitimately re-run. It means the artefact is no longer the one the
 pre-declaration was written against, and that has to be reconciled explicitly
 rather than noticed later.
 
-generated 2026-09-03T10:25:16Z
-115 files
+generated 2026-09-03T10:31:11Z
+117 files
 
 c0ea0bce045af978c64aa3e209ea8b9f5fb1dde52f95c83c65e3e5e316c367f0  PHASE3_CEILING_PREDECLARATION.txt
 1de3af06af72634d91d1f0f07b50256785a5a1c16fda41de85138cf975524da4  PHASE3_REGULARISATION_PREDECLARATION.txt
@@ -135,7 +135,9 @@ dd8528b1de68ca4c26c2d08246ad20a063155bda8fbc99344f15d06da2ade5c7  outputs/phase5
 43f3c0aa841ecdad9acd37398ab91b15d5a79a366845e244462568a6f4eebeb7  outputs/phase5_market_pooled.csv
 4d2f102310837d7b9a6d3f0d4c75ee2375a441f1289cd8cf720216da09a539b0  outputs/phase5_market_probabilities.csv
 b7e27a24de767f6676573454110dbbc22d6631369c82bbc62de7b5b21d8e0bf5  outputs/phase5_reliability.csv
+ff44f303932a5e55134791552d0fb1c051be9ff4b335d84b25a0a5486c8e6686  outputs/phase6_dryrun_summary.csv
 907d951548a09dcda567792d4e31fbbf02e8905bda0f7a232c2e9e8552e681c3  outputs/phase6_freeze_validation.csv
+271e2f722b6cc5b5caa213b484a89bb0fed628f77beade3415437e7e05883028  outputs/phase6_scoring_audit.csv
 
 ===============================================================================
 END OF MANIFEST
