@@ -180,3 +180,21 @@ data/watch/
 
 # The watch's own dated audit trail is evidence, and is covered by the
 # outputs/phase6_*.csv exception above.
+
+# ---------------------------------------------------------------------------
+# THE LIVE PREDICTION LOG, SPLIT ON WHETHER A FILE CARRIES A SCORELINE.
+#
+# Governed by PHASE6_LIVE_LOG_PROTOCOL.txt, L4.8.
+#
+# The PREDICTIONS mirror is committed, and committing it is the entire point:
+# git is what timestamps "this was said before kickoff" in a way the operator
+# cannot backdate. It carries no result.
+#
+# The RESULTS and MARKET mirrors do carry 2026-27 scorelines and closing
+# prices. The rule above - the live season's scorelines stay out of the
+# repository until the holdout is deliberately acquired in May 2027 - is NOT
+# relaxed for this log, so they are ignored on exactly the same terms as
+# data/watch/. Supabase holds them for the dashboard; the repository does not.
+# ---------------------------------------------------------------------------
+live_log/phase6_live_results.csv
+live_log/phase6_live_market.csv

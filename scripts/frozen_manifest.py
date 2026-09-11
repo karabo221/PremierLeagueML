@@ -76,6 +76,18 @@ FROZEN_PATTERNS = [
     # 2026-27 vocabulary the scoring run asserts on, so a name quietly added
     # to that list would move this hash.
     "PHASE6_CUTOFF_PIN.txt",
+    # THE LIVE LOG PROTOCOL. It decides the cadence, the failure rule, the
+    # postponement rule and the immutability scheme BEFORE any 2026-27
+    # prediction exists, and every written row carries its hash - so a row can
+    # be checked against the rules that were in force when it was written. A
+    # set of operating rules that can be edited afterwards is worth exactly as
+    # little as a pre-declaration that can, so it is frozen on the same terms
+    # as the freeze and the pin.
+    #
+    # The LOG ITSELF is deliberately NOT frozen and does not live under
+    # outputs/. It is append-only, so its bytes move every matchweek and a
+    # pinned hash would fail here every week while meaning nothing. L4.7.
+    "PHASE6_LIVE_LOG_PROTOCOL.txt",
     # The freeze validator's and the scoring instrument's own artefacts.
     # A glob, matching the .gitignore exception, so a Phase 6 output cannot
     # be produced and then quietly left out of the manifest.

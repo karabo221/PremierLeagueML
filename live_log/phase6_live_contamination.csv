@@ -1,0 +1,11 @@
+match_id,played_date,home_team,away_team,season,reason,recorded_at_utc,excluded_from_log,excluded_from_holdout
+2026-2027_Ipswich-Town_Liverpool,2026-09-04,Ipswich Town,Liverpool,2026-2027,no pre-kickoff prediction existed; the live log began after this match was played (L2.1),2026-09-11T19:22:08Z,True,False
+2026-2027_Hull_Aston-Villa,2026-09-05,Hull,Aston Villa,2026-2027,no pre-kickoff prediction existed; the live log began after this match was played (L2.1),2026-09-11T19:22:08Z,True,False
+2026-2027_Nottingham_Tottenham,2026-09-05,Nottingham,Tottenham,2026-2027,no pre-kickoff prediction existed; the live log began after this match was played (L2.1),2026-09-11T19:22:08Z,True,False
+2026-2027_Manchester-City_Coventry,2026-09-05,Manchester City,Coventry,2026-2027,no pre-kickoff prediction existed; the live log began after this match was played (L2.1),2026-09-11T19:22:08Z,True,False
+2026-2027_Newcastle_Bournemouth,2026-09-05,Newcastle,Bournemouth,2026-2027,no pre-kickoff prediction existed; the live log began after this match was played (L2.1),2026-09-11T19:22:08Z,True,False
+2026-2027_Brighton_Leeds-United,2026-09-05,Brighton,Leeds United,2026-2027,no pre-kickoff prediction existed; the live log began after this match was played (L2.1),2026-09-11T19:22:08Z,True,False
+2026-2027_Brentford_Sunderland,2026-09-05,Brentford,Sunderland,2026-2027,no pre-kickoff prediction existed; the live log began after this match was played (L2.1),2026-09-11T19:22:08Z,True,False
+2026-2027_Fulham_Crystal-Palace,2026-09-05,Fulham,Crystal Palace,2026-2027,no pre-kickoff prediction existed; the live log began after this match was played (L2.1),2026-09-11T19:22:08Z,True,False
+2026-2027_Everton_Manchester-Utd,2026-09-06,Everton,Manchester Utd,2026-2027,no pre-kickoff prediction existed; the live log began after this match was played (L2.1),2026-09-11T19:22:08Z,True,False
+2026-2027_Arsenal_Chelsea,2026-09-06,Arsenal,Chelsea,2026-2027,no pre-kickoff prediction existed; the live log began after this match was played (L2.1),2026-09-11T19:22:08Z,True,False

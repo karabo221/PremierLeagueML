@@ -1,0 +1,8 @@
+run_at_utc,test_id,test,expected,observed,status,detail
+2026-09-11T19:22:08Z,C0a,the freeze on disk is the one this instrument was built against,b36befd3e13d5f7f5d9b0af83b7db819e86d7b13e6fdcab4c55db0599fd248f6,b36befd3e13d5f7f5d9b0af83b7db819e86d7b13e6fdcab4c55db0599fd248f6,PASS,
+2026-09-11T19:22:08Z,C0b,the live log protocol is on disk,exists,True,PASS,this file implements section 4 of it and cannot run without it
+2026-09-11T19:22:08Z,C1,every captured name is inside the pin's declared twenty,0 outside,0 outside,PASS,through the scoring instrument's OWN assert_vocabulary. No normalisation was added to any loader for this capture either
+2026-09-11T19:22:08Z,C2,Pinnacle closing is absent and NO other book is promoted,book = B365C only,B365C,PASS,SW5-PSC. B3.3 fixed Bet365 closing as PRIMARY on completeness before any score existed. Filling the sensitivity arm now would be choosing an instrument after seeing which one survived
+2026-09-11T19:22:08Z,C3,the prediction log's hash chain verifies BEFORE anything is joined to it,0,0,PASS,10 rows checked. Capturing results against a log that does not verify would attach real outcomes to rows of unknown provenance
+2026-09-11T19:22:08Z,C4,holdout matches with NO pre-kickoff prediction (L2),,10 of 10,INFO,"EXCLUDED FROM THE LOG's figures, NEVER from the holdout. L2.2: the holdout's membership is a date rule in a frozen document and no rule in this protocol may alter it"
+2026-09-11T19:22:08Z,C5,new results captured,,0,INFO,nothing has been played since the last capture that carries a prediction

@@ -41,6 +41,12 @@
 *.csv   text eol=crlf
 *.json  text eol=crlf
 
+# The Supabase schema. NOT an evidence rule - this file is not hashed in the
+# manifest. It is here because adding a file type with no rule at all is how
+# the CRLF defect above happened, and git warned about exactly this one on its
+# first `git add`. Explicit in the repository beats correct-by-accident.
+*.sql   -text
+
 # Sources.
 *.xls   binary
 

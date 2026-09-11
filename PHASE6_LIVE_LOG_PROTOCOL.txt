@@ -1,0 +1,443 @@
+===============================================================================
+PHASE 6 - THE LIVE PREDICTION LOG PROTOCOL
+===============================================================================
+
+Declared 2026-09-11, BEFORE any 2026-27 prediction was written.
+
+    governed by   PHASE6_HOLDOUT_FREEZE.txt
+                  sha256 b36befd3e13d5f7f5d9b0af83b7db819e86d7b13e6fdcab4c55db0599fd248f6
+
+    and by        PHASE6_CUTOFF_PIN.txt
+                  sha256 be9b1b084db57a3bef2e71f83a04c9d89299cbe1599b936f0615a69b1c266e15
+
+    cutoff        2026-09-04, read from the pin at P1.1 and never re-derived
+
+    implemented by  scripts/phase6_generate_predictions.py
+                    scripts/phase6_capture_results.py
+
+Registered in FROZEN_PATTERNS in scripts/frozen_manifest.py and listed in
+FROZEN_MANIFEST.txt, on the same terms as the freeze and the pin: a set of
+operating rules that can be edited after the fact is worth exactly as little
+as a pre-declaration that can.
+
+
+-------------------------------------------------------------------------------
+0.  WHAT THIS DOCUMENT IS, AND WHAT IT HAS NO AUTHORITY OVER
+-------------------------------------------------------------------------------
+
+L0.1  WHY A LIVE LOG AT ALL. A season-end batch run ASSERTS that the freeze
+      held. A pre-kickoff timestamped log PROVES what was said before the
+      result existed. The two are different strengths of evidence and the
+      second is the stronger one, because it does not depend on trusting the
+      operator's account of the order in which things happened.
+
+L0.2  IT CHANGES NOTHING. No model, no feature, no hyperparameter, no rating,
+      no evaluation rule, no cutoff, no vocabulary. It reads the frozen
+      instruments and writes down what they said. If this document is doing
+      anything else, it is being misused.
+
+L0.3  THE RULES BELOW BIND THE LOG ONLY. Nothing in this protocol may alter
+      what the holdout scores, which matches it contains, or how it is
+      measured. Those are fixed by the freeze and the pin, and where a rule
+      here could be read as touching them - L2 is the live one - it is
+      written explicitly not to.
+
+L0.4  THE LOG IS NOT A RESULT AND IS NOT REPORTABLE AS ONE. See L5.
+
+
+-------------------------------------------------------------------------------
+1.  L1 - CADENCE
+-------------------------------------------------------------------------------
+
+L1.1  ONE PREDICTION ROUND PER MATCHWEEK, written before that matchweek's
+      first kickoff.
+
+L1.2  THE STATE CUTOFF IS THE DAY BEFORE THE MATCHWEEK'S FIRST FIXTURE, and
+      the rule is the walk-forward's strict rule, unrelaxed:
+
+          state window  =  every completed match with date < first fixture
+
+      "The day before, inclusive" and "strictly before the first fixture"
+      select the same set of matches. The second is implemented because it
+      needs no calendar arithmetic to be correct, and calendar arithmetic
+      across a postponement is where an off-by-one would hide.
+
+L1.3  THE ROUND BOUNDARY IS DERIVED, NOT LABELLED. Fixtures are taken in date
+      order until a side would appear twice. That is the only property that is
+      actually true of a matchweek, and it is used rather than a matchweek
+      number because P7.2 of the pin deliberately does NOT carry matchweek -
+      H3.4 makes the cutoff a date rule - and because the fixture feed
+      publishes a midweek card alongside a weekend one without saying which
+      is which.
+
+      A matchweek_label is recorded alongside, derived from the completed
+      count, and it is INFORMATIONAL. Nothing reads it.
+
+L1.4  PREDICTIONS ARE NEVER REGENERATED ONCE WRITTEN. Enforced in code: the
+      generator refuses to write a match_id already present in the log, and
+      the refusal raises rather than skipping quietly.
+
+L1.5  A MISSED ROUND IS NOT MADE UP LATER. See L2.
+
+
+-------------------------------------------------------------------------------
+2.  L2 - THE FAILURE RULE, DECIDED
+-------------------------------------------------------------------------------
+
+L2.1  THE DECISION. A matchweek whose predictions were not written before its
+      first kickoff is CONTAMINATED. Those matches are
+
+          EXCLUDED FROM THE LIVE LOG and from every figure the live log
+          reports, with the gap recorded explicitly and counted;
+
+          NOT EXCLUDED FROM THE HOLDOUT, which continues to contain every
+          2026-27 match with date >= 2026-09-04, exactly as H3.3 and P1.4
+          specify.
+
+      NO LATE ROW IS WRITTEN.
+
+L2.2  WHY THE SECOND HALF IS NOT OPTIONAL. The brief offered "excluded from
+      the holdout with the gap reported" as one of two choices. THAT CHOICE
+      WAS NOT AVAILABLE. The holdout's membership is a date rule in a frozen
+      document; removing matches from it because an operator missed a
+      deadline would make the holdout's size depend on operator diligence,
+      which is the precise failure P1.3 already refused when it forbade the
+      cutoff from tracking the commit timestamp. So "excluded" here means
+      excluded from the LOG, and the holdout is untouched.
+
+L2.3  WHY NO LATE ROW. The alternative was "generated late and flagged". A
+      prediction computed after the result exists is not evidence of anything,
+      whatever flag it carries, and its only effect is to put a row in an
+      evidence file that a later reader may take at face value. The project
+      has already recorded what that costs: V6b's misspelled side was scored
+      as exactly average with no exception raised, and the corruption was
+      indistinguishable from a result. A flag in a column is a weaker guard
+      than a row that was never written.
+
+L2.4  THE GAP IS A RECORD, NOT A SILENCE. A contaminated matchweek is written
+      to live_log/phase6_live_contamination.csv with the round, the match
+      count, the first kickoff, the time the omission was found, and the
+      reason. The count is reported whenever the log is reported.
+
+L2.5  APPLIES IMMEDIATELY, AND TO THREE MATCHWEEKS ALREADY. This protocol is
+      declared on 2026-09-11. The holdout opened on 2026-09-04. The matchweek
+      of 4-6 September 2026 - ten matches, the first being Ipswich Town v
+      Liverpool, which P1.1 names as the holdout's first fixture - was played
+      before this log existed. It is CONTAMINATED under L2.1 and is recorded
+      as such. The live log therefore covers the holdout from its second
+      matchweek onward, and says so rather than implying full coverage.
+
+      The two matchweeks of August 2026 are before the cutoff. They are not
+      in the holdout at all and are not a gap in anything.
+
+
+-------------------------------------------------------------------------------
+3.  L3 - THE POSTPONEMENT RULE, DECIDED
+-------------------------------------------------------------------------------
+
+L3.1  THE DECISION. A RESCHEDULED MATCH KEEPS ITS ORIGINAL PREDICTION AND ITS
+      ORIGINAL STATE CUTOFF. It is never regenerated, and there is never a
+      second row for the same match.
+
+L3.2  WHY NOT THE OTHER OPTION. "Regenerated with a new cutoff and both rows
+      retained" leaves two rows and no rule for which one counts. That choice
+      would be made at analysis time, which is after the result is known -
+      and a choice between two predictions made after seeing the outcome is
+      selection on the outcome. It also contradicts L1.4 directly. One row,
+      fixed at the moment it was written, is the only version of this log that
+      means what it claims to mean.
+
+L3.3  THE JOIN KEY IS THEREFORE NOT DATE-BASED. match_id is
+
+          season + home_team + away_team
+
+      which is unique because a twenty-team double round-robin plays each
+      ORDERED pair exactly once, 20 x 19 = 380. Verified on all 1,900
+      development matches: 1,900 rows, 1,900 distinct keys, 0 duplicates. A
+      date-based key would break under the very rescheduling this clause
+      exists to handle.
+
+L3.4  THE COST IS REAL AND IS MEASURED PER ROW. A match played long after its
+      matchweek carries a stale prediction. Every row records
+
+          state_age_days  =  date actually played  -  state cutoff
+
+      and it is populated at capture, not at generation, because at
+      generation the date played is not yet known.
+
+L3.5  THE STALE STRATUM IS PRE-DECLARED AT 10 DAYS. Rows with
+      state_age_days > 10 are reported as a SEPARATE stratum. They are never
+      dropped and never regenerated.
+
+      The threshold is taken from the development distribution, before any
+      2026-27 row existed: of 1,900 matches, 858 are played on their
+      matchweek's first day, 1,743 within one day, 1,768 within two - and the
+      distribution then stops at 10 days and resumes at 17. 101 matches
+      (5.32%) are more than 10 days stale, the worst at 200 days. The
+      threshold is placed in that empty gap rather than at a round number
+      chosen for its roundness.
+
+L3.6  A POSTPONEMENT DOES NOT MOVE THE HOLDOUT BOUNDARY EITHER. P1.4 already
+      settles this: a fixture played on or after 2026-09-04 is scored because
+      it was played after the cutoff, whatever date it was originally
+      scheduled for. This clause changes nothing there.
+
+
+-------------------------------------------------------------------------------
+4.  L4 - IMMUTABILITY
+-------------------------------------------------------------------------------
+
+L4.1  APPEND-ONLY. Rows are added. No row is ever edited, reordered or
+      deleted, in the mirror or in Supabase.
+
+L4.2  row_hash IS A CHAIN, NOT A PER-ROW CHECKSUM.
+
+          row_hash = sha256( prev_hash + "|" + the fields below )
+
+      A bare per-row hash detects an EDITED row. It does not detect a DELETED
+      row, or one inserted between two others - and an append-only log whose
+      rows can be quietly removed is not append-only. Chaining makes every row
+      depend on its entire history, so a deletion or a reordering breaks every
+      hash after it.
+
+      The first row chains to sixty-four zeroes.
+
+L4.3  THE HASHED FIELDS, IN THIS ORDER, NEVER REORDERED:
+
+          match_id, season, round_id, matchweek_label, scheduled_date,
+          home_team, away_team, state_cutoff_date, generated_at_utc,
+          p_home, p_draw, p_away, lambda_home, lambda_away, rho,
+          fit_matches, home_has_history, away_has_history,
+          freeze_sha, pin_sha, protocol_sha
+
+      The list lives in ONE place, HASHED_FIELDS in the generator, and the
+      verifier imports it rather than carrying a copy. Two copies of a field
+      order is two things to keep in step, and the verifier would be the one
+      that silently stopped checking.
+
+L4.4  HASHED OVER PARSED FIELD VALUES, NEVER OVER FILE BYTES. This repository
+      has already lost a hash to a line-ending conversion: on 2026-09-03 a
+      fresh clone returned PHASE6_HOLDOUT_FREEZE.txt as 8373973b... against
+      b36befd3... on disk, because core.autocrlf=true converted every LF on
+      checkout. A row hash computed from parsed values cannot be moved by
+      that. Floats are canonicalised at %.17g - the project's FLOAT_FORMAT -
+      so the hash covers the full double and not a rounded display of it.
+
+L4.5  THE VERIFIER RECOMPUTES EVERY HASH AND FAILS ON ANY MISMATCH.
+
+          scripts/phase6_generate_predictions.py --verify
+
+      It reports the row, the field, the stored value and the recomputation.
+      It repairs nothing.
+
+L4.6  THE VERIFIER IS ITSELF EXERCISED. The dry run builds a clean chain,
+      checks that the verifier passes it, then moves a single written
+      probability from 0.5 to 0.6 and checks that the verifier FAILS. A check
+      that has never been seen to fire is not a check.
+
+L4.7  THE LOG IS DELIBERATELY NOT IN FROZEN_MANIFEST.txt, AND THIS IS NOT AN
+      OMISSION. FROZEN_PATTERNS contains the glob outputs/phase6_*.csv, so a
+      Phase 6 CSV is swept into the manifest and pinned by hash. This log is
+      append-only by design: its bytes change every round, so a pinned file
+      hash would fail the manifest every matchweek and the failure would carry
+      no information. It therefore lives in live_log/ instead, OUTSIDE that
+      glob, and its immutability is enforced by the L4 chain and by RLS -
+      which distinguish an APPEND from an EDIT, and a file hash cannot.
+
+L4.8  WHAT IS COMMITTED, AND WHAT IS NOT.
+
+          live_log/phase6_live_predictions.csv     COMMITTED
+          live_log/phase6_live_contamination.csv   COMMITTED
+          live_log/phase6_live_results.csv         NOT committed
+          live_log/phase6_live_market.csv          NOT committed
+
+      The predictions mirror carries no scoreline. Committing it is what
+      timestamps it, and the timestamp is the whole point of the exercise.
+
+      The results and market mirrors DO carry 2026-27 scorelines, and
+      .gitignore already keeps those out of the repository until the holdout
+      is deliberately acquired in May 2027 - the same rule that keeps
+      data/watch/ out. That rule is not relaxed for this log.
+
+
+-------------------------------------------------------------------------------
+5.  L5 - AUTHORITY
+-------------------------------------------------------------------------------
+
+L5.1  THE OFFICIAL 2026-27 RESULT IS phase6_score_holdout.py, run ONCE after
+      the final fixture, against the pinned cutoff, behind both --score-holdout
+      and --season-complete. That has not changed and this document does not
+      change it.
+
+L5.2  EVERY RUNNING FIGURE THE LOG OR THE DASHBOARD SHOWS IS INFORMAL. No
+      mid-season figure enters REPORT.md, REPORTS.md, or any conclusion.
+
+L5.3  AND THE LOG IS A DIFFERENT INSTRUMENT, NOT AN EARLY VIEW OF THE SAME
+      ONE. This is stronger than L5.2 and it is the clause most likely to be
+      forgotten in 2027, so the numbers are recorded here now.
+
+      The frozen dc_walkforward refits ONCE PER DISTINCT SCORED DATE:
+
+          2022-23  117 refits      2024-25  109 refits
+          2023-24  120 refits      2025-26  114 refits
+
+      A matchweek-cadence log refits 38 times, every season. 37 of 38
+      matchweeks span more than one day, so most matches are predicted without
+      that matchweek's earlier results. Measured on the development seasons,
+      by the generator, before any 2026-27 row was written:
+
+          season     rows differing   matchweek LL   per-date LL      cost
+          2022-23        200 of 380      0.995942      0.997983   -0.002041
+          2023-24        200 of 380      0.943645      0.941444   +0.002202
+          2024-25        198 of 380      0.978967      0.976663   +0.002304
+          2025-26        221 of 380      1.046553      1.045363   +0.001189
+
+          pooled matchweek    0.9912769 LL     0.2037256 RPS
+          pooled per-date     0.9903635 LL     0.2034988 RPS
+          THE CADENCE COST   +0.0009134 LL    +0.0002268 RPS
+
+L5.4  SO A LIVE-LOG FIGURE AND THE OFFICIAL FIGURE ARE NOT COMPARABLE, and
+      the offset above is pre-declared so that it cannot be invented after the
+      fact to explain a gap. The log's information set is STRICTLY SMALLER -
+      38 fits against 109 to 120 - which is what licenses calling the
+      difference a cost rather than a discrepancy.
+
+L5.5  HONESTLY: THE COST IS SMALL AND IT IS NOT UNIFORM IN SIGN. Matchweek
+      cadence was BETTER in 2022-23 and worse in the other three. Four seasons
+      is four observations; the pooled +0.00091 is a measurement, not a law,
+      and it is recorded as the former.
+
+L5.6  0.99036 / 0.20350 IS THE POOLED FOUR-FOLD FIGURE OVER 1,520 MATCHES. It
+      is not 2025-26's, which is 1.04536 / 0.21281. The brief for the
+      generator asked that a 2025-26 matchweek-by-matchweek run reproduce
+      0.99036 / 0.20350; it could not, for two independent reasons - the
+      wrong season and the wrong cadence - and both are recorded here rather
+      than absorbed. The scoring instrument records this project making the
+      same conflation once before.
+
+
+-------------------------------------------------------------------------------
+6.  L6 - NO FEEDBACK
+-------------------------------------------------------------------------------
+
+L6.1  NOTHING OBSERVED IN THIS LOG MAY CHANGE ANYTHING. Not the model, not a
+      feature, not a hyperparameter, not a rating, not an evaluation rule, not
+      the cutoff, not the vocabulary, not the de-vig, not the reporting bins.
+
+L6.2  ANY SUCH CHANGE MARKS THE HOLDOUT COMPROMISED, per the freeze, and the
+      correct response is to record that it was compromised - not to repair it
+      and carry on.
+
+L6.3  THE ONE PERMITTED AMENDMENT is a dated amendment to THIS document, of
+      the kind P4.5 already defines for the pin, and it may only change how
+      the LOG operates. An amendment that changes the model is not an
+      amendment; it is a new project on a spent holdout.
+
+L6.4  THE VOCABULARY GUARD STILL RAISES, AND THAT IS STILL THE POINT. The
+      generator asserts every name - in the fixtures it predicts and in the
+      completed spine it fits on - through the scoring instrument's OWN
+      assert_vocabulary. A name outside the pin's twenty stops the run. No
+      normalisation was added to any loader for this work either, for the
+      reason section 6 of the pin gives: a rule written to absorb one
+      mismatch absorbs the next one silently.
+
+
+-------------------------------------------------------------------------------
+7.  THE ONE NEW DEPENDENCY, DECLARED RATHER THAN DISCOVERED
+-------------------------------------------------------------------------------
+
+L7.1  A PRE-KICKOFF PREDICTION NEEDS TO KNOW THE FIXTURES, and no input the
+      project already declares carries an UNPLAYED match. The E0 file carries
+      completed matches only. So the log adds one source:
+
+          https://www.football-data.co.uk/fixtures.csv
+
+      filtered to Div == E0. Same publisher as the declared spine, mapped
+      through the same closed TEAM_MAP, asserted against the same vocabulary.
+
+L7.2  IT IS DECLARED HERE BECAUSE SW10 IS THE PRECEDENT. SW10 recorded that
+      the scoring instrument's spine came from an FBref export that no watch
+      covered, and closing that gap took a dated amendment. An input added
+      without a declaration is the same defect. This one is declared on the
+      day it is first used.
+
+L7.3  IT CANNOT CONTAMINATE THE HOLDOUT. The fixture feed is read at
+      generation time only, it carries no result, and nothing in the scoring
+      path reads it. If it disappears, the log stops and the holdout is
+      unaffected - which is the correct failure mode and is the reason it is
+      acceptable for the log to depend on it at all.
+
+L7.4  THE FEED ALSO CARRIES PRE-MATCH ODDS. They are NOT read by the
+      generator. B3.3 fixes the market instrument on Bet365 CLOSING prices
+      and the closing price does not exist until the match does; a pre-match
+      price is a different quantity and mixing them would be a new
+      instrument, not a convenience.
+
+
+-------------------------------------------------------------------------------
+8.  WHAT THE GENERATOR REUSES, AND WHAT IT IS FORBIDDEN TO REIMPLEMENT
+-------------------------------------------------------------------------------
+
+L8.1  IMPORTED, NEVER COPIED:
+
+          phase2_poisson_dixon_coles   fit_window, predict_matches, and every
+                                       Class-A constant the freeze validator
+                                       checks
+          phase6_score_holdout         load_pin, assert_vocabulary,
+                                       score_from_cutoff, sha256_of
+          phase5_market_benchmark      TEAM_MAP, devig_proportional
+          phase1_match_foundation      result_from_goals, points_from_result
+          phase0_evaluation_harness    evaluate, validate_probabilities
+
+L8.2  WHY. A second copy of the Dixon-Coles fit would be a second thing to
+      keep in step with the freeze, and the freeze validator would not be
+      watching it. The generator is required to be a caller, not a
+      reimplementation, and DRY RUN A is the test of that claim: at the frozen
+      per-date cadence it must reproduce every fold BIT FOR BIT. It does -
+      worst absolute difference 0.000e+00 across all four folds and both
+      published pooled figures.
+
+L8.3  THE ESTIMATOR, THE VOCABULARY, THE CUTOFF AND THE DE-VIG ARE NOT
+      REDEFINED ANYWHERE IN THIS WORK.
+
+
+-------------------------------------------------------------------------------
+9.  SUPABASE
+-------------------------------------------------------------------------------
+
+L9.1  THREE TABLES: predictions, results, market. The schema is in
+      ops/supabase_live_log.sql, versioned in the repository.
+
+L9.2  RLS: INSERT permitted; UPDATE and DELETE have NO policy and are
+      therefore denied to every role that goes through RLS. The anon key is
+      SELECT-only and is what the frontend uses. Writes come from the local
+      generator under the service key.
+
+L9.3  THE SERVICE KEY IS NOT IN THE REPOSITORY. It is read from the
+      environment, SUPABASE_URL and SUPABASE_SERVICE_KEY, in one function.
+
+L9.4  THE LOCAL MIRROR IS THE PRIMARY RECORD, not Supabase. Git is what
+      timestamps a row in a way the operator cannot backdate. A run with no
+      credentials writes the mirror, reports that Supabase was not written,
+      and is a DEGRADED run rather than a failed one.
+
+L9.5  SERVICE-ROLE WRITES BYPASS RLS, so L4's immutability rests on the
+      generator's own refusal to rewrite an existing match_id, plus the chain,
+      plus the mirror in git. RLS protects the log from the frontend and from
+      anyone holding the anon key. It does not protect it from the service
+      key, and this clause says so rather than implying otherwise.
+
+
+-------------------------------------------------------------------------------
+10. AMENDMENTS
+-------------------------------------------------------------------------------
+
+L10.1 Amendments to this document are DATED, REASONED, and appended below.
+      The hash moves, the manifest records it, and the reason is written down.
+      Same terms as P4.5.
+
+L10.2 None yet.
+
+===============================================================================
+END OF PROTOCOL
+===============================================================================
