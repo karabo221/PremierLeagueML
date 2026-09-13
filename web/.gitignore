@@ -1,0 +1,16 @@
+node_modules/
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# Secrets. The anon/publishable key is safe to ship to a browser; the service
+# key must never reach this directory at all - nothing here writes to Supabase.
+.env
+.env.local
+.env*.local
+
+# The TEMPLATE is not a secret and a clone needs it - the root .gitignore's
+# `.env.*` rule swallows it, so it is re-admitted here. It carries the project
+# URL and a BLANK key; if it ever carries a real one, that is the bug.
+!.env.local.example

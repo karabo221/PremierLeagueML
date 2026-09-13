@@ -53,3 +53,21 @@
 # These two as well.
 .gitattributes -text
 .gitignore -text
+
+# =============================================================================
+# THE FRONTEND IN web/. NOT EVIDENCE - BUT NOT LEFT UNSPECIFIED EITHER.
+#
+# None of these files is hashed in FROZEN_MANIFEST.txt, so no rule here is
+# protecting an evidential hash. They are declared for the reason the *.sql
+# block above gives: a file type with no rule at all is how the CRLF defect at
+# the top of this file happened, and `git add` warned about every one of these
+# on its first run.
+#
+# LF rather than CRLF, because Vercel builds on Linux and npm writes its
+# lockfile with LF. Note this deliberately overrides the `*.json text eol=crlf`
+# rule above for web/ only - the JSON files that rule exists for are the two
+# frozen specs in outputs/, and they are untouched. Last matching pattern wins,
+# which is also why the PNG line comes after the blanket one.
+# =============================================================================
+web/**       text eol=lf
+web/**/*.png binary

@@ -480,3 +480,77 @@ quite. Both pass at 1e-12 and no reported number is affected. It is recorded
 because "bit for bit" appears in the wording of that gate, and across two
 machines that phrase means bit for bit *at the declared tolerance*, not
 literally.
+
+---
+
+## 10. `next build` dies on a regular file: `E:` is FAT32, and `readlink` lies about it
+
+The frontend in `web/` would not build. The error names a file that is plainly a
+regular file, and it moves as the build progresses:
+
+```
+Error: EISDIR: illegal operation on a directory, readlink
+'E:\PremierLeagueML\web\node_modules\next\dist\pages\_app.js'
+Error: EISDIR: illegal operation on a directory, readlink
+'E:\PremierLeagueML\web\app\page.tsx'
+```
+
+`ls -la` shows both as ordinary files. A reinstall changes nothing, because
+`node_modules` is not the problem.
+
+### The measurement
+
+`E:` is **FAT32**. `C:` is NTFS. On FAT32 this machine's Node returns the wrong
+errno for `readlink` on a non-link:
+
+```
+> Get-Volume -DriveLetter E | Select FileSystemType
+FAT32
+
+> node -e "require('fs').readlinkSync('E:/PremierLeagueML/web/app/page.tsx')"
+EISDIR                       <- FAT32
+
+> node -e "require('fs').readlinkSync('C:/Windows/notepad.exe')"
+EINVAL                       <- NTFS, and this is the correct answer
+```
+
+webpack resolves every module through `readlink` to find its real path, and
+treats `EINVAL` as *"this is not a symlink, carry on."* `EISDIR` is not in that
+set, so it propagates and kills the build. Two separate things break on it: the
+module resolver, and the persistent pack-file cache, which logs `Unable to
+snapshot resolve dependencies` on every build.
+
+### What was done about it
+
+`web/fat32-readlink.cjs` rewrites the error code for that one syscall, and only
+once the filesystem has already refused. **FAT32 has no symlinks at all**, so on
+this drive every path is "not a symlink" and `EINVAL` is the correct answer to
+every `readlink` — the shim is exact rather than a workaround. An `EACCES` or
+`ENOENT` passes through untouched. It probes the filesystem first, so on NTFS it
+patches nothing.
+
+### The part that took the longest, and the lesson
+
+The shim was first written into `next.config.mjs`, where it printed
+`FAT32 readlink shim active` and **the build failed exactly as before**.
+Next's bundled `graceful-fs` captures `fs.readlink` at its own require time,
+which happens before the config is evaluated, so the patch was installed on an
+object nothing was reading any more.
+
+It has to be `node --require`, before any module loads, and it has to reach the
+build workers too — hence `web/scripts/next-with-shim.mjs`, which sets
+`NODE_OPTIONS` and spawns the Next CLI. `npm run build` goes through it.
+
+**A patch that reports success is not the same as a patch that took effect.**
+The console line said the shim was active and it was — on the wrong reference.
+This is section 0's principle in a new place: the verification shared an
+assumption with the defect, namely that patching `fs` is what determines which
+`fs` webpack uses.
+
+### Other consequences of FAT32 worth knowing before they bite
+
+- No file over 4 GB, and no POSIX permissions, so `git` cannot track a mode bit.
+- Timestamp resolution is 2 seconds, which is worth remembering next time
+  something is "enforced by nothing but a file timestamp" (section 8b).
+- The webpack build cache never persists. `config.cache` is set to `memory` when
+  the probe fires, so the build stops claiming otherwise.
