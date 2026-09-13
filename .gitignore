@@ -112,6 +112,12 @@ outputs/*
 # Environment / secrets
 .env
 .env.*
+# A plain file named `env` matched NEITHER of the two patterns above nor
+# `env/` at the top of this file, which is a directory pattern for the
+# virtualenv. So the Supabase service key sat one `git add -A` away from
+# being committed, in a repository whose DDL says in its own header that
+# the key is not in it. Anchored, so it means the file at the root only.
+/env
 *.key
 *.pem
 

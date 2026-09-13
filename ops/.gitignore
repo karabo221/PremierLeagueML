@@ -1,0 +1,16 @@
+# =============================================================================
+# CREDENTIALS NEVER LEAVE THIS MACHINE.
+#
+# set-env.ps1 holds the SERVICE ROLE key, which bypasses every RLS policy in
+# supabase_live_log.sql - anyone holding it can edit or delete the live log.
+# The schema's own header promises the key is not in this repository, and these
+# rules are what keep that true.
+#
+# Anything matching these names is ignored regardless of extension, so a
+# set-env.sh or a local-env.cmd added later is covered without a further edit.
+# =============================================================================
+set-env.*
+*-env.ps1
+*-env.sh
+*.local.*
+secrets.*
