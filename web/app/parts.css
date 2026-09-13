@@ -5,21 +5,26 @@
    Loaded after globals.css. Every selector here is single-class or
    class-plus-modifier, so nothing in this file can out-specify a token or
    silently undo spacing set in the base layer.
+
+   The bar hues moved with the ground. On the old navy build the structural
+   rungs were a ramp of blues; on paper they are a ramp of warm greys, so that
+   the only COLOURED bars on the chart remain the two the page is an argument
+   about - the frozen model and the market benchmark.
    =========================================================================== */
 
 /* --- citations ----------------------------------------------------------- */
 
 .sec-cite,
 .cite {
-  font-size: 10.5px;
+  font-size: 13.5px;
   color: var(--dim2);
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
 }
 
 .split-2 {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 12px;
+  gap: 14px;
   align-items: start;
 }
 
@@ -27,22 +32,23 @@
 
 .lad { margin: 0; }
 
-.lad-rows { display: grid; gap: 5px; }
+.lad-rows { display: grid; gap: 6px; }
 
 .lad-row {
   display: grid;
-  grid-template-columns: minmax(140px, 210px) minmax(0, 1fr) 72px 68px 86px;
-  gap: 12px;
+  grid-template-columns: minmax(150px, 230px) minmax(0, 1fr) 76px 72px 90px;
+  gap: 13px;
   align-items: center;
 }
 
 @media (max-width: 860px) {
-  .lad-row { grid-template-columns: minmax(116px, 1fr) minmax(0, 1.4fr) 66px; }
+  .lad-row { grid-template-columns: minmax(124px, 1fr) minmax(0, 1.4fr) 70px; }
   .lad-r, .lad-k { display: none; }
 }
 
 .lad-nm {
-  font-size: 12.5px;
+  font-family: var(--sans);
+  font-size: 15px;
   color: var(--dim);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -52,7 +58,7 @@
 .lad-track {
   display: block;
   position: relative;
-  height: 14px;
+  height: 16px;
   background: var(--pan2);
   border-left: 1px solid var(--rule2);
 }
@@ -63,16 +69,16 @@
   bottom: 1px;
   left: 0;
   display: block;
-  background: #2b4066;
+  background: #9c8480;
 }
 
 /* Bars by role. Only the frozen model and the benchmark carry a triad hue,
    because those two are what the page is an argument about; every other rung
-   is structural context and stays in the blues. */
-.lad-row.is-baseline .lad-track i { background: #32496b; }
-.lad-row.is-ladder   .lad-track i { background: #2b4066; }
-.lad-row.is-rating   .lad-track i { background: #3a5c85; }
-.lad-row.is-arm      .lad-track i { background: #43688f; }
+   is structural context and stays in the warm greys. */
+.lad-row.is-baseline .lad-track i { background: #b8a29d; }
+.lad-row.is-ladder   .lad-track i { background: #9c8480; }
+.lad-row.is-rating   .lad-track i { background: #8a716d; }
+.lad-row.is-arm      .lad-track i { background: #78605c; }
 .lad-row.is-frozen   .lad-track i { background: var(--h); }
 .lad-row.is-market   .lad-track i { background: var(--a); }
 
@@ -81,7 +87,7 @@
 
 .lad-v,
 .lad-r {
-  font-size: 12px;
+  font-size: 14.5px;
   text-align: right;
   color: var(--tx);
 }
@@ -89,19 +95,18 @@
 .lad-r { color: var(--dim); }
 
 .lad-k {
-  font-size: 9.5px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-family: var(--sans);
+  font-size: 12.5px;
   color: var(--dim2);
   text-align: right;
 }
 
 .lad-axis {
   position: relative;
-  height: 20px;
-  margin-top: 6px;
-  margin-left: calc(min(210px, 34%) + 12px);
-  font-size: 10px;
+  height: 22px;
+  margin-top: 7px;
+  margin-left: calc(min(230px, 34%) + 13px);
+  font-size: 12.5px;
   color: var(--dim2);
 }
 
@@ -116,79 +121,81 @@
 .lad-axis span:last-child { transform: translateX(-100%); }
 
 .lad figcaption {
-  margin-top: 10px;
-  font-size: 12.5px;
+  margin-top: 12px;
+  font-size: 15.5px;
   line-height: 1.6;
-  color: var(--dim2);
-  max-width: 88ch;
+  color: var(--dim);
+  max-width: 78ch;
 }
 
-.lad figcaption strong { color: var(--dim); font-weight: 600; }
+.lad figcaption strong { color: var(--tx); font-weight: 600; }
 
 /* --- notes --------------------------------------------------------------- */
 
 .note-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(268px, 1fr));
-  gap: 10px;
+  gap: 12px;
 }
 
 .note {
   display: grid;
-  gap: 6px;
-  padding: 12px 14px;
-  background: var(--pan2);
+  gap: 7px;
+  padding: 13px 15px;
+  background: var(--pan);
   border: 1px solid var(--rule);
   border-radius: 3px;
 }
 
 .note-k {
-  font-size: 10px;
-  letter-spacing: 0.08em;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
-  color: var(--dim);
+  color: var(--dim2);
 }
 
-.note p { font-size: 12.5px; line-height: 1.55; color: var(--dim2); }
+.note p { font-size: 15.5px; line-height: 1.5; color: var(--dim); }
 
 /* --- delta table extras -------------------------------------------------- */
 
 .dt-cmp {
   display: block;
-  font-family: var(--mono);
-  font-size: 12px;
+  font-family: var(--sans);
+  font-size: 15.5px;
+  font-weight: 600;
   color: var(--tx);
 }
 
 .dt-lbl {
   display: block;
-  font-size: 11.5px;
-  color: var(--dim2);
+  font-size: 15px;
+  color: var(--dim);
   margin-top: 2px;
 }
 
-.dt-ci { font-size: 11px; color: var(--dim); }
-.dt-src { font-size: 10px; color: var(--dim2); }
-.dt-lvl { font-family: var(--mono); font-size: 11.5px; color: var(--dim); }
+.dt-ci { font-size: 13.5px; color: var(--dim); }
+.dt-src { font-size: 13px; color: var(--dim2); }
+.dt-lvl { font-family: var(--mono); font-size: 14px; color: var(--dim); }
 
 .dt-flag {
   display: block;
-  font-size: 9px;
-  letter-spacing: 0.08em;
+  font-size: 12.5px;
   color: var(--warn);
   margin-top: 3px;
 }
 
-.grid-table tr.is-focus td { background: var(--pan2); }
+.grid-table tr.is-focus td { background: var(--pan); }
 .grid-table tr.is-focus td:first-child { box-shadow: inset 2px 0 0 var(--a); }
 
 /* --- decomposition ------------------------------------------------------- */
 
-.decomp { display: grid; gap: 14px; }
+.decomp { display: grid; gap: 15px; }
 
 .decomp-bar {
   display: flex;
-  height: 40px;
+  height: 44px;
   border-radius: 2px;
   overflow: hidden;
   background: var(--pan2);
@@ -196,21 +203,20 @@
 
 .decomp-bar i { display: block; height: 100%; }
 .decomp-bar i.is-sig { background: var(--h); }
-.decomp-bar i.is-sig + i.is-sig { background: #2a9e79; }
-.decomp-bar i.is-null { background: #2b4066; }
+.decomp-bar i.is-sig + i.is-sig { background: #2f8a67; }
+.decomp-bar i.is-null { background: #b8a29d; }
 
 .decomp-keys {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(184px, 1fr));
-  gap: 0;
-  border-top: 1px solid var(--rule);
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  border-top: 1px solid var(--rule2);
 }
 
 .decomp-key {
   display: grid;
-  gap: 5px;
+  gap: 6px;
   align-content: start;
-  padding: 13px 16px 14px 0;
+  padding: 14px 16px 15px 0;
   border-right: 1px solid var(--rule);
 }
 
@@ -219,7 +225,7 @@
 
 .decomp-pc {
   font-family: var(--sans);
-  font-size: 27px;
+  font-size: 30px;
   font-weight: 800;
   letter-spacing: -0.03em;
   line-height: 1;
@@ -228,24 +234,19 @@
 
 .decomp-key.is-zero .decomp-pc { color: var(--dim2); }
 
-.decomp-nm { font-size: 12.5px; color: var(--dim); line-height: 1.4; }
+.decomp-nm { font-family: var(--sans); font-size: 15px; color: var(--tx); line-height: 1.4; }
 
-.decomp-sp {
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  color: var(--dim2);
-}
+.decomp-sp { font-size: 13px; color: var(--dim2); }
 
-.decomp-ll { font-size: 11px; color: var(--dim2); }
+.decomp-ll { font-size: 13.5px; color: var(--dim); }
 .decomp-key .verdict { justify-self: start; margin-top: 2px; }
 
 /* --- the gap ------------------------------------------------------------- */
 
 .gap-hero {
   display: grid;
-  grid-template-columns: minmax(0, 262px) minmax(0, 1fr);
-  gap: 0;
-  border: 1px solid var(--rule);
+  grid-template-columns: minmax(0, 268px) minmax(0, 1fr);
+  border: 1px solid var(--rule2);
   border-radius: 3px;
   background: var(--pan);
   overflow: hidden;
@@ -258,74 +259,74 @@
 
 .gap-n {
   display: grid;
-  gap: 8px;
+  gap: 9px;
   align-content: start;
-  padding: 18px;
+  padding: 19px;
   background: var(--pan2);
   border-right: 1px solid var(--rule);
 }
 
 .gap-fig {
   font-family: var(--sans);
-  font-size: clamp(30px, 4vw, 40px);
+  font-size: clamp(31px, 4vw, 41px);
   font-weight: 800;
   letter-spacing: -0.035em;
   line-height: 1;
   color: var(--a);
 }
 
-.gap-ci { font-size: 11px; color: var(--dim2); line-height: 1.6; }
+.gap-ci { font-size: 13.5px; color: var(--dim); line-height: 1.55; }
 .gap-n .verdict { justify-self: start; }
 
 .gap-reasons {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-  gap: 0;
+  grid-template-columns: repeat(auto-fit, minmax(238px, 1fr));
 }
 
 .gap-reason {
   display: grid;
-  gap: 7px;
+  gap: 8px;
   align-content: start;
-  padding: 15px 16px;
+  padding: 16px 17px;
   border-right: 1px solid var(--rule);
   border-bottom: 1px solid var(--rule);
 }
 
 .gap-k {
-  font-size: 10px;
-  letter-spacing: 0.1em;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
-  color: var(--dim);
+  color: var(--claret);
 }
 
-.gap-reason p { font-size: 12.5px; line-height: 1.55; color: var(--dim2); }
+.gap-reason p { font-size: 15.5px; line-height: 1.5; color: var(--dim); }
 .gap-reason p strong { color: var(--tx); font-weight: 600; }
-.gap-reason p .mono { color: var(--dim); font-size: 11.5px; }
+.gap-reason p .mono { color: var(--dim); font-size: 14px; }
 
 /* --- key / value list ---------------------------------------------------- */
 
 .kv {
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 0;
   margin: 0;
 }
 
 .kv dt {
-  padding: 7px 0;
+  padding: 8px 0;
   border-top: 1px solid var(--rule);
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--dim2);
+  font-family: var(--sans);
+  font-size: 14.5px;
+  color: var(--dim);
 }
 
 .kv dd {
   margin: 0;
-  padding: 7px 0;
+  padding: 8px 0;
   border-top: 1px solid var(--rule);
   text-align: right;
-  font-size: 12.5px;
+  font-size: 15px;
   color: var(--tx);
 }
 
@@ -334,19 +335,18 @@
 .chain {
   display: flex;
   align-items: center;
-  gap: 0;
   padding: 12px 0;
 }
 
 .chain-step { display: inline-flex; align-items: center; }
 
 .chain-node {
-  font-size: 10px;
-  color: var(--ok);
-  background: var(--pan2);
+  font-size: 12.5px;
+  color: var(--h);
+  background: var(--pan);
   border: 1px solid var(--rule2);
   border-radius: 2px;
-  padding: 5px 7px;
+  padding: 5px 8px;
   white-space: nowrap;
 }
 
@@ -363,16 +363,16 @@
 
 /* --- missing crests ------------------------------------------------------ */
 
-.missing { display: flex; flex-wrap: wrap; gap: 8px; }
+.missing { display: flex; flex-wrap: wrap; gap: 9px; }
 
 .missing-item {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 11px 6px 7px;
-  background: var(--pan2);
+  padding: 6px 12px 6px 7px;
+  background: var(--pan);
   border: 1px solid var(--rule);
   border-radius: 99px;
-  font-size: 12px;
+  font-size: 15px;
   color: var(--dim);
 }

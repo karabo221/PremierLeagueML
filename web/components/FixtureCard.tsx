@@ -1,23 +1,30 @@
 import { Crest } from "@/components/Crest";
+import { goalsPhrase, pBothScore, BTTS_CALL } from "@/lib/accuracy";
 import { displayName } from "@/lib/crests";
 import { dayShort, dateShort, lean, pct, pctShort } from "@/lib/format";
 import type { ResultRow } from "@/lib/supabase";
 import type { Prediction } from "@/lib/types";
 
-// The fixture shape lives in lib/types.ts, shared with the database read.
 export type Fixture = Prediction;
 
 const OUTCOME = { H: "home", D: "draw", A: "away" } as const;
 
 /**
- * One match. The probability triad is the card's whole point, so it gets the
- * largest type on it; lambda and rho sit underneath because they are what the
- * probabilities were computed FROM and a reader who wants them wants them
- * exactly, not rounded.
+ * One match, set as a ruled row rather than a card - the way a results column
+ * has been set since long before anyone had a grid to put it in.
  *
- * A captured result, when one exists, is shown WITH the prediction rather than
- * replacing it. The prediction is the evidence; hiding it once the answer is
- * known is how a log stops being one.
+ * The probability triad is still the row's whole point and keeps the largest
+ * type on it. What changed is underneath: lambda and rho used to sit there as
+ * two Greek letters on every row, which told a reader who already knew them
+ * nothing new and a reader who did not, nothing at all. They are now a
+ * sentence - "expects about 2.0 goals to 0.8" - plus the chance both sides
+ * score, which is computed from those same three numbers and is the thing
+ * people actually ask about. The exact figures are still in the log, which is
+ * where a reader who wants three decimal places should be reading them.
+ *
+ * A captured result is shown WITH the prediction rather than replacing it. The
+ * prediction is the evidence; hiding it once the answer is known is how a log
+ * stops being one.
  */
 export function FixtureCard({
   fixture,
@@ -29,53 +36,88 @@ export function FixtureCard({
   const f = fixture;
   const top = lean(f.pHome, f.pDraw, f.pAway);
   const coldStart = !f.homeHasHistory || !f.awayHasHistory;
+  const pBoth = pBothScore(f.lambdaHome, f.lambdaAway, f.rho);
 
   // Did the model's leading outcome happen? Stated plainly, never scored -
   // L5.1 keeps the official figure in phase6_score_holdout.py.
   const called = result ? result.result === top : null;
+  const bothScored = result ? result.homeGoals > 0 && result.awayGoals > 0 : null;
+  const saidBoth = pBoth > BTTS_CALL;
+
+  const leaning =
+    top === "H"
+      ? displayName(f.homeTeam)
+      : top === "A"
+        ? displayName(f.awayTeam)
+        : "a draw";
 
   return (
     <article className={`fx${result ? " is-settled" : ""}`}>
-      <header className="fx-top">
-        <span className="mono">
-          {dayShort(f.scheduledDate)} {dateShort(f.scheduledDate)}
-          {f.scheduledKickoff ? ` · ${f.scheduledKickoff}` : ""}
-        </span>
-        {result ? (
-          <span className={`fx-called${called ? " is-hit" : " is-miss"}`}>
-            {called ? "called" : "missed"}
-          </span>
-        ) : (
-          <span className="mono fx-round">R{f.roundId}</span>
-        )}
-      </header>
-
-      <div className="fx-teams">
-        <div className="fx-team">
-          <Crest team={f.homeTeam} />
-          <span className="fx-nm">{displayName(f.homeTeam)}</span>
-        </div>
-
-        {result ? (
-          <span className="fx-score figure">
-            {result.homeGoals}&ndash;{result.awayGoals}
-          </span>
-        ) : (
-          <span className="fx-v mono">v</span>
-        )}
-
-        <div className="fx-team is-away">
-          <span className="fx-nm">{displayName(f.awayTeam)}</span>
-          <Crest team={f.awayTeam} />
-        </div>
+      <div className="fx-when">
+        <span>{dayShort(f.scheduledDate)}</span>
+        <span>{f.scheduledKickoff ?? dateShort(f.scheduledDate)}</span>
       </div>
 
-      <div className="fx-probs">
+      <div className="fx-mid">
+        <div className="fx-tm">
+          <Crest team={f.homeTeam} size={26} />
+          <span className="fx-nm">{displayName(f.homeTeam)}</span>
+          {result ? (
+            <span className="fx-score">
+              {result.homeGoals}&ndash;{result.awayGoals}
+            </span>
+          ) : (
+            <span className="fx-v">v</span>
+          )}
+          <Crest team={f.awayTeam} size={26} />
+          <span className="fx-nm">{displayName(f.awayTeam)}</span>
+        </div>
+
+        <p className="fx-sub">
+          {result ? (
+            <>
+              <span className={`fx-tick${called ? " is-hit" : " is-miss"}`}>
+                {called ? "Called it" : "Missed"}
+              </span>{" "}
+              &middot; we said {leaning}
+              {saidBoth ? (
+                <>
+                  , and said both would score &mdash;{" "}
+                  {bothScored ? "both did" : "they did not"}
+                </>
+              ) : null}
+              .
+            </>
+          ) : (
+            <>
+              {top === "D" ? (
+                <>
+                  Model leans towards <strong>a draw</strong>.
+                </>
+              ) : (
+                <>
+                  Model leans <strong>{leaning}</strong>.
+                </>
+              )}{" "}
+              Expects {goalsPhrase(f.lambdaHome, f.lambdaAway)}.
+              <span className="fx-btts"> &middot; both to score {pctShort(pBoth)}</span>
+              {coldStart ? (
+                <span className="fx-cold" title="No history in the dataset for one side">
+                  {" "}
+                  &middot; one side is new to the data
+                </span>
+              ) : null}
+            </>
+          )}
+        </p>
+      </div>
+
+      <div className="fx-odds">
         {(
           [
-            ["H", f.pHome, "Home"],
+            ["H", f.pHome, displayName(f.homeTeam)],
             ["D", f.pDraw, "Draw"],
-            ["A", f.pAway, "Away"],
+            ["A", f.pAway, displayName(f.awayTeam)],
           ] as const
         ).map(([key, p, label]) => (
           <div
@@ -84,36 +126,15 @@ export function FixtureCard({
               result && result.result === key ? " is-actual" : ""
             }`}
           >
-            <span className="fx-p figure">{pctShort(p)}</span>
-            <span className="fx-l mono">{label}</span>
+            <span className="fx-p">{pctShort(p)}</span>
+            <span className="fx-l">{label}</span>
           </div>
         ))}
       </div>
 
-      <div
-        className="fx-bar"
-        role="img"
-        aria-label={
-          `Home ${pct(f.pHome)}, draw ${pct(f.pDraw)}, away ${pct(f.pAway)}`
-        }
-      >
-        <i className="is-home" style={{ width: `${f.pHome * 100}%` }} />
-        <i className="is-draw" style={{ width: `${f.pDraw * 100}%` }} />
-        <i className="is-away" style={{ width: `${f.pAway * 100}%` }} />
-      </div>
-
-      <footer className="fx-foot mono">
-        <span>
-          &lambda; {f.lambdaHome.toFixed(3)} &mdash; {f.lambdaAway.toFixed(3)}
-        </span>
-        {coldStart ? (
-          <span className="fx-cold" title="No history in the dataset for one side">
-            cold start
-          </span>
-        ) : (
-          <span>&rho; {f.rho.toFixed(3)}</span>
-        )}
-      </footer>
+      <span className="fx-sr">
+        Home {pct(f.pHome)}, draw {pct(f.pDraw)}, away {pct(f.pAway)}.
+      </span>
     </article>
   );
 }

@@ -1,12 +1,69 @@
 # web/ — the prediction log and the evidence
 
-A Next.js App Router site with three routes, deployed to Vercel.
+A Next.js App Router site with four routes, deployed to Vercel.
 
-| route       | what it is                                                              | data source                       |
-| ----------- | ----------------------------------------------------------------------- | --------------------------------- |
-| `/`         | This round's fixtures with their pre-kickoff probabilities              | compiled mirror + Supabase        |
-| `/evidence` | The frozen development figures: ladder, deltas, gap diagnostic          | compiled only, no network         |
-| `/log`      | Integrity: the hash chain, coverage, contamination, the known gaps      | compiled mirror + Supabase        |
+| route           | what it is                                                          | data source                |
+| --------------- | ------------------------------------------------------------------- | -------------------------- |
+| `/`             | This round's fixtures, their pre-kickoff chances, and the scorecard  | compiled mirror + Supabase |
+| `/how-it-works` | The whole project in plain English, for a reader who has met none of it | compiled only, no network  |
+| `/evidence`     | The frozen development figures: ladder, deltas, gap diagnostic       | compiled only, no network  |
+| `/log`          | Integrity: the fingerprint chain, coverage, contamination, the gaps  | compiled mirror + Supabase |
+
+`/log` is labelled **The record** in the nav. The route did not move, because a
+renamed route breaks every link anybody has already saved; only the word did.
+
+## The look
+
+The site is a single-theme design called **the Pink 'Un**, after the pink
+sports-final papers that printed Saturday's results while the crowd was still
+walking home. It replaced a dark build for one measurable reason and one
+editorial one.
+
+The measurable one: that build's faintest text colour was `#5d7391` on `#0a1628`,
+a contrast ratio of **3.74:1** against a 4.5:1 floor — and it was the colour of
+nearly every explanatory sentence on the site. Body text was 15px and the
+outcome labels on the fixture cards were 8.5px. Every text colour in
+`app/globals.css` now clears 4.5:1 on its own ground, the tightest being
+`--dim2` at 4.61, and nothing carrying meaning is below 13px.
+
+The editorial one: the site has to be readable at length by somebody who does
+not know what any of it means. `/how-it-works` exists for exactly that reader,
+and a dark technical page is the wrong instrument for it.
+
+The triad — home, draw, away — is fixed and means the same thing on every
+surface. **The brand claret is deliberately not one of the three**: it belongs
+to the masthead, the section rules and the links, and a reader must never have
+to wonder whether a claret mark means "away win".
+
+## The scorecard
+
+The front page keeps a running tally: rounds on record, then how often the
+model's called outcome happened, split into home wins, draws, away wins and
+both-teams-to-score. `lib/accuracy.ts` computes it, and it is the only place in
+`web/` that works a figure out from the live log rather than reading one.
+
+Both-teams-to-score is a **closed form, not a threshold**. Every prediction row
+already carries the goals expected of each side and the low-score dependence
+parameter, and the Dixon-Coles tau correction leaves the marginals untouched, so
+
+```
+P(both score) = 1 - exp(-λ) - exp(-μ) + (1 - λμρ) · exp(-(λ+μ))
+```
+
+Worth knowing before anyone reaches for the obvious shortcut: two sides on **one
+expected goal each comes out at 40%**, not a coin toss. A rule of "call it when
+both are near 1.0" would call yes on matches the model leans against.
+
+Every box prints what the model **expected** to get right beside what it did,
+because a bare hit rate cannot be read — 64% is good if the model expected 50%
+and poor if it expected 80%. And every box renders `—` rather than `0%` when
+nothing has been called: a zero there would say the model has been wrong every
+time, which is the opposite of what an empty database means.
+
+**These figures are informal (L5.1) and nothing may act on them.** The official
+2026-27 result is `phase6_score_holdout.py`, run once after the final fixture. A
+scorecard is exactly the instrument that tempts a change to a frozen model, and
+any such change marks the holdout compromised.
 
 ## Where the numbers come from, and why it is split
 
@@ -134,7 +191,8 @@ be set explicitly.
 which is the point of compiling it here rather than fetching at runtime. You do
 not need to redeploy for a new matchweek; see **The weekly routine** above.
 
-`/` and `/log` are statically prerendered and revalidate every 600 seconds.
+`/` and `/log` are statically prerendered and revalidate every 600 seconds;
+`/how-it-works` and `/evidence` are fully static and touch no network.
 Results arrive at a matchweek's cadence, not a second's, so a tighter window
 would spend invocations to show the same rows.
 

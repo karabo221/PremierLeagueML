@@ -35,6 +35,27 @@ const mktSharp = SHARP.find((r) => r.label.startsWith("Market"))!;
 /** The splits worth surfacing; the rest stay in the drawer, all of them. */
 const HEADLINE_SPLIT = "did the favourite deliver";
 
+const uniq = (xs: readonly string[]): string => [...new Set(xs)].sort().join(" · ");
+
+/**
+ * Every artefact behind this page, collected in one block at the foot instead
+ * of printed beside each heading. Derived from the data rather than typed, so
+ * a filename cannot go stale here while the figure above it stays current.
+ */
+const SOURCES: ReadonlyArray<readonly [string, string]> = [
+  ["How wrong each attempt was", uniq(LADDER.map((r) => r.source))],
+  ["Every comparison and its range", uniq(DELTAS.map((d) => d.source))],
+  ["Freshness against volume", TIER2.source],
+  ["The gap, split every way", GAP.splitsSource],
+  [
+    `The gap, against ${GAP.correlations.columnsExamined} columns`,
+    GAP.correlations.source,
+  ],
+  ["Confidence and calibration", GAP.sharpness.calibrationSource],
+  ["Leakage checks, run before any modelling", LEAKAGE.source],
+  ["The four test seasons", "phase0_evaluation_folds.csv"],
+];
+
 export default function EvidencePage() {
   const recency = TIER2.quantities["delta_recency"];
   const sampleSize = TIER2.quantities["delta_sample"];
@@ -47,21 +68,20 @@ export default function EvidencePage() {
       <section className="hero">
         <div className="shell">
           <p className="eyebrow">
-            {META.seasons} &middot; {META.devMatches.toLocaleString("en-GB")} outer-test
-            matches &middot; four frozen folds
+            {META.seasons} &middot; {META.devMatches.toLocaleString("en-GB")} matches
+            no model had seen &middot; four test seasons fixed in advance
           </p>
           <h1 className="hero-h display">
-            A boundary, measured &mdash; and{" "}
-            <span className="hero-em">no explanation for it</span>
+            We ran into a wall &mdash;{" "}
+            <span className="hero-em">and here is how we know it is real</span>
           </h1>
           <p className="prose hero-p">
-            Within the information classes this project could access and did test,
-            the best model reaches <strong>{fixed(frozen.logLoss!)} log loss</strong>{" "}
-            and {fixed(frozen.rps!)} RPS against a market benchmark of{" "}
-            {fixed(market.logLoss!)} and {fixed(market.rps!)} on the same matches.
-            Most of what follows is a null, and the point of the page is that the
-            instrument which produced those nulls would have detected the
-            alternative.
+            Using everything we could get hold of and did test, the best model
+            scores <strong>{fixed(frozen.logLoss!, 3)}</strong> where the bookmakers
+            score {fixed(market.logLoss!, 3)} on the same matches &mdash; lower is
+            better, so they are still ahead. Most of what follows is a{" "}
+            <strong>nothing found</strong>, and the point of the page is that these
+            same tests would have found something had there been something to find.
           </p>
         </div>
       </section>
@@ -70,18 +90,14 @@ export default function EvidencePage() {
         {/* ── the ladder ─────────────────────────────────────────────── */}
         <section className="stack stack-md" id="ladder">
           <div className="sec-hd">
-            <h2 className="sec-h">The results ladder</h2>
-            <span className="mono sec-cite">
-              phase4_ladder_pooled.csv &middot; phase4_d34_pooled.csv &middot;
-              phase5_market_pooled.csv
-            </span>
+            <h2 className="sec-h">Every attempt, and how wrong it was</h2>
           </div>
           <LadderPlot />
 
           <div className="note-grid">
             {LADDER.filter((r) => r.note).map((r) => (
               <div key={r.key} className="note">
-                <span className="note-k mono">{r.label}</span>
+                <span className="note-k">{r.label}</span>
                 <p>{r.note}</p>
               </div>
             ))}
@@ -91,7 +107,7 @@ export default function EvidencePage() {
         {/* ── the two uncomfortable readings ────────────────────────── */}
         <section className="stack stack-md">
           <div className="sec-hd">
-            <h2 className="sec-h">Two readings that are hard on the engineering</h2>
+            <h2 className="sec-h">Two findings we did not want</h2>
           </div>
 
           <div className="split-2">
@@ -118,15 +134,20 @@ export default function EvidencePage() {
               </div>
               <div className="panel-bd stack stack-sm">
                 <p className="prose">
-                  The tier-2 instrument splits the walk-forward advantage into recency
-                  and training-set size. Recency accounts for{" "}
-                  <strong>{fixed(recency.point!)}</strong>{" "}
-                  {ci(recency.ci as [number, number])} of a total{" "}
-                  {fixed(total.point!)} &mdash; {pct(recencyShare.point!, 0)}{" "}
-                  &mdash; while the sample-size term is {fixed(sampleSize.point!)}{" "}
-                  {ci(sampleSize.ci as [number, number])} and does not clear zero.
+                  Refitting the model as the season goes helps &mdash; but we split
+                  that help in two to find out <em>why</em>. Roughly{" "}
+                  <strong>{pct(recencyShare.point!, 0)} of it</strong> comes from the
+                  model being up to date; the rest, from it having seen more matches,{" "}
+                  <strong>cannot be told apart from zero</strong>. Being current beats
+                  having more history.
                 </p>
-                <p className="cite mono">{TIER2.source}</p>
+                <p className="cite">
+                  Freshness {fixed(recency.point!)} {ci(recency.ci as [number, number])}{" "}
+                  &middot; extra data {fixed(sampleSize.point!)}{" "}
+                  {ci(sampleSize.ci as [number, number])} &middot; total{" "}
+                  {fixed(total.point!)}. A range that straddles zero means the effect
+                  could as easily be nothing.
+                </p>
               </div>
             </div>
           </div>
@@ -135,15 +156,15 @@ export default function EvidencePage() {
         {/* ── decomposition ─────────────────────────────────────────── */}
         <section className="stack stack-md">
           <div className="sec-hd">
-            <h2 className="sec-h">Where the {fixed(DECOMPOSITION.total, 4)} went</h2>
+            <h2 className="sec-h">Where the improvement actually came from</h2>
             <span className="verdict is-inconclusive">DERIVED</span>
           </div>
           <p className="sec-sub">
-            The whole distance from a base rate to the frozen model, decomposed
-            against D2 rescaled. This is the one figure on the page computed here
-            rather than read from disk &mdash; it is arithmetic over three named
-            artefacts, and the parts are checked to sum to the total before the page
-            will build.
+            The whole distance from a blind guess to the sealed model, split into
+            the steps that produced it. This is the one figure on the page worked
+            out here rather than read straight off a file &mdash; it is arithmetic
+            over three named sources, and the parts are checked to add up to the
+            total before the page will build.
           </p>
 
           <div className="decomp">
@@ -188,7 +209,7 @@ export default function EvidencePage() {
         {/* ── every delta ───────────────────────────────────────────── */}
         <section className="stack stack-md" id="deltas">
           <div className="sec-hd">
-            <h2 className="sec-h">Every comparison, nulls included</h2>
+            <h2 className="sec-h">Every test we ran, including the ones that found nothing</h2>
           </div>
           <DeltaTable />
         </section>
@@ -196,7 +217,7 @@ export default function EvidencePage() {
         {/* ── the gap ───────────────────────────────────────────────── */}
         <section className="stack stack-md" id="gap">
           <div className="sec-hd">
-            <h2 className="sec-h">The gap, and four ways of failing to explain it</h2>
+            <h2 className="sec-h">The gap, and four ways we failed to explain it</h2>
           </div>
 
           <div className="gap-hero">
@@ -342,7 +363,7 @@ export default function EvidencePage() {
         {/* ── method ────────────────────────────────────────────────── */}
         <section className="stack stack-md" id="method">
           <div className="sec-hd">
-            <h2 className="sec-h">Why the nulls are readable</h2>
+            <h2 className="sec-h">Why a &ldquo;nothing found&rdquo; here means something</h2>
           </div>
 
           <div className="scroll-x">
@@ -378,12 +399,12 @@ export default function EvidencePage() {
                 ))}
               </tbody>
               <caption>
-                phase0_evaluation_folds.csv &mdash; fixed in Phase 0 before any model
-                existed and never moved. Every fold trains only on seasons that
-                finished before its test season began. The leakage suite ran{" "}
-                {LEAKAGE.tests} tests over all {META.sourceMatches.toLocaleString("en-GB")}{" "}
-                matches before modelling, {LEAKAGE.passed} passing (
-                <span className="mono">{LEAKAGE.source}</span>).
+                Fixed before any model existed, and never moved since. Every fold
+                learns only from seasons that had already finished when its test
+                season began, so no model was ever marked on work it had seen. A
+                separate suite ran {LEAKAGE.tests} checks over all{" "}
+                {META.sourceMatches.toLocaleString("en-GB")} matches before any
+                modelling started, {LEAKAGE.passed} of them passing.
               </caption>
             </table>
           </div>
@@ -391,14 +412,53 @@ export default function EvidencePage() {
           <div className="informal">
             <span className="informal-t">The honest frame for the gap</span>
             <p>
-              The comparison is <strong>biased in this project&apos;s favour</strong>.
-              2025-26 was scored during Phase 3&apos;s lambda sweep, so every model
-              figure on this page is a walk-forward <em>development</em> estimate. The
-              market has never been fitted to anything. The project loses by 0.03918 at
-              D4 with the thumb on its own side of the scale, and the size of that
-              optimism is exactly what the pending holdout exists to measure &mdash; once,
-              at the end of the 2026-27 season, whatever it says.
+              The comparison above is <strong>tilted in our favour</strong>. Our
+              figures come from seasons the project could look at while it was being
+              built; the bookmakers have never been fitted to anything. We lose
+              anyway &mdash; by {fixed(0.03918, 3)} at our most elaborate model, with
+              the thumb on our own side of the scale. How much of that tilt there is,
+              is exactly what the sealed 2026&ndash;27 season exists to measure:
+              once, at the end, whatever it says.
             </p>
+          </div>
+        </section>
+
+        {/* ── every source, in one place instead of beside every heading ── */}
+        <section className="stack stack-md" id="sources">
+          <div className="sec-hd">
+            <h2 className="sec-h">Where these numbers come from</h2>
+          </div>
+          <p className="sec-sub">
+            Every figure on this page is read from a committed file rather than typed
+            in, and each one is hash-pinned so it cannot quietly change. These used to
+            sit beside each heading, which put a filename in front of a reader before
+            they had read the finding.
+          </p>
+          <div className="scroll-x">
+            <table className="grid-table">
+              <thead>
+                <tr>
+                  <th>what</th>
+                  <th>file</th>
+                </tr>
+              </thead>
+              <tbody>
+                {SOURCES.map(([what, file]) => (
+                  <tr key={file}>
+                    <td>{what}</td>
+                    <td className="mono">{file}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <caption>
+                Compiled by <span className="mono">phase6_build_frontend_data.py</span>{" "}
+                on {META.generatedAt.slice(0, 10)}. The sealed rules are recorded under{" "}
+                <span className="mono">{META.freezeSha.slice(0, 12)}…</span>, the cutoff
+                under <span className="mono">{META.pinSha.slice(0, 12)}…</span>, and the
+                weekly protocol under{" "}
+                <span className="mono">{META.protocolSha.slice(0, 12)}…</span>.
+              </caption>
+            </table>
           </div>
         </section>
       </div>
