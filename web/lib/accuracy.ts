@@ -99,14 +99,19 @@ const LABEL: Record<TallyKey, string> = {
 /**
  * Join the predictions to the captured results and count.
  *
- * Contaminated matches are excluded, the same way every other figure on the
- * site excludes them: they were played before the log began, so a prediction
- * for one is not a pre-kickoff claim. A result with no matching prediction is
- * skipped rather than counted as a miss.
+ * TWO TALLIES, NEVER ONE (protocol L10.2 C). "pre-kickoff" is the tally the
+ * site has always shown: rows written before their own kickoff, contaminated
+ * results out. "late" counts only rows written AFTER kickoff - the same numbers
+ * a timely run would have produced, since each was fitted on matches before its
+ * round and nothing later, but without the timestamp proof. It answers "how
+ * would it have done", and it is never added into the pre-kickoff figure.
+ *
+ * A result with no matching prediction is skipped rather than counted as a miss.
  */
 export function scorecard(
   predictions: readonly Prediction[],
-  results: readonly ResultRow[]
+  results: readonly ResultRow[],
+  which: "pre-kickoff" | "late" = "pre-kickoff"
 ): Scorecard {
   const byMatch = new Map(predictions.map((p) => [p.matchId, p]));
 
@@ -120,9 +125,10 @@ export function scorecard(
   let settled = 0;
 
   for (const result of results) {
-    if (result.contaminated) continue;
     const p = byMatch.get(result.matchId);
     if (!p) continue;
+    const late = !p.writtenPreKickoff || result.contaminated;
+    if (which === "late" ? !late : late) continue;
 
     settled += 1;
 

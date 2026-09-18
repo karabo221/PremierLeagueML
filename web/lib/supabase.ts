@@ -33,7 +33,24 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import { PREDICTIONS } from "@/lib/frozen.generated";
+import { writtenBeforeKickoff } from "@/lib/kickoff";
 import type { Prediction } from "@/lib/types";
+
+/** Every row, from either source, carries the L10.2 B flag by the same rule. */
+function withKickoffFlag(row: Omit<Prediction, "writtenPreKickoff">): Prediction {
+  return {
+    ...row,
+    writtenPreKickoff: writtenBeforeKickoff(
+      row.generatedAtUtc,
+      row.scheduledDate,
+      row.scheduledKickoff
+    ),
+  };
+}
+
+const MIRROR: readonly Prediction[] = (
+  PREDICTIONS as readonly Omit<Prediction, "writtenPreKickoff">[]
+).map(withKickoffFlag);
 
 export interface Coverage {
   predictionsWritten: number;
@@ -128,7 +145,7 @@ export interface PredictionFeed {
  */
 export async function readPredictions(): Promise<PredictionFeed> {
   const mirror = {
-    rows: PREDICTIONS as readonly Prediction[],
+    rows: MIRROR,
     source: "mirror" as const,
     detail:
       `The committed mirror, ${PREDICTIONS.length} rows. This is the primary ` +
@@ -147,7 +164,7 @@ export async function readPredictions(): Promise<PredictionFeed> {
 
     if (error || !data || data.length === 0) return mirror;
 
-    const rows: Prediction[] = data.map((r: Record<string, unknown>) => ({
+    const rows: Prediction[] = data.map((r: Record<string, unknown>) => withKickoffFlag({
       matchId: String(r.match_id),
       season: String(r.season),
       roundId: Number(r.round_id),
@@ -175,7 +192,7 @@ export async function readPredictions(): Promise<PredictionFeed> {
     // a round was written mirror-only. Show the longer record and say why.
     if (rows.length < PREDICTIONS.length) {
       return {
-        rows: PREDICTIONS as readonly Prediction[],
+        rows: MIRROR,
         source: "mirror",
         detail:
           `The database holds ${rows.length} of the mirror's ${PREDICTIONS.length} ` +

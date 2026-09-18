@@ -212,6 +212,11 @@ def capture(audit, dry=False):
     cutoffs = dict(zip(predictions["match_id"],
                        pd.to_datetime(predictions["state_cutoff_date"])))
 
+    # L10.2 amendment C. A row written after its own kickoff is in the log now,
+    # and its result is captured - but as contaminated, so every pre-kickoff
+    # figure keeps excluding it exactly as it excluded a missing row before.
+    pre_kickoff = GEN.pre_kickoff_flags(predictions)
+
     # ---- the holdout rows, and which of them the log covers ---------------
     in_holdout = played[played["played_date"] >= pin["cutoff"]].copy()
 
@@ -224,7 +229,7 @@ def capture(audit, dry=False):
     contaminated = in_holdout[~have_prediction].copy()
 
     audit.measure(
-        "C4", "holdout matches with NO pre-kickoff prediction (L2)",
+        "C4", "holdout matches with NO prediction at all (L2)",
         "{} of {}".format(len(contaminated), len(in_holdout)),
         "EXCLUDED FROM THE LOG's figures, NEVER from the holdout. L2.2: the "
         "holdout's membership is a date rule in a frozen document and no rule "
@@ -309,7 +314,7 @@ def capture(audit, dry=False):
         "result": fresh["result"],
         "state_age_days": fresh["state_age_days"],
         "is_stale": fresh["is_stale"],
-        "contaminated": False,
+        "contaminated": [not pre_kickoff[m] for m in fresh["match_id"]],
         "source_sha256": digest,
         "captured_at_utc": captured_at,
     })

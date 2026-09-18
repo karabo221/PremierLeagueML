@@ -56,7 +56,9 @@ So this file separates the two claims that were conflated:
     ./venv/Scripts/python.exe -B scripts/phase6_generate_predictions.py
         both dry runs against the development seasons
 
-    ... --round            write the next 2026-27 round, pre-kickoff
+    ... --round            write every due 2026-27 round (L10.2): the next
+                           one, and any already kicked off, flagged late
+    ... --round --matchweek N   only that round
     ... --verify           recompute every row hash in the local mirror
 """
 
@@ -126,9 +128,26 @@ RUN_AUDIT = LIVE_DIR / "phase6_live_log_run_audit.csv"
 DRYRUN_OUTPUT = OUTPUTS_DIR / "phase6_live_log_dryrun.csv"
 DRYRUN_AUDIT = OUTPUTS_DIR / "phase6_live_log_dryrun_audit.csv"
 
-FIXTURES_URL = "https://www.football-data.co.uk/fixtures.csv"
+# L10.2 amendment A. The fixture list comes from fixturedownload.com, which
+# publishes the whole season with UTC kickoffs. It replaced football-data's
+# fixtures.csv, which carried E0 rows only a few days ahead and on 2026-09-18
+# had none for a matchweek whose first match kicked off that evening.
+FIXTURES_URL = "https://fixturedownload.com/feed/json/epl-2026"
 SOURCE_URL = "https://www.football-data.co.uk/mmz4281/2627/E0.csv"
 USER_AGENT = "Mozilla/5.0 (compatible; PremierLeagueML source watch)"
+
+# The fixture feed's spellings that differ from football-data's, and nothing
+# else. Closed on purpose (L6.4): an unlisted name passes through unchanged,
+# then through TEAM_MAP, and reaches assert_vocabulary, which stops the run.
+FIXTURE_SOURCE_NAMES = {
+    "Man Utd": "Man United",
+    "Spurs": "Tottenham",
+}
+
+# Kickoffs are stored as UK local "HH:MM" - football-data's convention, and
+# what every row written before the amendment carries - and converted to UTC
+# only to decide whether a row was written before its own kickoff.
+UK = "Europe/London"
 
 HOLDOUT_SEASON = "2026-2027"
 DIVISION = "E0"
@@ -248,57 +267,129 @@ def spine_from_e0(payload, season=HOLDOUT_SEASON):
     return built.sort_values(["date", "home_team"]).reset_index(drop=True)
 
 
+def source_name(name):
+    """Feed spelling -> football-data spelling -> the pin's vocabulary."""
+
+    name = FIXTURE_SOURCE_NAMES.get(name, name)
+    return TEAM_MAP.get(name, name)
+
+
 def fixtures_from_source(payload):
-    """The upcoming E0 fixtures, mapped the same way and not otherwise touched."""
+    """
+    Every 2026-27 fixture in the feed, played or not (L10.2 amendment A).
 
-    frame = pd.read_csv(io.BytesIO(payload))
+    The date is the UK date of the kickoff, the same calendar the E0 spine and
+    the state cutoff use. `played` is the feed's own scoreline being present;
+    it is used only to tell a lagging results file from a postponement, and no
+    score from this feed is ever read into a fit or a capture.
+    """
 
-    upcoming = frame[frame["Div"] == DIVISION].copy()
+    rows = json.loads(payload.decode("utf-8-sig"))
 
-    if upcoming.empty:
+    if not rows:
         raise ProtocolError(
-            "the fixture list carries no {} rows. A round cannot be written "
-            "without knowing which matches it contains.".format(DIVISION))
+            "the fixture feed is empty. A round cannot be written without "
+            "knowing which matches it contains.")
+
+    for column in ("RoundNumber", "DateUtc", "HomeTeam", "AwayTeam",
+                   "HomeTeamScore"):
+        if column not in rows[0]:
+            raise ProtocolError(
+                "the fixture feed has no {} field. This is a SOURCE CHANGE "
+                "and it stops the log rather than being guessed around"
+                .format(column))
+
+    kickoff_utc = pd.to_datetime([r["DateUtc"] for r in rows], utc=True)
+    local = kickoff_utc.tz_convert(UK)
 
     built = pd.DataFrame({
         "season": HOLDOUT_SEASON,
-        "date": pd.to_datetime(upcoming["Date"], format="%d/%m/%Y"),
-        "kickoff": upcoming["Time"] if "Time" in upcoming.columns else "",
-        "home_team": upcoming["HomeTeam"].map(lambda t: TEAM_MAP.get(t, t)),
-        "away_team": upcoming["AwayTeam"].map(lambda t: TEAM_MAP.get(t, t)),
+        "round_number": [int(r["RoundNumber"]) for r in rows],
+        "kickoff_utc": kickoff_utc,
+        "date": local.tz_localize(None).normalize(),
+        "kickoff": local.strftime("%H:%M"),
+        "home_team": [source_name(r["HomeTeam"]) for r in rows],
+        "away_team": [source_name(r["AwayTeam"]) for r in rows],
+        "played": [r["HomeTeamScore"] is not None for r in rows],
     })
 
-    return built.sort_values(["date", "kickoff", "home_team"]).reset_index(
+    built["match_id"] = [
+        match_key(s, h, a) for s, h, a in
+        zip(built["season"], built["home_team"], built["away_team"])]
+
+    return built.sort_values(["kickoff_utc", "home_team"]).reset_index(
         drop=True)
 
 
-def next_round(fixtures):
+def plan_rounds(fixtures, written, live, holdout_cutoff, now):
     """
-    One prediction round: fixtures in date order until a side would repeat.
+    Which rounds this run writes, in round order (L10.2 amendments A and C).
 
-    L1 says once per matchweek, and this is what defines the boundary without
-    inventing a matchweek LABEL. P7.2 deliberately does not carry matchweek -
-    H3.4 makes the cutoff a date rule - so the round is derived from the only
-    thing that is actually true of a matchweek: no team plays twice in one.
+    A round is the feed's RoundNumber. The old rule - fixtures in date order
+    until a side repeats - existed because fixtures.csv carried no matchweek;
+    this feed does, and a rescheduled match keeps its round number, which is
+    L3.1's "keeps its original prediction and state cutoff" for free.
 
-    That also makes the rule robust to the fixture feed carrying more or fewer
-    than ten matches, which it will whenever a midweek card is published
-    alongside a weekend one.
+    DUE is every unwritten holdout round whose first kickoff has passed - the
+    late rounds amendment C stops ruling out - plus the NEXT unwritten round.
+    Rounds beyond the next are not due: their state window is still being
+    played.
+
+    WAITING is a due round whose state window the E0 results file does not
+    yet hold. A round fitted on a window with a hole in it would say something
+    different from what it will say once the file catches up, so it is not
+    written until it can be written once and correctly.
+
+    MIXED is a round with some matches written and some not. L1.4 and L3.1
+    refuse to write it and a person has to look.
     """
 
-    used = set()
-    keep = []
+    holdout = fixtures[fixtures["date"] >= holdout_cutoff]
+    in_spine = set(live["match_id"])
 
-    for position, row in enumerate(fixtures.itertuples()):
+    due, waiting, mixed = [], [], []
+    upcoming_taken = False
 
-        if row.home_team in used or row.away_team in used:
-            break
+    for number in sorted(holdout["round_number"].unique()):
 
-        used.add(row.home_team)
-        used.add(row.away_team)
-        keep.append(position)
+        block = holdout[holdout["round_number"] == number]
+        done = int(block["match_id"].isin(written).sum())
 
-    return fixtures.iloc[keep].copy()
+        if done == len(block):
+            continue
+
+        if done:
+            mixed.append({"round_number": int(number), "block": block,
+                          "written": done})
+            continue
+
+        first_kickoff = block["kickoff_utc"].min()
+
+        if first_kickoff > now:
+            if upcoming_taken:
+                continue
+            upcoming_taken = True
+
+        state_cutoff = pd.Timestamp(block["date"].min())
+
+        before = fixtures[fixtures["date"] < state_cutoff]
+        lagging = before[before["played"] & ~before["match_id"].isin(in_spine)]
+        postponed = before[~before["played"]
+                           & ~before["match_id"].isin(in_spine)]
+
+        entry = {
+            "round_number": int(number),
+            "block": block.copy(),
+            "state_cutoff": state_cutoff,
+            "first_kickoff_utc": first_kickoff,
+            "late": bool((block["kickoff_utc"] <= now).any()),
+            "lagging": lagging,
+            "postponed": postponed,
+        }
+
+        (waiting if len(lagging) else due).append(entry)
+
+    return due, waiting, mixed
 
 
 # ============================================================
@@ -415,19 +506,69 @@ def row_hash(row, prev_hash):
         (prev_hash + "|" + payload).encode("utf-8")).hexdigest()
 
 
+def kickoff_utc_of(scheduled_date, scheduled_kickoff):
+    """
+    A row's kickoff as a UTC instant, from its UK date and UK "HH:MM".
+
+    A row with no kickoff time is taken to kick off at 00:00 UK - the earliest
+    it could - so a missing time can only ever make a row LATE, never early.
+    """
+
+    clock = str(scheduled_kickoff) if isinstance(scheduled_kickoff, str) and \
+        scheduled_kickoff.strip() else "00:00"
+
+    return pd.Timestamp("{} {}".format(scheduled_date, clock)).tz_localize(
+        UK).tz_convert("UTC")
+
+
+def derived_pre_kickoff(row):
+    """
+    L10.2 amendment B: was this row written before ITS OWN match kicked off?
+
+    Derived from generated_at_utc and scheduled_date, both inside the hash,
+    and scheduled_kickoff, which is not. The stored written_pre_kickoff column
+    is a convenience for the database and the site; this is the definition,
+    and the verifier holds the column to it.
+    """
+
+    generated = pd.Timestamp(str(row["generated_at_utc"]))
+
+    return bool(generated < kickoff_utc_of(row["scheduled_date"],
+                                           row.get("scheduled_kickoff")))
+
+
+def pre_kickoff_flags(frame):
+    """match_id -> written before its own kickoff, for every row in the log."""
+
+    return {row["match_id"]: derived_pre_kickoff(row)
+            for row in frame.to_dict("records")}
+
+
 def verify_log(frame):
     """
     L4's verifier. Recomputes every hash in order and fails on any mismatch.
 
     Returns (failures, checked). A failure is a row whose stored row_hash
     disagrees with its recomputation, or whose prev_hash does not point at its
-    predecessor. Both are reported; neither is repaired.
+    predecessor, or - from L10.2 amendment B - whose stored written_pre_kickoff
+    disagrees with the one its own timestamps give. Rows written before the
+    amendment carry no stored flag and are checked on the hash alone. All are
+    reported; none is repaired.
     """
 
     failures = []
     prev = GENESIS_HASH
 
     for position, row in enumerate(frame.to_dict("records")):
+
+        stored_flag = str(row.get("written_pre_kickoff", ""))
+        if stored_flag in ("True", "False", "true", "false"):
+            expected_flag = derived_pre_kickoff(row)
+            if (stored_flag.lower() == "true") != expected_flag:
+                failures.append({
+                    "row": position, "match_id": row.get("match_id"),
+                    "field": "written_pre_kickoff", "stored": stored_flag,
+                    "recomputed": str(expected_flag)})
 
         if str(row.get("prev_hash", "")) != prev:
             failures.append({
@@ -696,73 +837,114 @@ def dry_run(matches, spec, audit):
 # 7. THE LIVE ROUND
 # ============================================================
 
-def generate_round(matches, pin, audit, dry=False):
+def generate_rounds(matches, pin, audit, dry=False, only_round=None):
     """
-    Write one round of pre-kickoff predictions. Append-only.
+    Write every round that is due, each once, append-only.
+
+    L10.2 amendment C: a round whose kickoff has passed is no longer ruled
+    out. It is written with the SAME state cutoff it would have had on time -
+    every completed match dated strictly before its first fixture, and nothing
+    after - so its probabilities are the ones a timely run would have written.
+    What a late row cannot carry is the timestamp proof, so every row records
+    written_pre_kickoff against its OWN kickoff (amendment B), and the site and
+    the capture keep the two kinds apart.
 
     REFUSES to write a match_id that is already in the log, which is L1's
     "never regenerated" and L3's "keeps its original prediction" enforced in
     code rather than asserted in prose.
     """
 
-    banner("THE LIVE ROUND")
+    banner("THE LIVE ROUNDS")
+
+    now = pd.Timestamp(datetime.now(timezone.utc))
 
     fixtures = fixtures_from_source(fetch(FIXTURES_URL))
-    block = next_round(fixtures)
 
-    if block.empty:
-        raise ProtocolError("the fixture feed produced an empty round")
-
-    first_kickoff = pd.Timestamp(block["date"].min())
-    state_cutoff = first_kickoff
-
-    print("  fixtures in feed   {}".format(len(fixtures)))
-    print("  this round         {} matches, {} to {}".format(
-        len(block), str(block["date"].min().date()),
-        str(block["date"].max().date())))
-    print("  state cutoff       date < {}   (L1, strict, as the walk-forward)"
-          .format(str(state_cutoff.date())))
-
-    now = datetime.now(timezone.utc)
-
-    # ---- L1/L2: is this actually pre-kickoff? -----------------------------
-    pre_kickoff = now < first_kickoff.tz_localize(timezone.utc)
-
-    audit.record(
-        "L2a", "the round is being written BEFORE its first kickoff",
-        "generated_at < {}".format(str(first_kickoff.date())),
-        now.strftime("%Y-%m-%dT%H:%M:%SZ"), pre_kickoff,
-        "L2: a round written after its first kickoff is CONTAMINATED and is "
-        "excluded from the live log's own metrics. It is never excluded from "
-        "the holdout, which no rule in this protocol may alter")
-
-    if not pre_kickoff:
-        raise ProtocolError(
-            "L2: the first fixture of this round kicked off at {} and it is "
-            "now {}. A prediction written after kickoff is not evidence of "
-            "anything. Record the gap in {} instead - do NOT write a late "
-            "row.".format(first_kickoff, now, CONTAMINATION_CSV.name))
-
-    # ---- the live spine, and the vocabulary assertion ---------------------
     live = spine_from_e0(fetch(SOURCE_URL))
+    live["match_id"] = [
+        match_key(s, h, a) for s, h, a in
+        zip(live["season"], live["home_team"], live["away_team"])]
 
+    print("  fixtures in feed   {} ({} played)".format(
+        len(fixtures), int(fixtures["played"].sum())))
     print("  completed 2026-27  {} matches, latest {}".format(
         len(live), str(live["date"].max().date()) if len(live) else "none"))
 
-    # H2.12 / P4.5 on BOTH the completed rows and the fixtures being predicted.
+    # H2.12 / P4.5 on BOTH the completed rows and every fixture in the feed.
     # A name outside the vocabulary RAISES. Nothing is repaired here.
     assert_vocabulary(live, pin["vocabulary"], "completed 2026-27")
-    assert_vocabulary(block, pin["vocabulary"], "the round being predicted")
+    assert_vocabulary(fixtures, pin["vocabulary"], "the fixture feed")
 
     audit.record(
-        "L2b", "every name in the round and in the live spine is inside the "
+        "L2b", "every name in the feed and in the live spine is inside the "
                "pin's declared twenty",
         "0 outside", "0 outside", True,
         "asserted through the SAME function the scoring instrument uses, so "
         "the log cannot accept a name the holdout would reject")
 
+    existing = read_log()
+    written = set(existing["match_id"]) if len(existing) else set()
+
+    due, waiting, mixed = plan_rounds(
+        fixtures, written, live, pin["cutoff"], now)
+
+    if only_round is not None:
+        due = [r for r in due if r["round_number"] == only_round]
+        waiting = [r for r in waiting if r["round_number"] == only_round]
+
+    for entry in waiting:
+        print("  round {} WAITING: the results file lacks {} match(es) dated "
+              "before its state cutoff {}".format(
+                  entry["round_number"], len(entry["lagging"]),
+                  str(entry["state_cutoff"].date())))
+
+    audit.measure(
+        "L2c", "rounds due / waiting on the results file / mixed",
+        "{} / {} / {}".format(len(due), len(waiting), len(mixed)),
+        "WAITING is not a failure: a round is written once, so it waits until "
+        "its whole state window is in the E0 file rather than being fitted "
+        "on a window with a hole in it")
+
+    if mixed:
+        raise ProtocolError(
+            "L1.4: round(s) {} have some matches written and some not. "
+            "Predictions are never regenerated and a round is never split; "
+            "a person has to look.".format(
+                [m["round_number"] for m in mixed]))
+
+    if not due:
+        print("  nothing to write")
+        return pd.DataFrame()
+
+    frames = []
+    for entry in due:
+        frames.append(write_one_round(
+            matches, live, entry, pin, audit, now, dry))
+
+    return pd.concat(frames, ignore_index=True)
+
+
+def write_one_round(matches, live, entry, pin, audit, now, dry):
+
+    block = entry["block"]
+    state_cutoff = entry["state_cutoff"]
+    number = entry["round_number"]
+
+    print()
+    print("  ROUND {}   {} matches, {} to {}{}".format(
+        number, len(block), str(block["date"].min().date()),
+        str(block["date"].max().date()),
+        "   LATE - written after kickoff" if entry["late"] else ""))
+    print("  state cutoff       date < {}   (L1, strict, as the walk-forward)"
+          .format(str(state_cutoff.date())))
+
+    if len(entry["postponed"]):
+        print("  unplayed before the cutoff (postponed?): {}".format(
+            list(entry["postponed"]["match_id"])))
+
     # ---- the fit ----------------------------------------------------------
-    history = pd.concat([matches, live], ignore_index=True)
+    history = pd.concat([matches, live.drop(columns=["match_id"])],
+                        ignore_index=True)
     history["match_id"] = [
         match_key(s, h, a) for s, h, a in
         zip(history["season"], history["home_team"], history["away_team"])]
@@ -781,11 +963,8 @@ def generate_round(matches, pin, audit, dry=False):
     print()
 
     # predict_matches needs the columns it reads; result is unknown by design.
-    to_predict = block.copy()
-    to_predict["match_id"] = [
-        match_key(s, h, a) for s, h, a in
-        zip(to_predict["season"], to_predict["home_team"],
-            to_predict["away_team"])]
+    to_predict = block[["season", "date", "home_team", "away_team",
+                        "match_id"]].copy()
     to_predict["result"] = None
 
     predicted = DC.predict_matches(to_predict, model)
@@ -797,7 +976,7 @@ def generate_round(matches, pin, audit, dry=False):
     clashes = [p["match_id"] for p in predicted if p["match_id"] in already]
 
     audit.record(
-        "L4a", "no match_id in this round is already in the log",
+        "L4a", "no match_id in round {} is already in the log".format(number),
         0, len(clashes), len(clashes) == 0,
         "L1 and L3 in code: a prediction is written ONCE. {}".format(
             "clashes: {}".format(clashes) if clashes else "none"))
@@ -810,16 +989,16 @@ def generate_round(matches, pin, audit, dry=False):
                 len(clashes), clashes))
 
     round_id = (int(existing["round_id"].max()) + 1) if len(existing) else 1
-    played = int((~live["home_team"].isna()).sum())
-    matchweek_label = played // 10 + 1
 
     protocol_sha = sha256_of(PROTOCOL) if PROTOCOL.exists() else ""
 
     chain = (str(existing.iloc[-1]["row_hash"]) if len(existing)
              else GENESIS_HASH)
 
+    kickoffs = dict(zip(block["match_id"], block["kickoff"]))
+    generated_at = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+
     rows = []
-    kickoffs = dict(zip(block["home_team"], block.get("kickoff", "")))
 
     for prediction in predicted:
 
@@ -827,14 +1006,16 @@ def generate_round(matches, pin, audit, dry=False):
             "match_id": prediction["match_id"],
             "season": HOLDOUT_SEASON,
             "round_id": round_id,
-            "matchweek_label": matchweek_label,
+            # The feed's round number (amendment A). Still informational:
+            # nothing reads it to decide anything.
+            "matchweek_label": number,
             "scheduled_date": pd.Timestamp(prediction["date"]).strftime(
                 "%Y-%m-%d"),
-            "scheduled_kickoff": kickoffs.get(prediction["home"], ""),
+            "scheduled_kickoff": kickoffs.get(prediction["match_id"], ""),
             "home_team": prediction["home"],
             "away_team": prediction["away"],
             "state_cutoff_date": state_cutoff.strftime("%Y-%m-%d"),
-            "generated_at_utc": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "generated_at_utc": generated_at,
             "p_home": prediction["p_home"],
             "p_draw": prediction["p_draw"],
             "p_away": prediction["p_away"],
@@ -851,6 +1032,10 @@ def generate_round(matches, pin, audit, dry=False):
         }
 
         row["row_hash"] = row_hash(row, chain)
+        # Outside the hash on purpose: adding a field to HASHED_FIELDS would
+        # move every hash already written. It is derived from fields that ARE
+        # hashed, and the verifier holds it to that derivation.
+        row["written_pre_kickoff"] = derived_pre_kickoff(row)
         chain = row["row_hash"]
         rows.append(row)
 
@@ -858,6 +1043,15 @@ def generate_round(matches, pin, audit, dry=False):
 
     proba = frame[["p_home", "p_draw", "p_away"]].to_numpy(dtype=float)
     validate_probabilities(proba, len(frame))
+
+    late = int((~frame["written_pre_kickoff"].astype(bool)).sum())
+
+    audit.measure(
+        "L2a", "round {}: rows written AFTER their own kickoff".format(number),
+        "{} of {}".format(late, len(frame)),
+        "L10.2 amendment C: a late row is written, flagged, and kept out of "
+        "every pre-kickoff figure. Its state cutoff is the one it would have "
+        "had on time")
 
     # THE VOCABULARY CHECK IS NOT THE WHOLE GUARD, AND THIS IS THE OTHER HALF.
     #
@@ -895,14 +1089,18 @@ def generate_round(matches, pin, audit, dry=False):
         float(np.abs(proba.sum(axis=1) - 1.0).max()) < 1e-12,
         "through the Phase 0 harness's own validator, not a local check")
 
-    print("  {:<16} {:<16} {:>8} {:>8} {:>8}   {:>7} {:>7}".format(
-        "home", "away", "p_home", "p_draw", "p_away", "lam_h", "lam_a"))
-    print("  " + "-" * 78)
+    print("  {:<16} {:<16} {:>8} {:>8} {:>8}   {:>7} {:>7}  {}".format(
+        "home", "away", "p_home", "p_draw", "p_away", "lam_h", "lam_a",
+        "kickoff (UK)"))
+    print("  " + "-" * 96)
     for row in rows:
         print("  {:<16} {:<16} {:>8.4f} {:>8.4f} {:>8.4f}   {:>7.3f} {:>7.3f}"
-              .format(row["home_team"][:16], row["away_team"][:16],
-                      row["p_home"], row["p_draw"], row["p_away"],
-                      row["lambda_home"], row["lambda_away"]))
+              "  {} {}{}".format(
+                  row["home_team"][:16], row["away_team"][:16],
+                  row["p_home"], row["p_draw"], row["p_away"],
+                  row["lambda_home"], row["lambda_away"],
+                  row["scheduled_date"], row["scheduled_kickoff"],
+                  "" if row["written_pre_kickoff"] else "  LATE"))
 
     if dry:
         print()
@@ -911,16 +1109,23 @@ def generate_round(matches, pin, audit, dry=False):
 
     write_log(frame)
 
-    ok, detail = supabase_insert("predictions", frame.to_dict("records"))
+    # written_pre_kickoff stays in the mirror only. The database schema is
+    # unchanged by the amendment; the site derives the same flag from the same
+    # fields (generated_at_utc, scheduled_date, scheduled_kickoff), and the
+    # capture carries it into results.contaminated.
+    ok, detail = supabase_insert("predictions", [
+        {k: v for k, v in r.items() if k != "written_pre_kickoff"}
+        for r in frame.to_dict("records")])
 
     audit.record(
-        "L4c", "the round is appended to the local mirror",
+        "L4c", "round {} is appended to the local mirror".format(number),
         len(frame), len(frame), True,
         "the mirror is the PRIMARY record: git is what timestamps it. "
         "Supabase is the dashboard's copy")
 
     audit.measure(
-        "L4d", "Supabase insert", "OK" if ok else "NOT WRITTEN - {}".format(detail),
+        "L4d", "Supabase insert, round {}".format(number),
+        "OK" if ok else "NOT WRITTEN - {}".format(detail),
         "mirror-only is a degraded run, not a failed one. The service key is "
         "read from the environment and is never in the repository")
 
@@ -967,7 +1172,10 @@ def main():
 
     parser = argparse.ArgumentParser(add_help=True)
     parser.add_argument("--round", action="store_true",
-                        help="write the next 2026-27 round, pre-kickoff")
+                        help="write every due 2026-27 round: the next one, "
+                             "and any already kicked off (flagged late)")
+    parser.add_argument("--matchweek", type=int, default=None,
+                        help="with --round: write only this round number")
     parser.add_argument("--verify", action="store_true",
                         help="recompute every row hash in the local mirror")
     parser.add_argument("--dry", action="store_true",
@@ -1044,7 +1252,8 @@ def main():
             match_key(s, h, a) for s, h, a in
             zip(matches["season"], matches["home_team"], matches["away_team"])]
 
-        generate_round(matches, pin, audit, dry=args.dry)
+        generate_rounds(matches, pin, audit, dry=args.dry,
+                        only_round=args.matchweek)
 
     else:
         matches = L3.load_matches().copy()

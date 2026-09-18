@@ -100,8 +100,25 @@ npm run data          # python ../scripts/phase6_build_frontend_data.py
 
 ## The weekly routine
 
-Two commands, both of which fetch their own data from football-data.co.uk. No
-manual entry, and nothing to deploy.
+One command, safe to run any day and as often as you like:
+
+```powershell
+.\ops\weekly.ps1
+```
+
+It loads `ops/set-env.ps1` if present, then captures any played results, writes
+every round that is due, and verifies the chain. Since protocol amendment 1
+(`PHASE6_LIVE_LOG_PROTOCOL.txt` L10.2, 2026-09-18) fixtures come from
+fixturedownload.com, which lists the whole season, so "due" means the next
+unwritten matchweek plus any matchweek that has already kicked off. A late one
+is written with the same state cutoff it would have had on time, flagged
+`written_pre_kickoff = False`, labelled "after kickoff" on its cards, and
+counted in its own scorecard, never the pre-kickoff one. The routine skips with
+a reason when the next round is already written, or while football-data's E0
+results file is still missing matches the round's fit needs.
+
+Underneath, it is the same two commands. Fixtures come from fixturedownload.com
+and results from football-data.co.uk. No manual entry, and nothing to deploy.
 
 ```bash
 # BEFORE the matchweek's first kickoff - writes the round to the mirror and,

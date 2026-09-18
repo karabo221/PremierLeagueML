@@ -31,6 +31,13 @@ export interface Prediction {
   awayHasHistory: boolean;
   rowHash: string;
   prevHash: string;
+  /**
+   * Derived, never stored in the database (protocol L10.2 B): written before
+   * this match's own kickoff. False is a late row - the same numbers a timely
+   * run gives, without the timestamp proof - and is kept out of every
+   * pre-kickoff figure. See lib/kickoff.ts.
+   */
+  writtenPreKickoff: boolean;
 }
 
 export interface Contaminated {

@@ -436,7 +436,87 @@ L10.1 Amendments to this document are DATED, REASONED, and appended below.
       The hash moves, the manifest records it, and the reason is written down.
       Same terms as P4.5.
 
-L10.2 None yet.
+L10.2 AMENDMENT 1 - 2026-09-18. THE FIXTURE SOURCE, THE DEADLINE, AND LATE
+      ROUNDS. Declared before any row it governs was written. It changes how
+      the LOG operates and nothing else (L6.3): no model, no feature, no
+      cutoff, no vocabulary, and nothing the holdout scores or contains.
+
+      WHAT PROMPTED IT. On 2026-09-18 matchweek 5 was due to kick off at
+      20:00 UK that evening, and football-data's fixtures.csv still carried
+      no E0 row for it. Under the rules as written the round was already
+      lost - L2a compared against 00:00 UTC on the first match DATE, so the
+      deadline had passed at 01:00 UK, before the feed could have published
+      it. The feed publishes a few days ahead; a Friday opener made the
+      deadline structurally unmeetable, not merely missed.
+
+  A.  THE FIXTURE SOURCE (replaces L7.1). Fixtures are read from
+
+          https://fixturedownload.com/feed/json/epl-2026
+
+      which lists all 380 matches from the start of the season with UTC
+      kickoffs and a round number. Names pass through a closed two-entry map
+      of the feed's own spellings (Man Utd, Spurs) to football-data's, then
+      through the same TEAM_MAP as the spine, then through assert_vocabulary,
+      which still raises (L6.4). The feed's scorelines are read ONLY to tell a
+      lagging results file from a postponement; no score from it enters a fit
+      or a capture. The results spine is unchanged: football-data E0 (P7.2).
+
+      THE ROUND is the feed's round number, replacing L1.3's derived
+      boundary, which existed only because fixtures.csv carried none. A
+      rescheduled match keeps its round number, which is L3.1 unchanged.
+      matchweek_label is that number and remains informational.
+
+      VERIFIED BEFORE ADOPTION. Matchweek 4 - ten rows written 2026-09-11
+      from the old feed under the old round rule - was replayed through the
+      new feed and the new writer. All ten came back BIT FOR BIT: every
+      probability, goal rate and rho at 0.000e+00, and the scheduled dates,
+      UK kickoffs, state cutoffs, fit counts and labels identical.
+
+  B.  THE DEADLINE IS EACH MATCH'S OWN KICKOFF (refines L2a). A row is
+      pre-kickoff when generated_at_utc precedes ITS match's kickoff, taken
+      from scheduled_date and scheduled_kickoff (UK local time, as every row
+      already carried) and converted to UTC. A row without a kickoff time is
+      taken to kick off at 00:00 UK, so a missing time can only make a row
+      late, never early.
+
+      Every row in the mirror now carries written_pre_kickoff. It is
+      deliberately OUTSIDE the L4.3 hash: adding a field there would move
+      every hash already written. It is derived from fields inside the hash,
+      and the verifier recomputes it and FAILS on any row whose stored value
+      disagrees. Rows written before this amendment carry no stored value and
+      derive to True.
+
+      The Supabase schema is NOT changed. The database carries the fields the
+      flag is derived from, the site derives it by the same rule, and the
+      capture carries it into results.contaminated.
+
+  C.  A LATE ROUND IS WRITTEN, NOT RULED OUT (reverses L1.5, the "NO LATE
+      ROW" of L2.1, and L2.3). Every unwritten holdout round whose first
+      kickoff has passed is written, alongside the next unwritten round. Why
+      the reversal: the project needs to know how the model would have done
+      on every holdout match, and a late row costs nothing in correctness -
+      its state cutoff is exactly the one it would have had on time (L1.2,
+      unrelaxed), so its probabilities ARE the timely ones, as the replay in
+      A demonstrates. What it lacks is the timestamp PROOF, and L2.3's
+      concern is met by keeping the two kinds apart rather than by not
+      writing the row:
+
+          written_pre_kickoff = False on every late row;
+          its result is captured with contaminated = True, so every
+          pre-kickoff figure excludes it exactly as before;
+          the site labels it and reports it in a separate tally.
+
+      A round is not written while the E0 file lacks any match that the
+      fixture feed shows as played before the round's state cutoff: it waits,
+      and is written once, with its whole window.
+
+      live_log/phase6_live_contamination.csv is append-only and is not
+      edited. Its rows for 4-6 September remain true - no pre-kickoff
+      prediction existed for them - and those matches now also have late
+      rows in the log.
+
+      UNCHANGED: L0, L1.2, L1.4, L3, L4 (the chain and its field list), L5,
+      L6, L8, L9, and everything the freeze and the pin fix.
 
 ===============================================================================
 END OF PROTOCOL

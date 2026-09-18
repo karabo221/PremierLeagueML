@@ -28,14 +28,25 @@ export default async function FixturesPage() {
   const resultsByMatch = new Map(live.results.map((r) => [r.matchId, r]));
   const predictions = feed.rows;
 
-  // Rounds newest first. The round boundary is derived, never labelled - L1.3 -
-  // so the id is what groups fixtures, not a matchweek number.
-  const rounds = [...new Set(predictions.map((p) => p.roundId))].sort((a, b) => b - a);
+  // Rounds newest first, by MATCHWEEK. Since protocol L10.2 the matchweek is
+  // the fixture feed's own round number, and a late round can be written after
+  // a later one - so roundId, which is the order rounds were WRITTEN in, would
+  // put a backfilled round on the front page as "this week".
+  const week = (p: (typeof predictions)[number]) => p.matchweekLabel ?? p.roundId;
+  const rounds = [...new Set(predictions.map(week))].sort((a, b) => b - a);
   const current = rounds[0];
-  const currentFixtures = predictions.filter((p) => p.roundId === current);
-  const earlier = predictions.filter((p) => p.roundId !== current);
+  const currentFixtures = predictions.filter((p) => week(p) === current);
+  const earlier = predictions
+    .filter((p) => week(p) !== current)
+    .sort((a, b) => week(b) - week(a) || a.scheduledDate.localeCompare(b.scheduledDate));
+
+  const onTime = predictions.filter((p) => p.writtenPreKickoff);
+  const lateRows = predictions.filter((p) => !p.writtenPreKickoff);
+  const roundsOnTime = new Set(onTime.map(week)).size;
+  const roundsLate = new Set(lateRows.map(week)).size;
 
   const card = scorecard(predictions, live.results);
+  const lateCard = scorecard(predictions, live.results, "late");
   const cutoff = currentFixtures[0]?.stateCutoffDate;
 
   return (
@@ -44,7 +55,7 @@ export default async function FixturesPage() {
       <section className="hero">
         <div className="shell">
           <p className="eyebrow">
-            Round {current} &middot; using only matches played up to {cutoff}
+            Matchweek {current} &middot; using only matches played before {cutoff}
           </p>
 
           <h1 className="hero-h display">
@@ -71,7 +82,7 @@ export default async function FixturesPage() {
           */}
           <Scorecard
             data={card}
-            rounds={rounds.length}
+            rounds={roundsOnTime}
             unavailable={
               live.status.state === "error" || live.status.state === "unconfigured"
                 ? "The results are not reaching this page at the moment, so there is " +
@@ -80,6 +91,19 @@ export default async function FixturesPage() {
                 : undefined
             }
           />
+
+          {roundsLate > 0 && (
+            <Scorecard
+              data={lateCard}
+              rounds={roundsLate}
+              variant="late"
+              unavailable={
+                live.status.state === "error" || live.status.state === "unconfigured"
+                  ? "The results are not reaching this page at the moment."
+                  : undefined
+              }
+            />
+          )}
         </div>
       </section>
 
@@ -87,7 +111,7 @@ export default async function FixturesPage() {
         {/* ── the round ─────────────────────────────────────────────── */}
         <section className="stack stack-md">
           <div className="sec-hd">
-            <h2 className="sec-h">Round {current}</h2>
+            <h2 className="sec-h">Matchweek {current}</h2>
             <span className="pill" title={feed.detail}>
               <i className={`pill-dot${feed.source === "database" ? "" : " is-idle"}`} />
               {feed.source === "database" ? "live from the log" : "committed copy"}
@@ -153,13 +177,25 @@ export default async function FixturesPage() {
 
           <div className="cov-grid">
             <div className="cov-stat">
-              <span className="cov-n">{predictions.length}</span>
-              <span className="cov-l">predictions written</span>
+              <span className="cov-n">{onTime.length}</span>
+              <span className="cov-l">predictions written before kickoff</span>
               <p className="cov-d">
-                Each one appended once, before its matchweek&apos;s first kickoff,
-                and never regenerated.
+                Each one appended once, before its match kicked off, and never
+                regenerated.
               </p>
             </div>
+
+            {lateRows.length > 0 && (
+              <div className="cov-stat">
+                <span className="cov-n">{lateRows.length}</span>
+                <span className="cov-l">written after kickoff</span>
+                <p className="cov-d">
+                  Worked out later from only the matches played before their
+                  round, so we can see how the model would have done. Marked on
+                  every card and kept out of the before-kickoff scorecard.
+                </p>
+              </div>
+            )}
 
             <div className="cov-stat is-bad">
               <span className="cov-n">{CONTAMINATED.length}</span>

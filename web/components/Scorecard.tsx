@@ -71,29 +71,57 @@ export function Scorecard({
   data,
   rounds,
   unavailable,
+  variant = "pre-kickoff",
 }: {
   data: ScorecardData;
   rounds: number;
   /** Why there is nothing to show, when the database could not be read. */
   unavailable?: string;
+  /**
+   * "late" is the separate tally for rounds written after kickoff (protocol
+   * L10.2 C). Same boxes, its own heading, and never merged with the other.
+   */
+  variant?: "pre-kickoff" | "late";
 }) {
+  const late = variant === "late";
   return (
-    <section className="sc" aria-label="How the predictions have done so far">
+    <section
+      className="sc"
+      aria-label={
+        late
+          ? "How the rounds written after kickoff would have done"
+          : "How the predictions have done so far"
+      }
+    >
       <div className="sc-hd">
-        <h2 className="sc-h">How we&apos;re doing so far</h2>
+        <h2 className="sc-h">
+          {late ? "Written after kickoff: how they would have done" : "How we’re doing so far"}
+        </h2>
         <span className="sc-count">
           {data.settled === 0
             ? "no matches settled yet"
-            : `${data.settled} ${data.settled === 1 ? "match" : "matches"} settled · 2026-27 season to date`}
+            : `${data.settled} ${data.settled === 1 ? "match" : "matches"} settled · ${
+                late ? "kept apart from the tally above" : "2026-27 season to date"
+              }`}
         </span>
       </div>
 
       <div className="sc-cols">
         <div className="sc-col is-rounds">
-          <span className="sc-k">Rounds on record</span>
+          <span className="sc-k">{late ? "Late rounds" : "Rounds on record"}</span>
           <span className="sc-n">{rounds}</span>
           <p className="sc-d">
-            Each one written and published <strong>before</strong> its first kickoff.
+            {late ? (
+              <>
+                Written <strong>after</strong> kickoff, from only the matches played
+                before each round &mdash; the same numbers an on-time run gives, but
+                without the timestamp to prove it.
+              </>
+            ) : (
+              <>
+                Each one written and published <strong>before</strong> its first kickoff.
+              </>
+            )}
           </p>
         </div>
 

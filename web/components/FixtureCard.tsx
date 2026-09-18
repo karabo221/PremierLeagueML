@@ -56,6 +56,14 @@ export function FixtureCard({
       <div className="fx-when">
         <span>{dayShort(f.scheduledDate)}</span>
         <span>{f.scheduledKickoff ?? dateShort(f.scheduledDate)}</span>
+        {f.writtenPreKickoff ? null : (
+          <span
+            className="fx-cold"
+            title="Written after this match kicked off, from only the matches played before its round. Kept out of the pre-kickoff scorecard."
+          >
+            after kickoff
+          </span>
+        )}
       </div>
 
       <div className="fx-mid">
