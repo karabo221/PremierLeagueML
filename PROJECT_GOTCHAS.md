@@ -554,3 +554,80 @@ assumption with the defect, namely that patching `fs` is what determines which
   something is "enforced by nothing but a file timestamp" (section 8b).
 - The webpack build cache never persists. `config.cache` is set to `memory` when
   the probe fires, so the build stops claiming otherwise.
+
+---
+
+## 11. `weekly_check.py` said round 10 was due the morning after matchweek 9, and it would have frozen the round on a stale window
+
+**Observed 2026-11-01, 00:23 UTC.** Matchweek 9 had been written before kickoff
+on 10-31 and eight of its ten matches had been played. `ops/weekly_check.py`
+exited 0 with
+
+```
+  round 10  next - before kickoff            10 matches from 2026-11-06
+```
+
+Running `.\ops\weekly.ps1` at that moment would have written round 10 — and
+`plan_rounds()` would have been right that it was unwritten, right that its
+first kickoff was in the future, and right that `lagging` was empty. The fit
+would have run on **E0 up to 2026-10-25**, one whole matchweek stale, and L1.4
+and L3.1 forbid ever rewriting a round. The staleness would have been permanent.
+
+### Why `lagging` did not catch it
+
+Amendment 1A says the feed's scorelines are read "ONLY to tell a lagging results
+file from a postponement". That is two cases, and `plan_rounds()` implements
+exactly two:
+
+```python
+lagging   = before[before["played"]  & ~before["match_id"].isin(in_spine)]
+postponed = before[~before["played"] & ~before["match_id"].isin(in_spine)]
+```
+
+Only `lagging` blocks. There is a **third** case neither the amendment nor the
+code names: *the match has not been played yet, or has been played and the feed
+has not posted its score.* The feed's `played` flag lags the actual football.
+At 00:23 UTC on 11-01 all ten matchweek 9 fixtures still read
+`feed_played=False`, including the eight played the previous afternoon — so all
+ten were classified **postponed**, and postponed does not block.
+
+The generator's only trace of this is an advisory line, and its question mark is
+the author already half-knowing the classification was a guess:
+
+```
+  unplayed before the cutoff (postponed?): [...]
+```
+
+### Why it had never bitten before
+
+It is a **race window**, not a standing break. Once the feed posts matchweek 9's
+scores, those matches move into `lagging`, and the planner correctly reports
+WAITING until E0 catches up. The window is open only between a matchweek being
+played and the feed publishing it — and it only matters if you run the routine
+inside that window with the next round still days away. The normal cadence, run
+on or just before matchday, never lands there. We landed there by running on the
+morning after.
+
+### What to do
+
+**Do not write a round whose state cutoff is in the future while the previous
+matchweek is missing from E0.** The check is one line, and it is the artefact
+rather than the exit code:
+
+```
+  E0 matches before <cutoff> right now: 80
+  latest E0 match date                : 2026-10-25     <- a matchweek behind
+```
+
+If `latest E0 match date` is behind the last matchweek that has actually been
+played, stop. Capture is still safe and still a clean no-op. Come back when E0
+has caught up; `phase6_capture_results.py` reporting a new source sha256 is the
+signal.
+
+**This is the general rule of this file again, in a new costume:** the exit code
+said 0, every individual assertion inside `plan_rounds()` was true, and the
+conclusion was still wrong — because the measurement (`feed.played`) is not the
+thing it was being used to measure (has this match been played?). A fix, if one
+is wanted, belongs in `plan_rounds()` and probably compares the round's state
+cutoff against `now` as well as against the feed; it changes which rounds get
+written, so it is a dated amendment under L6.3 and not a quiet edit.
